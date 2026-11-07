@@ -1,0 +1,221 @@
+package com.loopa.feature.settings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PrivacyTip
+import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.loopa.core.data.DataContainer
+import com.loopa.core.data.ThemeMode
+import com.loopa.core.data.UserSettings
+import com.loopa.core.data.containerViewModel
+import com.loopa.core.model.ProfileOverview
+import com.loopa.core.ui.components.ConfirmDialog
+import com.loopa.core.ui.components.LoopaButton
+import com.loopa.core.ui.components.LoopaCard
+import com.loopa.core.ui.components.LoopaChip
+import com.loopa.core.ui.components.LoopaLogo
+import com.loopa.core.ui.components.SectionTitle
+import com.loopa.core.ui.components.loopaContentWidth
+import com.loopa.core.ui.theme.Loopa
+import com.loopa.core.ui.theme.LoopaPalette
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+class SettingsViewModel(private val c: DataContainer) : ViewModel() {
+    val settings: StateFlow<UserSettings> = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, UserSettings())
+    val profile: StateFlow<ProfileOverview?> = c.profiles.profile
+    val userId: String? get() = c.auth.userId
+
+    fun setSound(v: Boolean) = viewModelScope.launch { c.settings.setSound(v) }
+    fun setMusic(v: Boolean) = viewModelScope.launch { c.settings.setMusic(v) }
+    fun setVibration(v: Boolean) = viewModelScope.launch { c.settings.setVibration(v) }
+    fun setTheme(v: ThemeMode) = viewModelScope.launch { c.settings.setTheme(v) }
+    fun setLanguage(v: String) = viewModelScope.launch { c.settings.setLanguage(v) }
+
+    fun logout(done: () -> Unit) = viewModelScope.launch {
+        c.sessions.current.value?.leave()
+        c.sessions.close()
+        runCatching { c.auth.signOut() }
+        c.profiles.clear()
+        c.settings.setOnboardingDone(false)
+        done()
+    }
+}
+
+/** Languages the architecture supports; only Turkish ships in this build. */
+private val languages = listOf("tr" to "Türkçe", "en" to "English (yakında)")
+
+@Composable
+fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit) {
+    val vm = containerViewModel { SettingsViewModel(it) }
+    val s by vm.settings.collectAsStateWithLifecycle()
+    val profile by vm.profile.collectAsStateWithLifecycle()
+    var confirmLogout by remember { mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize().background(Loopa.colors.background)) {
+        Column(
+            Modifier.align(Alignment.TopCenter).loopaContentWidth().fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Ayarlar", style = MaterialTheme.typography.displaySmall, color = Loopa.colors.text)
+
+            SectionTitle("Ses ve titreşim")
+            LoopaCard {
+                ToggleRow(Icons.Rounded.VolumeUp, "Ses efektleri", "Butonlar, sayaç ve kutlamalar", s.soundEnabled, vm::setSound)
+                ToggleRow(Icons.Rounded.MusicNote, "Müzik", "Menülerde hafif arka plan müziği", s.musicEnabled, vm::setMusic)
+                ToggleRow(Icons.Rounded.Vibration, "Titreşim", "Sayaç uyarıları ve jokerler", s.vibrationEnabled, vm::setVibration)
+            }
+
+            SectionTitle("Görünüm")
+            LoopaCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.DarkMode, null, tint = Loopa.colors.text)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Tema", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LoopaChip("Sistem", s.theme == ThemeMode.SYSTEM, { vm.setTheme(ThemeMode.SYSTEM) })
+                    LoopaChip("Açık", s.theme == ThemeMode.LIGHT, { vm.setTheme(ThemeMode.LIGHT) }, color = LoopaPalette.Butter)
+                    LoopaChip("Koyu", s.theme == ThemeMode.DARK, { vm.setTheme(ThemeMode.DARK) }, color = LoopaPalette.Sky)
+                }
+            }
+
+            SectionTitle("Dil")
+            LoopaCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Language, null, tint = Loopa.colors.text)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Uygulama dili", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    languages.forEach { (code, name) ->
+                        LoopaChip(name, s.language == code, { vm.setLanguage(code) }, color = LoopaPalette.Mint, enabled = code == "tr")
+                    }
+                }
+                Text(
+                    "Şu an yalnızca Türkçe mevcut. Diğer diller eklendiğinde buradan seçilebilecek.",
+                    style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
+            SectionTitle("Hesap")
+            LoopaCard {
+                InfoRow(Icons.Rounded.Person, "Kullanıcı adı", profile?.username ?: "-")
+                InfoRow(Icons.Rounded.Person, "Hesap türü", "Misafir (anonim) hesap")
+                InfoRow(Icons.Rounded.Info, "Oyuncu kimliği", vm.userId?.take(8)?.plus("…") ?: "-")
+                Text(
+                    "Misafir hesabın bu cihazda saklanır. Çıkış yaparsan veya uygulamayı silersen seviyen, XP'n ve kozmetiklerin kaybolur. " +
+                        "Hesap bağlama (e-posta/Google) gelecek bir sürümde eklenecek.",
+                    style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.padding(top = 8.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                LoopaButton("Çıkış yap", { confirmLogout = true }, icon = Icons.AutoMirrored.Rounded.Logout, color = LoopaPalette.Peach, compact = true)
+            }
+
+            SectionTitle("Gizlilik")
+            LoopaCard {
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Rounded.PrivacyTip, null, tint = Loopa.colors.text)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "LOOPA yalnızca oyun için gerekli verileri saklar: kullanıcı adın, avatarın, oyun istatistiklerin ve oynadığın maçlardaki cevapların. " +
+                            "E-posta, telefon veya konum toplanmaz. Cevapların yalnızca aynı odadaki oyunculara gösterilir. Reklam ya da üçüncü taraf izleme yoktur.",
+                        style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
+                    )
+                }
+            }
+
+            SectionTitle("LOOPA hakkında")
+            LoopaCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LoopaLogo(size = 56.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text("LOOPA", style = MaterialTheme.typography.headlineSmall, color = Loopa.colors.text)
+                        Text("Play together. Think faster.", style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
+                        Text("Sürüm $versionName", style = MaterialTheme.typography.labelSmall, color = Loopa.colors.textSoft)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Arkadaşlarınla oynayabileceğin çok oyunculu parti oyunu. İlk mod: İsim Şehir. Yazı tipleri: Fredoka ve Nunito (SIL Open Font License).",
+                    style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+
+    if (confirmLogout) {
+        ConfirmDialog(
+            "Çıkış yapılsın mı?",
+            "Misafir hesabından çıkarsan bu hesaba tekrar giriş yapılamaz; seviyen ve kozmetiklerin kaybolur.",
+            "Çıkış yap",
+            onConfirm = { confirmLogout = false; vm.logout(onLoggedOut) },
+            onDismiss = { confirmLogout = false },
+        )
+    }
+}
+
+@Composable
+private fun ToggleRow(icon: ImageVector, title: String, body: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = Loopa.colors.text)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+            Text(body, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
+        }
+        Switch(checked, onChange, colors = SwitchDefaults.colors(checkedTrackColor = LoopaPalette.MintDeep))
+    }
+}
+
+@Composable
+private fun InfoRow(icon: ImageVector, label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = Loopa.colors.textSoft)
+        Spacer(Modifier.width(12.dp))
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+    }
+}

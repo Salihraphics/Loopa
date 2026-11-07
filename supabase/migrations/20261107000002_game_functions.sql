@@ -1169,7 +1169,7 @@ begin
                     order by mp.total_points desc, mp.round_wins desc)
                 from public.match_players mp join public.profiles p on p.id = mp.user_id
                 where mp.match_id = m.id), '[]'::jsonb),
-            'my_jokers', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'type', joker_type, 'source', source) order by acquired_at)
+            'my_jokers', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'type', joker_type, 'source', source, 'source_round_id', source_round_id) order by acquired_at)
                 from public.player_jokers where match_id = m.id and user_id = u and status = 'available'), '[]'::jsonb)
         );
 

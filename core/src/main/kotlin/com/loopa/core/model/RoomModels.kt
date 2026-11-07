@@ -112,6 +112,7 @@ data class OwnedJoker(
     val id: String,
     val type: JokerType,
     val source: String = "match_start",
+    @SerialName("source_round_id") val sourceRoundId: String? = null,
 )
 
 @Serializable
@@ -211,3 +212,13 @@ data class RoomRef(
     val code: String,
     val status: String? = null,
 )
+
+/** Built-in categories (mirror of `public.categories`; the server stays authoritative for names). */
+object BuiltInCategories {
+    val defaults = listOf(
+        Category("isim", "İsim"), Category("sehir", "Şehir"), Category("hayvan", "Hayvan"), Category("bitki", "Bitki"),
+        Category("esya", "Eşya"), Category("ulke", "Ülke"), Category("meslek", "Meslek"), Category("unlu", "Ünlü"),
+    )
+    val extras = listOf(Category("marka", "Marka"), Category("yemek", "Yemek"), Category("film", "Film"), Category("oyun", "Oyun"))
+    val all = defaults + extras
+}

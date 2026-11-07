@@ -31,7 +31,7 @@ enum class AvatarSlot(val key: String, val title: String, val optional: Boolean)
 /** Immutable avatar description: slot -> cosmetic item id. Missing optional slots render as "none". */
 @Immutable
 data class AvatarConfig(val parts: Map<AvatarSlot, String>) {
-    operator fun get(slot: AvatarSlot): String? = parts[slot] ?: AvatarCatalog.defaults[slot]
+    operator fun get(slot: AvatarSlot): String? = parts[slot] ?: if (slot.optional) null else AvatarCatalog.defaults[slot]
     fun with(slot: AvatarSlot, id: String?): AvatarConfig =
         AvatarConfig(if (id == null) parts - slot else parts + (slot to id))
 

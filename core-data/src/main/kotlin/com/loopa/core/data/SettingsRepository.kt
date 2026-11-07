@@ -43,10 +43,10 @@ class SettingsRepository(private val context: Context) {
         )
     }
 
-    suspend fun setSound(v: Boolean) = context.dataStore.edit { it[Keys.sound] = v }
-    suspend fun setMusic(v: Boolean) = context.dataStore.edit { it[Keys.music] = v }
-    suspend fun setVibration(v: Boolean) = context.dataStore.edit { it[Keys.vibration] = v }
-    suspend fun setLanguage(v: String) = context.dataStore.edit { it[Keys.language] = v }
-    suspend fun setTheme(v: ThemeMode) = context.dataStore.edit { it[Keys.theme] = v.name }
-    suspend fun setOnboardingDone(v: Boolean) = context.dataStore.edit { it[Keys.onboarding] = v }
+    suspend fun setSound(v: Boolean) { context.dataStore.edit { it[Keys.sound] = v } }
+    suspend fun setMusic(v: Boolean) { context.dataStore.edit { it[Keys.music] = v } }
+    suspend fun setVibration(v: Boolean) { context.dataStore.edit { it[Keys.vibration] = v } }
+    suspend fun setLanguage(v: String) { context.dataStore.edit { it[Keys.language] = v } }
+    suspend fun setTheme(v: ThemeMode) { context.dataStore.edit { it[Keys.theme] = v.name } }
+    suspend fun setOnboardingDone(v: Boolean) { context.dataStore.edit { it[Keys.onboarding] = v } }
 }
