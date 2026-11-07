@@ -1,0 +1,146 @@
+Ahtapot
+Akbaba
+Akrep
+Alabalık
+Antilop
+Arı
+Armadillo
+Aslan
+Ateş böceği
+At
+Atmaca
+Ayı
+Ayıbalığı
+Babun
+Balık
+Balina
+Baykuş
+Bıldırcın
+Bit
+Bizon
+Boğa
+Böcek
+Bukalemun
+Bülbül
+Buzağı
+Ceylan
+Civciv
+Çakal
+Çekirge
+Çita
+Çıyan
+Dana
+Deve
+Devekuşu|Deve kuşu
+Deniz anası|Denizanası
+Denizatı|Deniz atı
+Deniz yıldızı|Denizyıldızı
+Domuz
+Doğan
+Dinozor
+Ejderha
+Engerek
+Eşek
+Eşek arısı|Eşekarısı
+Fare
+Fil
+Flamingo
+Fok
+Gelincik
+Geyik
+Gergedan
+Goril
+Güvercin
+Hamster
+Hindi
+Hipopotam
+Horoz
+İnek
+İguana
+İpek böceği|İpekböceği
+Istakoz
+Jaguar
+Kanguru
+Kaplan
+Kaplumbağa
+Kanarya
+Karga
+Karınca
+Kartal
+Kaz
+Keçi
+Kedi
+Kelebek
+Kertenkele
+Kirpi
+Koala
+Kobra
+Koç
+Koyun
+Köpek
+Köpekbalığı|Köpek balığı
+Kumru
+Kunduz
+Kurbağa
+Kurt
+Kuzu
+Kuş
+Leopar
+Leylek
+Lama
+Levrek
+Martı
+Maymun
+Mersin balığı
+Midye
+Mors
+Muhabbet kuşu
+Mürekkep balığı|Mürekkepbalığı
+Orangutan
+Ördek
+Örümcek
+Öküz
+Palamut
+Panda
+Panter
+Papağan
+Pelikan
+Penguen
+Pire
+Piton
+Puma
+Rakun
+Ren geyiği
+Salyangoz
+Sardalya
+Sazan
+Serçe
+Sırtlan
+Sinek
+Sivrisinek
+Sincap
+Solucan
+Somon
+Sığır
+Su aygırı
+Şahin
+Şempanze
+Tavşan
+Tavuk
+Tavus kuşu|Tavuskuşu
+Tilki
+Timsah
+Ton balığı|Orkinos
+Turna
+Tırtıl
+Uğur böceği|Uğurböceği
+Uskumru
+Vaşak
+Vatoz
+Yak
+Yarasa
+Yengeç
+Yılan
+Yunus
+Zebra
+Zürafa

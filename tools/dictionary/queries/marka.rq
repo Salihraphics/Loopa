@@ -1,0 +1,7 @@
+SELECT ?item ?label ?alt WHERE {
+  VALUES ?c { wd:Q431289 wd:Q4830453 wd:Q891723 wd:Q783794 wd:Q6881511 wd:Q167037 wd:Q1631129 }
+  ?item wdt:P31 ?c; wikibase:sitelinks ?n . FILTER(?n >= 12)
+  ?article schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item .
+  ?item rdfs:label ?label FILTER(lang(?label)="tr")
+  OPTIONAL { ?item skos:altLabel ?alt FILTER(lang(?alt)="tr") }
+}

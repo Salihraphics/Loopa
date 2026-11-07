@@ -1,0 +1,6 @@
+SELECT ?item ?label ?alt WHERE {
+  VALUES ?c { wd:Q3624078 wd:Q6256 }
+  ?item wdt:P31 ?c . FILTER NOT EXISTS { ?item wdt:P576 [] }
+  ?item rdfs:label ?label FILTER(lang(?label)="tr")
+  OPTIONAL { ?item skos:altLabel ?alt FILTER(lang(?alt)="tr") }
+}

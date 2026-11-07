@@ -118,4 +118,25 @@ class GameLogicTest {
         assertEquals(1, state.match!!.myJokers.size)
         assertEquals(RoundPhase.ANSWERING, state.round!!.phase)
     }
+
+    @Test fun foldAndKeyMirrorDatabase() {
+        assertEquals("cigkofte", TurkishText.key("Çiğ Köfte"))
+        assertEquals("istanbul", TurkishText.key("  İSTANBUL "))
+        assertEquals("istanbul", TurkishText.key("Istanbul"))
+        assertEquals("cocacola", TurkishText.key("Coca-Cola"))
+        assertEquals("cotedivoire", TurkishText.key("Côte d'Ivoire"))
+        assertTrue(TurkishText.startsWithLetter("sanliurfa", "Ş"))
+        assertTrue(TurkishText.startsWithLetter("ISTANBUL", "İ"))
+        assertTrue(!TurkishText.startsWithLetter("Kedi", "A"))
+    }
+
+    @Test fun groupingUsesServerGroupKey() {
+        val groups = AnswerGrouping.group(listOf(
+            Answer("1", "a", "ulke", "ABD", "abd", finalStatus = "accepted", groupKey = "e501"),
+            Answer("2", "b", "ulke", "Amerika", "amerika", finalStatus = "accepted", groupKey = "e501"),
+            Answer("3", "c", "ulke", "Almanya", "almanya", finalStatus = "accepted", groupKey = "e12"),
+        ))
+        assertEquals(2, groups.size)
+        assertEquals(2, groups.first().answers.size)
+    }
 }

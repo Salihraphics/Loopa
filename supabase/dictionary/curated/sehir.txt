@@ -1,0 +1,32 @@
+Gaziantep|Antep
+Şanlıurfa|Urfa
+Kahramanmaraş|Maraş
+Afyonkarahisar|Afyon
+Mersin|İçel
+Kocaeli|İzmit
+Sakarya|Adapazarı
+Hatay|Antakya
+İstanbul|Stanbul
+New York|Nevyork
+Los Angeles
+Rio de Janeiro|Rio
+Buenos Aires
+Meksiko|Mexico City
+Washington|Vaşington
+Kudüs
+Mekke
+Medine
+Bakü
+Tiflis
+Lefkoşa
+Girne
+Gazimağusa|Mağusa
+Saraybosna
+Üsküp
+Selanik
+Batum
+Nahçıvan
+Kazan
+Semerkant
+Buhara
+Taşkent

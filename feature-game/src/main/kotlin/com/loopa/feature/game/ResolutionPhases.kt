@@ -260,6 +260,8 @@ private fun statusOf(a: Answer): Status = when {
     a.accepted && a.validation == "uncertain" -> Status("Oyla kabul", LoopaPalette.Mint.copy(alpha = 0.8f), LoopaPalette.MintDeep)
     a.accepted -> Status("Benzersiz · 20", LoopaPalette.Mint.copy(alpha = 0.9f), LoopaPalette.MintDeep)
     a.validation == "uncertain" -> Status("Oyla red", LoopaPalette.Peach.copy(alpha = 0.8f), LoopaPalette.PeachDeep)
+    a.reason == "wrong_category" -> Status("Yanlış kategori", LoopaPalette.Error.copy(alpha = 0.45f), LoopaPalette.Error)
+    a.reason == "wrong_letter" -> Status("Yanlış harf", LoopaPalette.Error.copy(alpha = 0.45f), LoopaPalette.Error)
     else -> Status("Geçersiz", LoopaPalette.Error.copy(alpha = 0.45f), LoopaPalette.Error)
 }
 

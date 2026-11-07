@@ -1,0 +1,63 @@
+Arçelik
+Aselsan
+Beko
+BİM|Bim
+Eti
+Ford Otosan
+Koton
+LC Waikiki|LCW
+Mavi
+Migros
+Pınar
+Sütaş
+Şok
+Teknosa
+Togg
+Türk Hava Yolları|THY
+Turkcell
+Türk Telekom
+Ülker
+Vestel
+Vakko
+Yataş
+Defacto|DeFacto
+Hepsiburada
+Trendyol
+Getir
+Doğuş
+Kiğılı
+Penti
+Torku
+Çaykur
+Uludağ
+Erikli
+Hayat Su
+Algida
+Coca-Cola|Coca Cola|Kola
+Pepsi
+Adidas
+Nike
+Puma
+Apple
+Samsung
+Google
+Microsoft
+Sony
+Toyota
+Mercedes-Benz|Mercedes
+BMW
+Volkswagen|VW
+Renault
+Fiat
+Netflix
+Spotify
+YouTube|Youtube
+Instagram
+WhatsApp|Whatsapp
+Zara
+IKEA|İkea
+Lego
+Nutella
+Starbucks
+McDonald's|McDonalds|Mcdonalds
+Burger King

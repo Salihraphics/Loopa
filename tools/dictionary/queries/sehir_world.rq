@@ -1,0 +1,7 @@
+# World cities with >= 100k inhabitants or capitals, with a Turkish label
+SELECT ?item ?label ?alt WHERE {
+  VALUES ?c { wd:Q515 wd:Q1549591 wd:Q1637706 wd:Q200250 wd:Q5119 wd:Q1093829 wd:Q22865 }
+  ?item wdt:P31 ?c . ?item wdt:P1082 ?pop . FILTER(?pop >= 100000)
+  ?item rdfs:label ?label FILTER(lang(?label)="tr")
+  OPTIONAL { ?item skos:altLabel ?alt FILTER(lang(?alt)="tr") }
+}

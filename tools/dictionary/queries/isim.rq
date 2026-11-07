@@ -1,0 +1,4 @@
+SELECT ?item ?label WHERE {
+  VALUES ?c { wd:Q12308941 wd:Q11879590 wd:Q3409032 }
+  ?item wdt:P31 ?c . ?item rdfs:label ?label FILTER(lang(?label)="tr")
+}

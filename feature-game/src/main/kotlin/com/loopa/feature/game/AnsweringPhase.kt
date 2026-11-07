@@ -176,7 +176,7 @@ fun AnsweringView(
         ) {
             itemsIndexed(round.categories, key = { _, c -> c.key }) { i, cat ->
                 val value = answers[cat.key].orEmpty()
-                val wrongLetter = value.isNotBlank() && TurkishText.normalize(value).firstOrNull()?.toString() != TurkishText.normalize(round.letter)
+                val wrongLetter = value.isNotBlank() && !TurkishText.startsWithLetter(value, round.letter)
                 val doubled = me?.doubleCategory == cat.key
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(

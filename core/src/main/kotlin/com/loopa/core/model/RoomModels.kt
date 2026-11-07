@@ -187,6 +187,10 @@ data class Answer(
     @SerialName("votes_needed") val votesNeeded: Int? = null,
     @SerialName("votes_accept") val votesAccept: Int? = null,
     @SerialName("votes_reject") val votesReject: Int? = null,
+    /** Why the server judged it so: dictionary, wrong_letter, wrong_category, not_found, malformed, empty, no_voters. */
+    val reason: String? = null,
+    /** Server-side duplicate key: same dictionary entry (e.g. "ABD" and "Amerika") => same group. */
+    @SerialName("group_key") val groupKey: String? = null,
 ) {
     val isPendingVote: Boolean get() = validation == "uncertain" && finalStatus == null
     val accepted: Boolean get() = finalStatus == "accepted"

@@ -1,0 +1,22 @@
+Amerika Birleşik Devletleri|ABD|Amerika|Birleşik Devletler|USA
+Birleşik Krallık|İngiltere|Britanya|UK
+Rusya|Rusya Federasyonu
+Almanya
+Hollanda
+Güney Kore|Kore Cumhuriyeti
+Kuzey Kore|Kore Demokratik Halk Cumhuriyeti
+Çin|Çin Halk Cumhuriyeti
+Kuzey Kıbrıs Türk Cumhuriyeti|KKTC|Kuzey Kıbrıs
+Birleşik Arap Emirlikleri|BAE
+Bosna-Hersek|Bosna Hersek|Bosna
+Çekya|Çek Cumhuriyeti
+Fildişi Sahili|Côte d'Ivoire
+Kongo Demokratik Cumhuriyeti|Demokratik Kongo
+Kongo Cumhuriyeti|Kongo
+Kuzey Makedonya|Makedonya
+Belarus|Beyaz Rusya
+Myanmar|Burma
+Eswatini|Esvatini|Svaziland
+Doğu Timor|Timor-Leste
+Vatikan|Vatikan Şehir Devleti
+Türkiye|Türkiye Cumhuriyeti

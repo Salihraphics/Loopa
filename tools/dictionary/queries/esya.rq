@@ -1,0 +1,6 @@
+# Common objects: subclasses of tools, furniture, clothing, containers, instruments, appliances, toys, vehicles
+SELECT ?item ?label WHERE {
+  VALUES ?c { wd:Q39546 wd:Q14745 wd:Q11460 wd:Q987767 wd:Q34379 wd:Q212920 wd:Q11422 wd:Q1420 wd:Q1183543 wd:Q10273457 wd:Q1357761 wd:Q131257 }
+  ?item wdt:P279/wdt:P279? ?c .
+  ?item rdfs:label ?label FILTER(lang(?label)="tr")
+}

@@ -1,0 +1,15 @@
+# Entries that must never be accepted automatically: "<category>|<word>".
+# Matching is spelling-insensitive (dict_key). Removing a word here and rebuilding
+# drops it from the next dictionary version; already-loaded rows are retired by
+# the generated migration (dictionary_entries.retired_in).
+meslek|aktivizm
+meslek|satraplık
+meslek|koçluk
+meslek|akrobatik jimnastik
+meslek|Chain gang
+meslek|Diez Kontu
+meslek|peygamber
+yemek|tatlı
+yemek|Yemek
+esya|takı
+esya|Seviye sensörü

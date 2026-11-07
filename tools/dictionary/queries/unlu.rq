@@ -1,0 +1,6 @@
+# Notable people: humans with a Turkish Wikipedia article and >= 25 sitelinks
+SELECT ?item ?label WHERE {
+  ?article schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item .
+  ?item wdt:P31 wd:Q5; wikibase:sitelinks ?n . FILTER(?n >= 25)
+  ?item rdfs:label ?label FILTER(lang(?label)="tr")
+}

@@ -1,0 +1,8 @@
+# Provinces, districts, towns and cities of Turkey (villages and neighbourhoods excluded on purpose:
+# their names are often ordinary words and would distort wrong-category detection)
+SELECT ?item ?label ?alt WHERE {
+  VALUES ?c { wd:Q48336 wd:Q1147395 wd:Q3957 wd:Q815324 wd:Q515 wd:Q2716259 wd:Q2460358 }
+  ?item wdt:P31 ?c; wdt:P17 wd:Q43 .
+  ?item rdfs:label ?label FILTER(lang(?label)="tr")
+  OPTIONAL { ?item skos:altLabel ?alt FILTER(lang(?alt)="tr") }
+}

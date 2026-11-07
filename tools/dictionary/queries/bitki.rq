@@ -1,0 +1,7 @@
+# Plant and fungus taxa with a Turkish vernacular label or P1843 common name
+SELECT DISTINCT ?item ?label WHERE {
+  VALUES ?k { wd:Q756 wd:Q764 }
+  ?item wdt:P171+ ?k .
+  { ?item rdfs:label ?label FILTER(lang(?label)="tr") ?item wdt:P225 ?sci FILTER(STR(?label) != ?sci) }
+  UNION { ?item wdt:P1843 ?label FILTER(lang(?label)="tr") }
+}

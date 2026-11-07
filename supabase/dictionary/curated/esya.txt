@@ -1,0 +1,280 @@
+Abajur|Abajür
+Ajanda
+Akvaryum
+Aksesuar
+Alet çantası
+Altlık
+Amortisör
+Anahtar
+Anahtarlık
+Ataş|Ataç
+Askı
+Ayakkabı
+Ayakkabılık
+Ayna
+Avize
+Bant
+Bardak
+Bardak altlığı
+Baston
+Battaniye
+Bavul
+Bere
+Beşik
+Biblo
+Bilezik
+Bilgisayar
+Bisiklet
+Bıçak
+Boncuk
+Boya
+Boya kalemi
+Bone
+Broş
+Buzdolabı
+Buzluk
+Büro koltuğu
+Cam
+Cetvel
+Cezve
+Ceket
+Cımbız
+Cüzdan
+Çadır
+Çaydanlık
+Çakı
+Çakmak
+Çamaşır makinesi
+Çamaşır mandalı|Mandal
+Çanta
+Çatal
+Çekiç
+Çekmece
+Çerçeve
+Çivi
+Çizme
+Çorap
+Çöp kutusu|Çöp kovası
+Çuval
+Damacana
+Dambıl
+Davul
+Defter
+Demlik
+Deterjan
+Dikiş makinesi
+Dikiş iğnesi
+Dolap
+Dolma kalem
+Dosya
+Dürbün
+Düdük
+Düdüklü tencere
+Duvar saati
+Ekmek bıçağı
+Ekmek kızartma makinesi|Tost makinesi
+Eldiven
+Elbise
+Elek
+Eşarp
+Etek
+Etiket
+Fanus
+Fanila
+Fener
+Fermuar
+Fırça
+Fırın
+Fincan
+Fiskos
+Fotoğraf makinesi
+Fön makinesi|Saç kurutma makinesi
+Futbol topu
+Gardırop
+Gazete
+Gergef
+Gitar
+Gömlek
+Gözlük
+Güneş gözlüğü
+Güneş şemsiyesi
+Halı
+Halat
+Hamak
+Havlu
+Havan
+Hırka
+Hoparlör
+Heykel
+Hesap makinesi
+Hortum
+Izgara
+Ispatula
+İğne
+İp
+İplik
+İskemle
+İstiridye bıçağı
+İnci
+Jilet
+Jeneratör
+Kalem
+Kalemlik
+Kalemtıraş|Kalem açacağı|Kalemtraş
+Kamera
+Kanepe
+Kapı
+Kapı zili
+Kar küreği
+Karyola
+Kasa
+Kase
+Kaşık
+Kaşkol
+Kayık
+Kazak
+Kazan
+Kemer
+Kepçe
+Kevgir
+Kibrit
+Kilit
+Kilim
+Kitap
+Kitaplık
+Klavye
+Koltuk
+Kolye
+Komodin
+Kova
+Kravat
+Kulaklık
+Kumanda
+Kumbara
+Kupa
+Kurdele
+Küpe
+Kürek
+Lamba
+Laptop|Dizüstü bilgisayar
+Lavabo
+Leğen
+Lastik
+Makas
+Mandolin
+Mangal
+Masa
+Masa lambası
+Matara
+Matkap
+Mektup
+Mendil
+Merdiven
+Mikrofon
+Mikser
+Mikrodalga fırın
+Minder
+Mont
+Monitör
+Mouse|Fare
+Mum
+Mutfak robotu
+Musluk
+Mücevher
+Nalın
+Nargile
+Not defteri
+Oklava
+Olta
+Oyuncak
+Ocak
+Önlük
+Örtü
+Örgü şişi
+Pantolon
+Parfüm
+Pense
+Perde
+Pijama
+Pil
+Pipet
+Piyano
+Poşet
+Priz
+Puf
+Pusula
+Radyo
+Raf
+Raket
+Rende
+Ruj
+Saat
+Sabun
+Sabunluk
+Saksı
+Sandal
+Sandalye
+Sandık
+Sargı bezi
+Satır
+Sehpa
+Sepet
+Semaver
+Silgi
+Sünger
+Süpürge
+Sürahi
+Sözlük
+Şal
+Şamdan
+Şapka
+Şarj aleti|Şarj cihazı
+Şemsiye
+Şezlong
+Şırınga
+Şişe
+Şömine
+Tabak
+Tablet
+Tabure
+Taç
+Takvim
+Tarak
+Tava
+Tebeşir
+Televizyon|TV
+Telefon
+Tencere
+Teneke
+Termos
+Terlik
+Tespih
+Teyp
+Tığ
+Top
+Tornavida
+Tost makinesi
+Tüp
+Tülbent
+Tüy kalem
+Ütü
+Ütü masası
+Uçurtma
+Vantilatör
+Valiz
+Vazo
+Vida
+Yastık
+Yatak
+Yaka
+Yelek
+Yelpaze
+Yorgan
+Yüzük
+Zar
+Zarf
+Zımba
+Zımpara
+Zil
+Zincir
+Zıpkın

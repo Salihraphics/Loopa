@@ -21,6 +21,29 @@ object TurkishText {
         return sb.toString().trim().replace(whitespace, " ")
     }
 
+    private const val FOLD_FROM = "çğıöşüâîûéèêëáàäãåíìïóòôõúùñýÿœæß"
+    private const val FOLD_TO = "cgiosuaiueeeeaaaaaiiioooouunyyoas"
+
+    /** Mirrors `dict_fold`: lower-case and strip Turkish/Latin diacritics (ş->s, ı->i …). */
+    fun fold(input: String): String {
+        val n = normalize(input).lowercase()
+        val sb = StringBuilder(n.length)
+        for (ch in n) {
+            val i = FOLD_FROM.indexOf(ch)
+            sb.append(if (i >= 0) FOLD_TO[i] else ch)
+        }
+        return sb.toString()
+    }
+
+    /** Mirrors `dict_key`: spelling-insensitive matching key. */
+    fun key(input: String): String = fold(input).filter { it in 'a'..'z' || it in '0'..'9' }
+
+    /** Same tolerant first-letter rule the server uses before sending an answer to a vote. */
+    fun startsWithLetter(answer: String, letter: String): Boolean {
+        val a = normalize(answer).lowercase().firstOrNull { it.isLetterOrDigit() } ?: return true
+        return fold(a.toString()) == fold(letter)
+    }
+
     /** Turkish upper-casing for display (i -> İ, ı -> I). */
     fun upper(input: String): String {
         val sb = StringBuilder(input.length)
@@ -143,7 +166,13 @@ object AnswerGrouping {
     data class Group(val normalized: String, val display: String, val answers: List<Answer>)
 
     fun group(answers: List<Answer>): List<Group> = answers
-        .groupBy { if (it.normalized.isBlank()) "\u0000" + it.userId else it.normalized }
+        .groupBy {
+            when {
+                it.normalized.isBlank() -> "\u0000" + it.userId
+                it.groupKey != null && it.accepted -> it.groupKey
+                else -> "n" + it.normalized
+            }
+        }
         .map { (key, list) -> Group(key, list.first().text, list) }
         .sortedWith(compareByDescending<Group> { it.answers.any { a -> a.accepted } }.thenByDescending { it.answers.size })
 }

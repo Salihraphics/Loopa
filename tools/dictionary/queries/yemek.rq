@@ -1,0 +1,6 @@
+SELECT ?item ?label ?alt WHERE {
+  VALUES ?c { wd:Q746549 wd:Q182940 wd:Q41415 wd:Q7802 wd:Q9266 wd:Q477248 wd:Q2095 wd:Q178359 }
+  { ?item wdt:P31 ?c } UNION { ?item wdt:P279 ?c }
+  ?item rdfs:label ?label FILTER(lang(?label)="tr")
+  OPTIONAL { ?item skos:altLabel ?alt FILTER(lang(?alt)="tr") }
+}

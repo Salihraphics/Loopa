@@ -1,0 +1,97 @@
+{
+  "version": 2,
+  "wikidata_fetched_at": "2026-11-07T21:35Z",
+  "licence": "CC0 1.0 (Wikidata + LOOPA curated)",
+  "categories": {
+    "isim": {
+      "entries": 31674,
+      "aliases": 0,
+      "curated": 0,
+      "wikidata": 31674,
+      "merged_as_alias": 1312
+    },
+    "sehir": {
+      "entries": 4834,
+      "aliases": 1151,
+      "curated": 32,
+      "wikidata": 4802,
+      "merged_as_alias": 40
+    },
+    "hayvan": {
+      "entries": 5025,
+      "aliases": 1,
+      "curated": 146,
+      "wikidata": 4879,
+      "merged_as_alias": 7
+    },
+    "bitki": {
+      "entries": 2093,
+      "aliases": 3,
+      "curated": 125,
+      "wikidata": 1968,
+      "merged_as_alias": 12
+    },
+    "esya": {
+      "entries": 2105,
+      "aliases": 11,
+      "curated": 279,
+      "wikidata": 1826,
+      "merged_as_alias": 5
+    },
+    "ulke": {
+      "entries": 205,
+      "aliases": 127,
+      "curated": 22,
+      "wikidata": 183,
+      "merged_as_alias": 6
+    },
+    "meslek": {
+      "entries": 1304,
+      "aliases": 793,
+      "curated": 85,
+      "wikidata": 1219,
+      "merged_as_alias": 26
+    },
+    "unlu": {
+      "entries": 36805,
+      "aliases": 7,
+      "curated": 40,
+      "wikidata": 36765,
+      "merged_as_alias": 16
+    },
+    "marka": {
+      "entries": 2902,
+      "aliases": 572,
+      "curated": 63,
+      "wikidata": 2839,
+      "merged_as_alias": 3
+    },
+    "yemek": {
+      "entries": 1215,
+      "aliases": 234,
+      "curated": 141,
+      "wikidata": 1074,
+      "merged_as_alias": 10
+    },
+    "film": {
+      "entries": 10913,
+      "aliases": 1840,
+      "curated": 39,
+      "wikidata": 10874,
+      "merged_as_alias": 41
+    },
+    "oyun": {
+      "entries": 1961,
+      "aliases": 294,
+      "curated": 53,
+      "wikidata": 1908,
+      "merged_as_alias": 1
+    }
+  },
+  "blocklisted": {
+    "meslek": 7,
+    "yemek": 2,
+    "esya": 2
+  },
+  "total_entries": 101036
+}
