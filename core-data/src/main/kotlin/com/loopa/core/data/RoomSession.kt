@@ -190,7 +190,7 @@ class RoomSession(
                     (backend.rpc("game_tick") { put("p_room_id", roomId) } as? JsonPrimitive)?.content == "true"
                 }.getOrDefault(false)
                 requestRefresh()
-                if (advanced) break
+                if (advanced) { signals.poke(); break }
                 delay(1_500L)
             }
         }
@@ -200,6 +200,7 @@ class RoomSession(
     private suspend fun act(block: suspend () -> Unit) {
         try {
             block()
+            signals.poke()
         } finally {
             requestRefresh()
         }
@@ -223,6 +224,7 @@ class RoomSession(
 
     suspend fun leave() {
         withTimeoutOrNull(5_000) { runCatching { backend.rpc("leave_room") { put("p_room_id", roomId) } } }
+        signals.poke()
     }
 
     /** Draft autosave — does not lock answers. */

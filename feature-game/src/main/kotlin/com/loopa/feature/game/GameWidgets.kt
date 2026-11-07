@@ -69,7 +69,19 @@ fun LetterBadge(letter: String, size: Dp = 76.dp, modifier: Modifier = Modifier)
             .border(3.dp, LoopaPalette.ButterDeep, RoundedCornerShape(size * 0.3f)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(letter, style = MaterialTheme.typography.displayMedium.copy(fontSize = (size.value * 0.55f).sp), color = LoopaPalette.Ink)
+        Text(
+            letter, color = LoopaPalette.Ink,
+            style = MaterialTheme.typography.displayMedium.copy(
+                fontSize = (size.value * 0.55f).sp,
+                lineHeight = (size.value * 0.55f).sp,
+                platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                    androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                    androidx.compose.ui.text.style.LineHeightStyle.Trim.Both,
+                ),
+            ),
+            modifier = Modifier.padding(top = (size.value * 0.06f).dp),
+        )
     }
 }
 

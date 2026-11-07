@@ -3,6 +3,8 @@ package com.loopa.core.network
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
+import io.github.jan.supabase.realtime.broadcast
+import io.github.jan.supabase.realtime.broadcastFlow
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
@@ -14,13 +16,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+
+private const val POKE = "poke"
 
 enum class LiveStatus { CONNECTING, LIVE, OFFLINE }
 
 /**
- * Listens to `public.room_signals` for one room. A signal carries no game
- * data — it only tells the client to re-fetch the authoritative snapshot —
- * so duplicate, missed or out-of-order events cannot corrupt state.
+ * Two independent "something changed" paths for one room:
+ *  1. Postgres CDC on `public.room_signals` (bumped by every RPC on the server),
+ *  2. a data-free Broadcast "poke" that clients send after their own actions.
+ * Neither carries game data — they only trigger a re-fetch of the authoritative,
+ * RLS-filtered snapshot — so duplicate, missed, out-of-order or spoofed signals
+ * cannot corrupt state. The second path covers occasional CDC delivery gaps.
  */
 class RoomSignalListener(
     private val backend: LoopaBackend,
@@ -41,6 +49,7 @@ class RoomSignalListener(
             table = "room_signals"
             filter("room_id", FilterOperator.EQ, roomId)
         }.onEach { onSignal() }.launchIn(scope)
+        jobs += ch.broadcastFlow<JsonObject>(POKE).onEach { onSignal() }.launchIn(scope)
         jobs += ch.status.onEach { s ->
             val before = _status.value
             _status.value = when (s) {
@@ -49,12 +58,22 @@ class RoomSignalListener(
                 else -> LiveStatus.OFFLINE
             }
             // (Re)subscribed: we may have missed signals in between, so refresh.
-            if (_status.value == LiveStatus.LIVE && before != LiveStatus.LIVE) onSignal()
+            if (_status.value == LiveStatus.LIVE && before != LiveStatus.LIVE) {
+                onSignal()
+                poke()   // let others know we (re)connected
+            }
         }.launchIn(scope)
         jobs += scope.launch {
             runCatching { ch.subscribe(blockUntilSubscribed = false) }
                 .onFailure { _status.value = LiveStatus.OFFLINE }
         }
+    }
+
+    /** Tell the other clients in this room to refresh. Best effort, fire-and-forget. */
+    fun poke() {
+        val ch = channel ?: return
+        if (ch.status.value != RealtimeChannel.Status.SUBSCRIBED) return
+        scope.launch { runCatching { ch.broadcast(POKE, JsonObject(emptyMap())) } }
     }
 
     suspend fun stop() {

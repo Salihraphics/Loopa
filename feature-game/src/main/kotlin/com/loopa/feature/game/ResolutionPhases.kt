@@ -121,7 +121,7 @@ private fun VoteCard(state: RoomState, round: Round, a: Answer, canVote: Boolean
             .border(2.dp, Loopa.colors.outline, RoundedCornerShape(24.dp)).padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Pill(cat?.name ?: a.categoryKey, LoopaPalette.accentFor(a.categoryKey))
+            Pill(cat?.name ?: com.loopa.core.model.BuiltInCategories.all.firstOrNull { it.key == a.categoryKey }?.name ?: a.categoryKey, LoopaPalette.accentFor(a.categoryKey))
             Spacer(Modifier.width(6.dp))
             Pill("Harf: ${round.letter}", LoopaPalette.Butter)
             Spacer(Modifier.weight(1f))

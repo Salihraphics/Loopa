@@ -178,7 +178,7 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit) {
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Arkadaşlarınla oynayabileceğin çok oyunculu parti oyunu. İlk mod: İsim Şehir. Yazı tipleri: Fredoka ve Nunito (SIL Open Font License).",
+                    "Arkadaşlarınla oynayabileceğin çok oyunculu parti oyunu. İlk mod: İsim Şehir. Yazı tipleri: Baloo 2 ve Nunito (SIL Open Font License).",
                     style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
                 )
             }

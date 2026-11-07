@@ -97,10 +97,11 @@ private fun variableFont(res: Int, weight: Int) = Font(
 )
 
 @OptIn(ExperimentalTextApi::class)
-val FredokaFamily = FontFamily(
-    variableFont(R.font.fredoka, 500),
-    variableFont(R.font.fredoka, 600),
-    variableFont(R.font.fredoka, 700),
+/** Display face: Baloo 2 (full Turkish coverage: ğ Ğ ş Ş ı İ). */
+val DisplayFamily = FontFamily(
+    variableFont(R.font.baloo2, 600),
+    variableFont(R.font.baloo2, 700),
+    variableFont(R.font.baloo2, 800),
 )
 
 @OptIn(ExperimentalTextApi::class)
@@ -113,13 +114,13 @@ val NunitoFamily = FontFamily(
 )
 
 private val LoopaTypography = Typography(
-    displayLarge = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight(700), fontSize = 64.sp, lineHeight = 68.sp),
-    displayMedium = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight(700), fontSize = 44.sp, lineHeight = 50.sp),
-    displaySmall = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight(700), fontSize = 34.sp, lineHeight = 40.sp),
-    headlineLarge = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight(600), fontSize = 30.sp, lineHeight = 36.sp),
-    headlineMedium = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight(600), fontSize = 26.sp, lineHeight = 32.sp),
-    headlineSmall = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight(600), fontSize = 22.sp, lineHeight = 28.sp),
-    titleLarge = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight(600), fontSize = 20.sp, lineHeight = 26.sp),
+    displayLarge = TextStyle(fontFamily = DisplayFamily, fontWeight = FontWeight(700), fontSize = 64.sp, lineHeight = 68.sp),
+    displayMedium = TextStyle(fontFamily = DisplayFamily, fontWeight = FontWeight(700), fontSize = 44.sp, lineHeight = 50.sp),
+    displaySmall = TextStyle(fontFamily = DisplayFamily, fontWeight = FontWeight(700), fontSize = 34.sp, lineHeight = 40.sp),
+    headlineLarge = TextStyle(fontFamily = DisplayFamily, fontWeight = FontWeight(600), fontSize = 30.sp, lineHeight = 36.sp),
+    headlineMedium = TextStyle(fontFamily = DisplayFamily, fontWeight = FontWeight(600), fontSize = 26.sp, lineHeight = 32.sp),
+    headlineSmall = TextStyle(fontFamily = DisplayFamily, fontWeight = FontWeight(600), fontSize = 22.sp, lineHeight = 28.sp),
+    titleLarge = TextStyle(fontFamily = DisplayFamily, fontWeight = FontWeight(600), fontSize = 20.sp, lineHeight = 26.sp),
     titleMedium = TextStyle(fontFamily = NunitoFamily, fontWeight = FontWeight(800), fontSize = 17.sp, lineHeight = 22.sp),
     titleSmall = TextStyle(fontFamily = NunitoFamily, fontWeight = FontWeight(800), fontSize = 15.sp, lineHeight = 20.sp),
     bodyLarge = TextStyle(fontFamily = NunitoFamily, fontWeight = FontWeight(600), fontSize = 17.sp, lineHeight = 24.sp),
