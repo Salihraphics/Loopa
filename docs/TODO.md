@@ -2,6 +2,17 @@
 
 Last updated: 2026-11-07 (session 1)
 
+## Hosted project (zxtrxbgphutuiizznakd, "Loopa", eu-west-2)
+
+- 2026-11-07: migrations 0001–0004 applied via the Management API SQL endpoint (direct
+  Postgres ports are not reachable from the build sandbox) and recorded in
+  `supabase_migrations.schema_migrations`, so `supabase db push` will treat them as applied.
+- Verified: 19 tables with RLS, 18 policies, 32 client RPCs / 28 internal helpers
+  (not executable by clients), no client write grants, `room_signals` in the realtime
+  publication, seeds (12 categories, 87 cosmetics, 1,752 words).
+- Anonymous sign-ins were still off on the project; switched on (`external_anonymous_users_enabled`).
+- Live 4-client E2E passed against the hosted project with the publishable key; test data was deleted afterwards.
+
 ## Done and tested
 
 | Area | Status | How it was verified |

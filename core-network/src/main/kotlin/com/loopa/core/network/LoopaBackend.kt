@@ -96,15 +96,22 @@ class LoopaBackend(
             throw e
         } catch (e: LoopaException) {
             throw e
-        } catch (e: RestException) {
-            val parsed = LoopaError.fromMessage(e.error) ?: LoopaError.fromMessage(e.message)
-            throw LoopaException(parsed ?: LoopaError.UNKNOWN, e)
-        } catch (e: HttpRequestException) {
-            throw LoopaException(LoopaError.NETWORK, e)
-        } catch (e: IOException) {
-            throw LoopaException(LoopaError.NETWORK, e)
         } catch (e: Exception) {
-            throw LoopaException(LoopaError.fromMessage(e.message) ?: LoopaError.UNKNOWN, e)
+            throw LoopaException(classify(e), e)
+        }
+
+        /**
+         * Server answers (database `LOOPA:` codes, auth error codes) win over transport
+         * errors, so a rejected request is never reported as "no internet".
+         */
+        internal fun classify(e: Throwable): LoopaError {
+            val chain = generateSequence(e) { it.cause }.take(8).toList()
+            val text = chain.flatMap { t -> listOfNotNull(t.message, (t as? RestException)?.error, (t as? RestException)?.description) }
+            text.firstNotNullOfOrNull { LoopaError.fromAuthMessage(it) }?.let { return it }
+            text.firstNotNullOfOrNull { m -> LoopaError.fromMessage(m)?.takeIf { it != LoopaError.UNKNOWN } }?.let { return it }
+            if (chain.any { it is RestException }) return LoopaError.UNKNOWN
+            if (chain.any { it is HttpRequestException || it is IOException }) return LoopaError.NETWORK
+            return LoopaError.UNKNOWN
         }
 
         fun emptyParams(): JsonObject = JsonObject(emptyMap())

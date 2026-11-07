@@ -194,12 +194,22 @@ enum class LoopaError(val message: String) {
     CANNOT_VOTE_OWN("Kendi cevabına oy veremezsin."),
     ALREADY_VOTED("Bu cevaba zaten oy verdin."),
     MATCH_NOT_FOUND("Maç bulunamadı."),
+    ANONYMOUS_DISABLED("Sunucuda misafir (anonim) girişi kapalı. Supabase → Authentication → Anonymous sign-ins açılmalı."),
+    AUTH_RATE_LIMITED("Çok fazla giriş denemesi. Lütfen biraz sonra tekrar dene."),
     NETWORK("Bağlantı hatası. İnternetini kontrol et."),
     NOT_CONFIGURED("Sunucu yapılandırılmamış."),
     UNKNOWN("Beklenmeyen bir hata oluştu.");
 
     companion object {
         private val pattern = Regex("LOOPA:([A-Z_]+)")
+        /** Maps Supabase Auth error codes (GoTrue) that can appear in exception messages. */
+        fun fromAuthMessage(message: String?): LoopaError? = when {
+            message == null -> null
+            message.contains("anonymous_provider_disabled") || message.contains("Anonymous sign-ins are disabled", ignoreCase = true) -> ANONYMOUS_DISABLED
+            message.contains("over_request_rate_limit") || message.contains("rate limit", ignoreCase = true) -> AUTH_RATE_LIMITED
+            else -> null
+        }
+
         fun fromMessage(message: String?): LoopaError? {
             val code = message?.let { pattern.find(it)?.groupValues?.get(1) } ?: return null
             return entries.firstOrNull { it.name == code } ?: UNKNOWN
