@@ -25,7 +25,7 @@ import kotlin.time.Duration.Companion.seconds
 /** Public, non-secret project configuration (injected via BuildConfig from local.properties). */
 data class SupabaseConfig(val url: String, val anonKey: String) {
     val isConfigured: Boolean
-        get() = url.startsWith("https://") && anonKey.length > 20 && !url.contains("YOUR-PROJECT")
+        get() = (url.startsWith("https://") || url.startsWith("http://")) && anonKey.length > 20 && !url.contains("YOUR-PROJECT")
 
     companion object {
         fun fromBuildConfig() = SupabaseConfig(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY)
@@ -34,6 +34,7 @@ data class SupabaseConfig(val url: String, val anonKey: String) {
 
 val LoopaJson = Json {
     ignoreUnknownKeys = true
+    encodeDefaults = true   // the server validates complete settings objects
     explicitNulls = false
     coerceInputValues = true
 }
@@ -42,13 +43,23 @@ val LoopaJson = Json {
  * Thin wrapper around the Supabase client. All game mutations are RPCs
  * that the database validates; this class never computes game results.
  */
-class LoopaBackend(val config: SupabaseConfig) {
+class LoopaBackend(
+    val config: SupabaseConfig,
+    /** Keep the auth session in memory only (used by JVM integration tests that simulate many players). */
+    inMemorySession: Boolean = false,
+) {
 
     val client: SupabaseClient? = if (config.isConfigured) {
         createSupabaseClient(supabaseUrl = config.url, supabaseKey = config.anonKey) {
             defaultSerializer = io.github.jan.supabase.serializer.KotlinXSerializer(LoopaJson)
             requestTimeout = 15.seconds
-            install(Auth)
+            install(Auth) {
+                if (inMemorySession) {
+                    sessionManager = io.github.jan.supabase.auth.MemorySessionManager()
+                    codeVerifierCache = io.github.jan.supabase.auth.MemoryCodeVerifierCache()
+                    enableLifecycleCallbacks = false
+                }
+            }
             install(Postgrest)
             install(Realtime) {
                 reconnectDelay = 3.seconds

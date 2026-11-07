@@ -64,8 +64,11 @@ class RoomSession(
     val roomId: String,
     private val backend: LoopaBackend,
     val clock: ServerClock,
+    dispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Main.immediate,
+    /** Safety re-fetch intervals (in game, in lobby). Realtime signals are the primary update path. */
+    private val pollIntervalsMs: Pair<Long, Long> = 4_000L to 8_000L,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val _state = MutableStateFlow<RoomState?>(null)
     val state: StateFlow<RoomState?> = _state.asStateFlow()
     private val _events = MutableSharedFlow<SessionEvent>(extraBufferCapacity = 16)
@@ -164,7 +167,7 @@ class RoomSession(
     private suspend fun safetyPollLoop() {
         while (true) {
             val inGame = _state.value?.room?.inGame == true
-            delay(if (inGame) 4_000 else 8_000)
+            delay(if (inGame) pollIntervalsMs.first else pollIntervalsMs.second)
             requestRefresh()
         }
     }

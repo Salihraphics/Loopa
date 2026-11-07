@@ -10,6 +10,13 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
         pluginManager.apply("org.jetbrains.kotlin.android")
         extensions.configure<LibraryExtension> {
             configureKotlinAndroid(this)
+            testOptions.unitTests.isReturnDefaultValues = true
+            testOptions.unitTests.all {
+                it.systemProperty("loopa.e2e.url", System.getenv("LOOPA_E2E_URL") ?: "")
+                it.systemProperty("loopa.e2e.key", System.getenv("LOOPA_E2E_ANON_KEY") ?: "")
+                it.testLogging { events("passed", "failed", "skipped", "standardOut"); showStandardStreams = true }
+                it.outputs.upToDateWhen { false }
+            }
             defaultConfig {
                 consumerProguardFiles("consumer-rules.pro")
                 testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
