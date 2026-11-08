@@ -14,6 +14,8 @@ category-by-category answer reveal.
 - **Server-authoritative**: rooms, timers, jokers, validation, votes, scores and
   XP are all decided by Postgres functions; the APK only ships the public anon key.
 
+> Dictionary: [`docs/DICTIONARY.md`](docs/DICTIONARY.md) · Google sign-in: [`docs/GOOGLE_AUTH.md`](docs/GOOGLE_AUTH.md)
+>
 > Status: see [`docs/TODO.md`](docs/TODO.md) for what is done, what was tested,
 > and what is still unfinished.
 
@@ -98,6 +100,8 @@ keyPassword=…
 | Suite | Command | What it covers |
 |---|---|---|
 | Backend SQL (plain Postgres) | `PGHOST=… PGPORT=… PGUSER=postgres supabase/tests/run_local_tests.sh` | full 10-player room; full match with 3 players + spectator, ready/start guards, double start, kicks, settings validation, jokers (all rules), drafts & timeouts, voting (own vote, double vote, ties), duplicates, 2X, early bonus, idempotent XP, host transfer, 200 room codes, RLS |
+| Dictionary | `supabase/tests/dictionary_test.sql`, `dictionary_scoring_test.sql`, `python3 tools/dictionary/test_build.py` | 600 entries × 3 spellings, aliases, wrong letter/category, Turkish cases, duplicates by entry |
+| Account linking E2E | see docs/GOOGLE_AUTH.md | guest → linked identity keeps id, XP, avatar, cosmetics, history; other-device sign-in; conflict; cancel; sign-out |
 | Core logic | `./gradlew :core:test` | Turkish normalisation, level curve, server clock, timestamp parsing, reveal sync, grouping, JSON decoding |
 | **Live multiplayer E2E** | `LOOPA_E2E_URL=http://127.0.0.1:54321 LOOPA_E2E_ANON_KEY=<anon> ./gradlew :core-data:testDebugUnitTest` | 4 independent clients (own auth, clock, realtime socket) using the app's real `RoomSession`: realtime propagation with polling disabled, authorization, concurrent double start, jokers, simultaneous submits (exactly one bonus), disconnect mid-round + server-deadline close, reconnection, voting, synchronized reveal, results/XP, host transfer |
 | Screenshots | `./gradlew :app:testDebugUnitTest` | Robolectric renders 13 real screens (light + dark) to `app/build/screenshots/` |

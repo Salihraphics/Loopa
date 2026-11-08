@@ -10,7 +10,10 @@ end $$;
 
 create schema if not exists auth;
 create schema if not exists extensions;
-create table if not exists auth.users (id uuid primary key, created_at timestamptz default now());
+create table if not exists auth.users (id uuid primary key, created_at timestamptz default now(),
+    email text, is_anonymous boolean not null default true);
+create table if not exists auth.identities (id text primary key, user_id uuid references auth.users(id) on delete cascade,
+    provider text not null, created_at timestamptz default now());
 create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;

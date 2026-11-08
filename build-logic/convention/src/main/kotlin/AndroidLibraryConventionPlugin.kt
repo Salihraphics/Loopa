@@ -14,6 +14,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
             testOptions.unitTests.all {
                 it.systemProperty("loopa.e2e.url", System.getenv("LOOPA_E2E_URL") ?: "")
                 it.systemProperty("loopa.e2e.key", System.getenv("LOOPA_E2E_ANON_KEY") ?: "")
+                it.systemProperty("loopa.e2e.oauth", System.getenv("LOOPA_E2E_OAUTH") ?: "")
                 it.testLogging { events("passed", "failed", "skipped", "standardOut"); showStandardStreams = true }
                 it.outputs.upToDateWhen { false }
             }

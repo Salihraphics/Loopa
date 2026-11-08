@@ -70,6 +70,56 @@ class SettingsViewModel(private val c: DataContainer) : ViewModel() {
     fun setTheme(v: ThemeMode) = viewModelScope.launch { c.settings.setTheme(v) }
     fun setLanguage(v: String) = viewModelScope.launch { c.settings.setLanguage(v) }
 
+    private val _account = kotlinx.coroutines.flow.MutableStateFlow<com.loopa.core.data.AccountStatus?>(null)
+    val account: StateFlow<com.loopa.core.data.AccountStatus?> = _account
+    private val _googleAvailable = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val googleAvailable: StateFlow<Boolean> = _googleAvailable
+    private val _busy = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy
+    private val _message = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message
+    /** Set when a link attempt found the Google identity on another account. */
+    private val _conflict = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val conflict: StateFlow<Boolean> = _conflict
+    val callbacks = c.auth.callbacks
+
+    init { refreshAccount() }
+
+    fun refreshAccount() = viewModelScope.launch {
+        _account.value = runCatching { c.auth.accountStatus() }.getOrNull()
+        _googleAvailable.value = c.auth.isGoogleAvailable()
+    }
+
+    fun linkGoogle() = launchAuth { c.auth.linkGoogle() }
+    fun signInWithGoogle() = launchAuth { _conflict.value = false; c.auth.signInWithGoogle() }
+
+    private fun launchAuth(block: suspend () -> Unit) = viewModelScope.launch {
+        _busy.value = true; _message.value = null
+        try { block() } catch (e: com.loopa.core.game.LoopaException) { _message.value = e.error.message; _busy.value = false }
+    }
+
+    /** Handles the OAuth redirect result while this screen is open. */
+    fun onCallback(result: com.loopa.core.data.AuthCallbackResult, onAccountSwitched: () -> Unit) {
+        c.auth.consumeCallback()
+        _busy.value = false
+        when (result) {
+            is com.loopa.core.data.AuthCallbackResult.Linked -> {
+                _message.value = "Hesabın Google'a bağlandı. Seviyen, XP'n, avatarın, kozmetiklerin ve maç geçmişin korundu."
+                refreshAccount(); viewModelScope.launch { runCatching { c.profiles.refresh() } }
+            }
+            is com.loopa.core.data.AuthCallbackResult.SignedIn ->
+                if (result.switchedFrom != null) viewModelScope.launch {
+                    c.sessions.close(); c.profiles.clear(); onAccountSwitched()
+                } else refreshAccount()
+            is com.loopa.core.data.AuthCallbackResult.Failed ->
+                if (result.error == com.loopa.core.game.LoopaError.IDENTITY_ALREADY_LINKED) _conflict.value = true
+                else _message.value = result.error.message
+        }
+    }
+
+    fun dismissConflict() { _conflict.value = false }
+    fun dismissMessage() { _message.value = null }
+
     fun logout(done: () -> Unit) = viewModelScope.launch {
         c.sessions.current.value?.leave()
         c.sessions.close()
@@ -84,11 +134,20 @@ class SettingsViewModel(private val c: DataContainer) : ViewModel() {
 private val languages = listOf("tr" to "Türkçe", "en" to "English (yakında)")
 
 @Composable
-fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit) {
+fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitched: () -> Unit = onLoggedOut) {
     val vm = containerViewModel { SettingsViewModel(it) }
     val s by vm.settings.collectAsStateWithLifecycle()
     val profile by vm.profile.collectAsStateWithLifecycle()
+    val account by vm.account.collectAsStateWithLifecycle()
+    val googleAvailable by vm.googleAvailable.collectAsStateWithLifecycle()
+    val busy by vm.busy.collectAsStateWithLifecycle()
+    val message by vm.message.collectAsStateWithLifecycle()
+    val conflict by vm.conflict.collectAsStateWithLifecycle()
+    val callback by vm.callbacks.collectAsStateWithLifecycle()
     var confirmLogout by remember { mutableStateOf(false) }
+    var confirmSwitch by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(callback) { callback?.let { vm.onCallback(it, onAccountSwitched) } }
+    val isGuest = account?.isAnonymous != false
 
     Box(Modifier.fillMaxSize().background(Loopa.colors.background)) {
         Column(
@@ -141,13 +200,37 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit) {
             SectionTitle("Hesap")
             LoopaCard {
                 InfoRow(Icons.Rounded.Person, "Kullanıcı adı", profile?.username ?: "-")
-                InfoRow(Icons.Rounded.Person, "Hesap türü", "Misafir (anonim) hesap")
+                InfoRow(Icons.Rounded.Person, "Hesap türü", when {
+                    account == null -> "…"
+                    account!!.isAnonymous -> "Misafir hesap"
+                    account!!.hasGoogle -> "Google hesabı"
+                    else -> "Bağlı hesap"
+                })
+                if (!isGuest && account?.email != null) InfoRow(Icons.Rounded.Info, "E-posta", account!!.email!!)
                 InfoRow(Icons.Rounded.Info, "Oyuncu kimliği", vm.userId?.take(8)?.plus("…") ?: "-")
-                Text(
-                    "Misafir hesabın bu cihazda saklanır. Çıkış yaparsan veya uygulamayı silersen seviyen, XP'n ve kozmetiklerin kaybolur. " +
-                        "Hesap bağlama (e-posta/Google) gelecek bir sürümde eklenecek.",
-                    style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.padding(top = 8.dp),
-                )
+                com.loopa.core.ui.components.ErrorBanner(message, Modifier.padding(top = 8.dp), onDismiss = vm::dismissMessage)
+                if (isGuest) {
+                    Text(
+                        "Misafir hesabın yalnızca bu cihazda. Google hesabına bağlarsan oyuncu kimliğin aynı kalır; seviyen, XP'n, avatarın, " +
+                            "kozmetiklerin, istatistiklerin ve maç geçmişin korunur ve başka cihazdan Google ile girebilirsin.",
+                        style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    LoopaButton(
+                        if (googleAvailable) "Google hesabına bağla" else "Google bağlama (yakında)", vm::linkGoogle,
+                        enabled = googleAvailable, loading = busy, color = LoopaPalette.Mint, modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (googleAvailable) {
+                        Spacer(Modifier.height(8.dp))
+                        LoopaButton("Başka bir Google hesabıyla giriş yap", { confirmSwitch = true }, color = androidx.compose.ui.graphics.Color.White,
+                            compact = true, modifier = Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Text(
+                        "Hesabın Google'a bağlı. Çıkış yapsan da verilerin sunucuda kalır; Google ile tekrar giriş yapabilirsin.",
+                        style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 LoopaButton("Çıkış yap", { confirmLogout = true }, icon = Icons.AutoMirrored.Rounded.Logout, color = LoopaPalette.Peach, compact = true)
             }
@@ -159,7 +242,8 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit) {
                     Spacer(Modifier.width(12.dp))
                     Text(
                         "LOOPA yalnızca oyun için gerekli verileri saklar: kullanıcı adın, avatarın, oyun istatistiklerin ve oynadığın maçlardaki cevapların. " +
-                            "E-posta, telefon veya konum toplanmaz. Cevapların yalnızca aynı odadaki oyunculara gösterilir. Reklam ya da üçüncü taraf izleme yoktur.",
+                            "Google hesabını bağlarsan Google'dan gelen e-posta adresin ve adın yalnızca giriş için saklanır. Telefon veya konum toplanmaz. " +
+                            "Cevapların yalnızca aynı odadaki oyunculara gösterilir. Reklam ya da üçüncü taraf izleme yoktur.",
                         style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
                     )
                 }
@@ -186,10 +270,32 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit) {
         }
     }
 
+    if (conflict) {
+        ConfirmDialog(
+            "Bu Google hesabı zaten kullanılıyor",
+            "Seçtiğin Google hesabı başka bir LOOPA hesabına bağlı, bu yüzden bağlanmadı. Misafir hesabın olduğu gibi duruyor; hiçbir şey silinmedi veya birleştirilmedi.\n\n" +
+                "İstersen o Google hesabıyla giriş yapabilirsin, ama bu cihazdaki misafir ilerlemen o hesaba aktarılmaz.",
+            confirmText = "O hesapla giriş yap",
+            onConfirm = { vm.dismissConflict(); vm.signInWithGoogle() },
+            onDismiss = vm::dismissConflict,
+            dismissText = "Misafir kal",
+        )
+    }
+    if (confirmSwitch) {
+        ConfirmDialog(
+            "Başka hesaba geçilsin mi?",
+            "Google ile başka bir LOOPA hesabına giriş yaparsan bu cihazdaki misafir ilerlemen (seviye ${profile?.level ?: 1}) o hesaba aktarılmaz. " +
+                "İlerlemeni korumak için \"Google hesabına bağla\"yı kullan.",
+            "Yine de giriş yap",
+            onConfirm = { confirmSwitch = false; vm.signInWithGoogle() },
+            onDismiss = { confirmSwitch = false },
+        )
+    }
     if (confirmLogout) {
         ConfirmDialog(
             "Çıkış yapılsın mı?",
-            "Misafir hesabından çıkarsan bu hesaba tekrar giriş yapılamaz; seviyen ve kozmetiklerin kaybolur.",
+            if (isGuest) "Misafir hesabından çıkarsan bu hesaba tekrar giriş yapılamaz; seviyen ve kozmetiklerin kaybolur. Önce Google hesabına bağlamanı öneririz."
+            else "Bu cihazda çıkış yapılacak. Verilerin güvende; Google ile tekrar giriş yapabilirsin.",
             "Çıkış yap",
             onConfirm = { confirmLogout = false; vm.logout(onLoggedOut) },
             onDismiss = { confirmLogout = false },

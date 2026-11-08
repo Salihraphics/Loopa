@@ -84,11 +84,45 @@ data class OnboardingState(
     val avatar: AvatarConfig = AvatarCatalog.random(),
     val loading: Boolean = false,
     val error: String? = null,
+    val googleAvailable: Boolean = false,
+    val googleBusy: Boolean = false,
+    /** Signed in with Google but no LOOPA profile yet: only the name/avatar step remains. */
+    val signedInWithGoogle: Boolean = false,
 )
 
 class OnboardingViewModel(private val c: DataContainer) : ViewModel() {
     private val _state = MutableStateFlow(OnboardingState())
     val state: StateFlow<OnboardingState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch { _state.update { it.copy(googleAvailable = c.auth.isGoogleAvailable()) } }
+    }
+
+    /** Opens Google in the browser; the result comes back through the deep link. */
+    fun signInWithGoogle() {
+        _state.update { it.copy(googleBusy = true, error = null) }
+        viewModelScope.launch {
+            try { c.auth.signInWithGoogle() } catch (e: LoopaException) { _state.update { it.copy(googleBusy = false, error = e.error.message) } }
+        }
+    }
+
+    /** Called when the OAuth redirect has been processed. */
+    fun onGoogleResult(result: com.loopa.core.data.AuthCallbackResult, onDone: () -> Unit) {
+        c.auth.consumeCallback()
+        when (result) {
+            is com.loopa.core.data.AuthCallbackResult.Failed -> _state.update { it.copy(googleBusy = false, error = result.error.message) }
+            else -> viewModelScope.launch {
+                val profile = runCatching { c.profiles.refresh() }.getOrNull()
+                if (profile != null) {
+                    c.settings.setOnboardingDone(true)
+                    onDone()  // returning player: everything is already on the server
+                } else {
+                    val suggested = c.auth.providerDisplayName()?.split(" ")?.firstOrNull()?.take(16).orEmpty()
+                    _state.update { it.copy(googleBusy = false, signedInWithGoogle = true, name = it.name.ifBlank { suggested }) }
+                }
+            }
+        }
+    }
 
     fun setName(v: String) = _state.update { it.copy(name = v.take(16), error = null) }
     fun shuffle() = _state.update { it.copy(avatar = AvatarCatalog.random()) }
@@ -129,6 +163,11 @@ fun OnboardingScreen(onDone: () -> Unit) {
     val vm = containerViewModel { OnboardingViewModel(it) }
     val state by vm.state.collectAsStateWithLifecycle()
     var page by rememberSaveable { mutableIntStateOf(0) }
+    val container = com.loopa.core.data.rememberDataContainer()
+    val callback by container.auth.callbacks.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(callback) {
+        callback?.let { vm.onGoogleResult(it, onDone); page = pages.size }
+    }
 
     Box(Modifier.fillMaxSize().background(Loopa.colors.background).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Column(
@@ -145,7 +184,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 transitionSpec = { (slideInHorizontally { it / 2 } + fadeIn()) togetherWith (slideOutHorizontally { -it / 2 } + fadeOut()) },
                 label = "onboarding",
             ) { p ->
-                if (p < pages.size) IntroCard(pages[p]) else ProfileStep(state, vm::setName, vm::shuffle) { vm.finish(onDone) }
+                if (p < pages.size) IntroCard(pages[p]) else ProfileStep(state, vm::setName, vm::shuffle, vm::signInWithGoogle) { vm.finish(onDone) }
             }
             Spacer(Modifier.height(20.dp))
             if (page < pages.size) {
@@ -193,13 +232,24 @@ private fun Dots(current: Int, total: Int) {
 }
 
 @Composable
-private fun ProfileStep(state: OnboardingState, onName: (String) -> Unit, onShuffle: () -> Unit, onSubmit: () -> Unit) {
+private fun ProfileStep(state: OnboardingState, onName: (String) -> Unit, onShuffle: () -> Unit, onGoogle: () -> Unit, onSubmit: () -> Unit) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Seni tanıyalım!", style = MaterialTheme.typography.headlineMedium, color = Loopa.colors.text)
+        Text(if (state.signedInWithGoogle) "Google hesabın hazır!" else "Seni tanıyalım!", style = MaterialTheme.typography.headlineMedium, color = Loopa.colors.text)
         Text(
-            "Kayıt yok, şifre yok. Bir kullanıcı adı seç ve oyuna gir. Karakterini daha sonra Avatar bölümünde detaylıca özelleştirebilirsin.",
+            if (state.signedInWithGoogle) "Son adım: oyunda görünecek kullanıcı adını ve karakterini seç."
+            else "Kayıt yok, şifre yok: misafir olarak hemen başla. İlerlemeni korumak için daha sonra Ayarlar'dan Google hesabına bağlayabilirsin.",
             style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft, textAlign = TextAlign.Center,
         )
+        if (!state.signedInWithGoogle) {
+            LoopaButton(
+                if (state.googleAvailable) "Google ile giriş yap" else "Google ile giriş (yakında)",
+                onGoogle, enabled = state.googleAvailable, loading = state.googleBusy,
+                color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.fillMaxWidth(),
+            )
+            Text("Zaten bir LOOPA hesabın varsa Google ile giriş yap; ilerlemen bu cihaza gelir.", style = MaterialTheme.typography.bodySmall,
+                color = Loopa.colors.textSoft, textAlign = TextAlign.Center)
+            Text("— ya da misafir olarak devam et —", style = MaterialTheme.typography.labelMedium, color = Loopa.colors.textSoft)
+        }
         val bounce by animateFloatAsState(1f, label = "avatar")
         AvatarView(state.avatar, size = 132.dp, modifier = Modifier.scale(bounce))
         LoopaButton("Karıştır", onShuffle, icon = Icons.Rounded.Casino, color = LoopaPalette.Sky, compact = true, sfx = Sfx.JOKER)
@@ -214,7 +264,7 @@ private fun ProfileStep(state: OnboardingState, onName: (String) -> Unit, onShuf
         )
         ErrorBanner(state.error)
         LoopaButton(
-            "Oyuna Gir", onSubmit, loading = state.loading, enabled = state.name.trim().length >= 3,
+            if (state.signedInWithGoogle) "Oyuna Gir" else "Misafir olarak devam et", onSubmit, loading = state.loading, enabled = state.name.trim().length >= 3,
             color = LoopaPalette.Mint, modifier = Modifier.fillMaxWidth(), sfx = Sfx.JOIN,
         )
     }

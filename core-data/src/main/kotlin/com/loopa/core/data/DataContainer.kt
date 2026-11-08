@@ -12,8 +12,7 @@ import com.loopa.core.network.LoopaBackend
 import com.loopa.core.network.SupabaseConfig
 
 /** Manual dependency container (kept deliberately small; no DI framework needed). */
-class DataContainer(context: Context) {
-    val config: SupabaseConfig = SupabaseConfig.fromBuildConfig()
+class DataContainer(context: Context, val config: SupabaseConfig = SupabaseConfig.fromBuildConfig()) {
     val backend = LoopaBackend(config)
     val clock = ServerClock()
     val settings = SettingsRepository(context.applicationContext)

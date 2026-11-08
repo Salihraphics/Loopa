@@ -63,7 +63,7 @@ import kotlin.random.Random
 
 /** Test application: real DataContainer, but no backend credentials (offline rendering). */
 class ScreenshotApp : Application(), DataContainerProvider {
-    override val container: DataContainer by lazy { DataContainer(this) }
+    override val container: DataContainer by lazy { DataContainer(this, com.loopa.core.network.SupabaseConfig("", "")) }
 }
 
 /**
@@ -218,5 +218,6 @@ class ScreenshotTest {
         }
     }
 
-    @Test fun settings() = shot("13_settings") { SettingsScreen(versionName = "0.1.0", onLoggedOut = {}) }
+    @Test @Config(qualifiers = "w400dp-h2300dp-xhdpi")
+    fun settings() = shot("13_settings") { SettingsScreen(versionName = "0.1.0", onLoggedOut = {}) }
 }

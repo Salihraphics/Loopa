@@ -225,15 +225,36 @@ enum class LoopaError(val message: String) {
     MATCH_NOT_FOUND("Maç bulunamadı."),
     ANONYMOUS_DISABLED("Sunucuda misafir (anonim) girişi kapalı. Supabase → Authentication → Anonymous sign-ins açılmalı."),
     AUTH_RATE_LIMITED("Çok fazla giriş denemesi. Lütfen biraz sonra tekrar dene."),
+    IDENTITY_ALREADY_LINKED("Bu Google hesabı zaten başka bir LOOPA hesabına bağlı. Misafir hesabın olduğu gibi korunuyor."),
+    MANUAL_LINKING_DISABLED("Sunucuda hesap bağlama kapalı (Supabase → Authentication → Manual linking)."),
+    GOOGLE_NOT_CONFIGURED("Google ile giriş henüz sunucuda yapılandırılmadı."),
+    AUTH_CANCELLED("Google girişi iptal edildi."),
+    OAUTH_FAILED("Google girişi tamamlanamadı. Lütfen tekrar dene."),
+    NOT_SIGNED_IN("Önce oturum açmalısın."),
     NETWORK("Bağlantı hatası. İnternetini kontrol et."),
     NOT_CONFIGURED("Sunucu yapılandırılmamış."),
     UNKNOWN("Beklenmeyen bir hata oluştu.");
 
     companion object {
         private val pattern = Regex("LOOPA:([A-Z_]+)")
+        /** Maps GoTrue error codes from an OAuth redirect (`error_code` / `error` query parameters). */
+        fun fromOAuthError(code: String?, description: String?): LoopaError {
+            val text = listOfNotNull(code, description).joinToString(" ").lowercase()
+            return when {
+                "identity_already_exists" in text || "already linked" in text -> IDENTITY_ALREADY_LINKED
+                "manual_linking_disabled" in text || "manual linking" in text -> MANUAL_LINKING_DISABLED
+                "provider_disabled" in text || "unsupported provider" in text || "provider is not enabled" in text -> GOOGLE_NOT_CONFIGURED
+                "access_denied" in text || "cancel" in text -> AUTH_CANCELLED
+                else -> OAUTH_FAILED
+            }
+        }
+
         /** Maps Supabase Auth error codes (GoTrue) that can appear in exception messages. */
         fun fromAuthMessage(message: String?): LoopaError? = when {
             message == null -> null
+            message.contains("identity_already_exists") || message.contains("already linked", ignoreCase = true) -> IDENTITY_ALREADY_LINKED
+            message.contains("manual_linking_disabled") || message.contains("Manual linking is disabled", ignoreCase = true) -> MANUAL_LINKING_DISABLED
+            message.contains("Unsupported provider", ignoreCase = true) || message.contains("provider is not enabled", ignoreCase = true) -> GOOGLE_NOT_CONFIGURED
             message.contains("anonymous_provider_disabled") || message.contains("Anonymous sign-ins are disabled", ignoreCase = true) -> ANONYMOUS_DISABLED
             message.contains("over_request_rate_limit") || message.contains("rate limit", ignoreCase = true) -> AUTH_RATE_LIMITED
             else -> null

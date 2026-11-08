@@ -13,6 +13,18 @@ Last updated: 2026-11-07 (session 1)
 - Anonymous sign-ins were still off on the project; switched on (`external_anonymous_users_enabled`).
 - Live 4-client E2E passed against the hosted project with the publishable key; test data was deleted afterwards.
 
+## Version 0.2 (2026-11-08)
+
+| Feature | Status | Verified by |
+|---|---|---|
+| Dictionary v2: 101,223 entries, 5,033 aliases, versioned, Wikidata (CC0) + curated (CC0) | ✅ | `dictionary_test.sql` locally **and on the hosted DB**; `dictionary_scoring_test.sql`; live 4-client E2E on hosted |
+| Spelling-insensitive matching, per-spelling letter check, wrong-category rejection, voting kept for unknown words | ✅ | same |
+| Duplicates by dictionary entry (ABD = Amerika) | ✅ | `dictionary_scoring_test.sql` |
+| Guest account, Google sign-in, guest → Google linking (same user id), sign-in on another device, sign-out | ✅ (server + app logic) | `AccountLinkingE2ETest` against real Supabase Auth with an OIDC test provider |
+| Google with real Google accounts | ⏳ waiting for Google OAuth credentials (see docs/GOOGLE_AUTH.md) | — |
+| Google button UI (onboarding + settings), conflict dialog | ✅ (renders; disabled until the provider is on) | screenshot test, compile |
+| Persistent session on Android | ⚠️ supabase-kt default storage; not tested on a device | — |
+
 ## Done and tested
 
 | Area | Status | How it was verified |
@@ -46,8 +58,8 @@ Last updated: 2026-11-07 (session 1)
 ## Unfinished / next tasks
 
 1. Device test pass (2 phones + emulator) against a hosted Supabase project; fix any UX issues.
-2. Expand `word_dictionary` (today 1,752 words; ülke and şehir are near-complete, ünlü/marka/film/oyun are small, so more answers go to votes).
-3. Account linking (email / Google) for anonymous users (`auth.linkIdentity`); the Settings screen states it is not available yet.
+2. Review the Wikidata-derived lists for noise (e.g. some professions) and extend the blocklist / curated lists.
+3. Real-Google verification on a phone once the provider is configured (docs/GOOGLE_AUTH.md).
 4. English localisation: strings are currently Turkish literals in Compose. Move them to
    `strings.xml` and add `values-en`. The language picker already exists (only Türkçe enabled).
 5. Optional `pg_cron` job to call `_advance` for rooms where every client went away mid-round

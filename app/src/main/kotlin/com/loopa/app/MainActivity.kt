@@ -1,5 +1,6 @@
 package com.loopa.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,6 +9,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.loopa.app.navigation.LoopaRoot
 import com.loopa.core.data.ThemeMode
@@ -21,6 +24,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val app = application as LoopaApplication
+        if (savedInstanceState == null) handleAuthRedirect(intent)
         setContent {
             val settings by app.container.settings.settings.collectAsStateWithLifecycle(UserSettings(onboardingDone = true))
             val dark = when (settings.theme) {
@@ -34,6 +38,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthRedirect(intent)
+    }
+
+    /** Completes Google sign-in / account linking when the browser returns to loopa://auth-callback. */
+    private fun handleAuthRedirect(intent: Intent?) {
+        val url = intent?.data?.toString() ?: return
+        val auth = (application as LoopaApplication).container.auth
+        if (!auth.isAuthCallback(url)) return
+        intent.data = null
+        lifecycleScope.launch { auth.handleCallback(url) }
     }
 
     override fun onStop() {

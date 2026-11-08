@@ -47,6 +47,10 @@ class LoopaBackend(
     val config: SupabaseConfig,
     /** Keep the auth session in memory only (used by JVM integration tests that simulate many players). */
     inMemorySession: Boolean = false,
+    /** OAuth provider used for "Google ile giriş". Tests substitute a local OIDC provider. */
+    val oauthProvider: io.github.jan.supabase.auth.providers.OAuthProvider = io.github.jan.supabase.auth.providers.Google,
+    /** Opens the provider's consent page. Default: the SDK's browser launcher. Tests capture the URL instead. */
+    urlOpener: (suspend (String) -> Unit)? = null,
 ) {
 
     val client: SupabaseClient? = if (config.isConfigured) {
@@ -54,6 +58,12 @@ class LoopaBackend(
             defaultSerializer = io.github.jan.supabase.serializer.KotlinXSerializer(LoopaJson)
             requestTimeout = 15.seconds
             install(Auth) {
+                // OAuth (Google sign-in and identity linking) uses PKCE and returns to
+                // loopa://auth-callback, declared as an intent filter in the app manifest.
+                flowType = io.github.jan.supabase.auth.FlowType.PKCE
+                scheme = OAUTH_SCHEME
+                host = OAUTH_HOST
+                if (urlOpener != null) useUrlOpener(urlOpener)
                 if (inMemorySession) {
                     sessionManager = io.github.jan.supabase.auth.MemorySessionManager()
                     codeVerifierCache = io.github.jan.supabase.auth.MemoryCodeVerifierCache()
@@ -115,5 +125,14 @@ class LoopaBackend(
         }
 
         fun emptyParams(): JsonObject = JsonObject(emptyMap())
+
+        const val OAUTH_SCHEME = "loopa"
+        const val OAUTH_HOST = "auth-callback"
+        const val OAUTH_REDIRECT = "$OAUTH_SCHEME://$OAUTH_HOST"
     }
+}
+
+@OptIn(io.github.jan.supabase.annotations.SupabaseExperimental::class)
+private fun io.github.jan.supabase.auth.AuthConfig.useUrlOpener(open: suspend (String) -> Unit) {
+    urlLauncher = io.github.jan.supabase.auth.UrlLauncher { _, url -> open(url) }
 }

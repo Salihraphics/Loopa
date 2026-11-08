@@ -77,7 +77,7 @@ fun LoopaRoot(versionName: String) {
             Boot.NotConfigured -> BackendNotConfiguredScreen()
             Boot.Onboarding -> OnboardingScreen(onDone = vm::onOnboarded)
             is Boot.Error -> ConnectionErrorScreen(b.message, onRetry = vm::start)
-            is Boot.Ready -> AppNavHost(versionName = versionName, resumeRoomId = b.resumeRoomId, onLoggedOut = vm::onLoggedOut)
+            is Boot.Ready -> AppNavHost(versionName = versionName, resumeRoomId = b.resumeRoomId, onLoggedOut = vm::onLoggedOut, onAccountSwitched = vm::start)
         }
     }
 }

@@ -66,7 +66,7 @@ enum class Tab(val title: String, val icon: ImageVector) {
 }
 
 @Composable
-fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Unit) {
+fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Unit, onAccountSwitched: () -> Unit = onLoggedOut) {
     val nav = rememberNavController()
     val feedback = LocalFeedback.current
     LaunchedEffect(resumeRoomId) {
@@ -94,6 +94,7 @@ fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Un
                 onPublicRooms = { nav.navigate(PublicRoomsRoute) },
                 onShop = { nav.navigate(ShopRoute) },
                 onLoggedOut = onLoggedOut,
+                onAccountSwitched = onAccountSwitched,
             )
         }
         composable<RoomRoute> { entry ->
@@ -122,6 +123,7 @@ private fun MainTabs(
     onPublicRooms: () -> Unit,
     onShop: () -> Unit,
     onLoggedOut: () -> Unit,
+    onAccountSwitched: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
     var focusJoin by rememberSaveable { mutableStateOf(false) }
@@ -163,7 +165,7 @@ private fun MainTabs(
                         Tab.PLAY -> PlayScreen(onRoomReady = onRoomReady, onPublicRooms = onPublicRooms, focusJoin = focusJoin)
                         Tab.PROFILE -> ProfileScreen(onEditAvatar = { tab = Tab.AVATAR }, onOpenShop = onShop)
                         Tab.AVATAR -> AvatarEditorScreen(onOpenShop = onShop)
-                        Tab.SETTINGS -> SettingsScreen(versionName = versionName, onLoggedOut = onLoggedOut)
+                        Tab.SETTINGS -> SettingsScreen(versionName = versionName, onLoggedOut = onLoggedOut, onAccountSwitched = onAccountSwitched)
                     }
                 }
             }
