@@ -57,8 +57,8 @@ TOPLAM     1697   99431    29801   130929   19917
 3. Found in the category → `valid` if the answer starts with the round's letter. The letter the player
    **typed** is checked against the letter of the dictionary spelling, but a plain-ASCII foreign
    spelling ("Irfan", "Ozcan") does not overrule a Turkish letter the player actually typed
-   ("İrfan" for İ, "Özcan" for Ö). Found in the category
-   (`Antep` is valid for A, `Gaziantep` for G; `sanliurfa` is valid for Ş because it means Şanlıurfa).
+   ("İrfan" for İ, "Özcan" for Ö). Examples: `Antep` is valid for A, `Gaziantep` for G, and
+   `sanliurfa` for Ş because it means Şanlıurfa.
    Otherwise `invalid / wrong_letter` (`Şanlıurfa` is not an S word).
 4. Not found: the first letter is checked tolerantly (ş/s etc. are treated alike) → `invalid / wrong_letter` if it differs.
 5. Found **only** in a clearly incompatible category (`category_conflicts`, e.g. an animal typed into
