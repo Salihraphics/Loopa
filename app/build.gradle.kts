@@ -67,6 +67,11 @@ android {
         unitTests.all {
             it.systemProperty("robolectric.graphicsMode", "NATIVE")
             it.systemProperty("robolectric.dependency.repo.url", "https://maven-central.storage-download.googleapis.com/maven2/")
+            it.systemProperty("loopa.e2e.url", System.getenv("LOOPA_E2E_URL") ?: "")
+            it.systemProperty("loopa.e2e.key", System.getenv("LOOPA_E2E_ANON_KEY") ?: "")
+            it.systemProperty("loopa.e2e.local.url", System.getenv("LOOPA_E2E_LOCAL_URL") ?: "")
+            it.systemProperty("loopa.e2e.local.key", System.getenv("LOOPA_E2E_LOCAL_KEY") ?: "")
+            it.testLogging { showStandardStreams = true }
             it.outputs.upToDateWhen { false }
         }
     }

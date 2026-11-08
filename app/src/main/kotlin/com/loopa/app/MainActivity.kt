@@ -24,7 +24,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val app = application as LoopaApplication
-        if (savedInstanceState == null) handleAuthRedirect(intent)
+        lastAuthUrl = savedInstanceState?.getString(KEY_LAST_AUTH_URL)
+        handleAuthRedirect(intent)
         setContent {
             val settings by app.container.settings.settings.collectAsStateWithLifecycle(UserSettings(onboardingDone = true))
             val dark = when (settings.theme) {
@@ -46,13 +47,26 @@ class MainActivity : ComponentActivity() {
         handleAuthRedirect(intent)
     }
 
+    /** The callback already processed, so a recreated activity never redeems the single-use code twice. */
+    private var lastAuthUrl: String? = null
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_LAST_AUTH_URL, lastAuthUrl)
+    }
+
     /** Completes Google sign-in / account linking when the browser returns to loopa://auth-callback. */
     private fun handleAuthRedirect(intent: Intent?) {
         val url = intent?.data?.toString() ?: return
         val auth = (application as LoopaApplication).container.auth
-        if (!auth.isAuthCallback(url)) return
+        if (!auth.isAuthCallback(url) || url == lastAuthUrl) return
+        lastAuthUrl = url
         intent.data = null
         lifecycleScope.launch { auth.handleCallback(url) }
+    }
+
+    private companion object {
+        const val KEY_LAST_AUTH_URL = "loopa.last_auth_url"
     }
 
     override fun onStop() {

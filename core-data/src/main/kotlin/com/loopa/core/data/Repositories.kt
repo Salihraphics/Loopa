@@ -121,6 +121,9 @@ class AuthRepository(private val backend: LoopaBackend) {
      */
     suspend fun handleCallback(url: String): AuthCallbackResult {
         val params = OAuthCallback.parse(url)
+        // After Android killed the app while the browser was open, the SDK first has to reload
+        // the stored session and the stored PKCE verifier; exchanging before that would race.
+        runCatching { backend.client?.auth?.awaitInitialization() }
         val (kind, before) = pending ?: (null to backend.currentUserId)
         val result: AuthCallbackResult = when {
             params["error"] != null || params["error_code"] != null -> AuthCallbackResult.Failed(
@@ -133,7 +136,9 @@ class AuthRepository(private val backend: LoopaBackend) {
                     auth.exchangeCodeForSession(params["code"]!!)
                 }
                 val now = backend.currentUserId.orEmpty()
-                if (kind == Pending.LINK && now == before) AuthCallbackResult.Linked(now)
+                // Same user before and after: the identity was added to this account. This also covers
+                // a link completed after process death, when the in-memory `pending` marker is gone.
+                if ((kind == Pending.LINK || kind == null) && now == before) AuthCallbackResult.Linked(now)
                 else AuthCallbackResult.SignedIn(now, switchedFrom = before?.takeIf { it != now })
             } catch (e: com.loopa.core.game.LoopaException) {
                 AuthCallbackResult.Failed(if (e.error == com.loopa.core.game.LoopaError.UNKNOWN) com.loopa.core.game.LoopaError.OAUTH_FAILED else e.error, e.cause?.message)

@@ -21,9 +21,10 @@ Last updated: 2026-11-07 (session 1)
 | Spelling-insensitive matching, per-spelling letter check, wrong-category rejection, voting kept for unknown words | ✅ | same |
 | Duplicates by dictionary entry (ABD = Amerika) | ✅ | `dictionary_scoring_test.sql` |
 | Guest account, Google sign-in, guest → Google linking (same user id), sign-in on another device, sign-out | ✅ (server + app logic) | `AccountLinkingE2ETest` against real Supabase Auth with an OIDC test provider |
-| Google with real Google accounts | ⏳ waiting for Google OAuth credentials (see docs/GOOGLE_AUTH.md) | — |
+| Google provider configuration (client, callback URI, linking URL) | ✅ | Supabase + Google answer checks (docs/GOOGLE_AUTH.md) |
+| Real Google login on a phone | ❌ not tested — needs a device; checklist in docs/GOOGLE_AUTH.md | — |
 | Google button UI (onboarding + settings), conflict dialog | ✅ (renders; disabled until the provider is on) | screenshot test, compile |
-| Persistent session on Android | ⚠️ supabase-kt default storage; not tested on a device | — |
+| Persistent session on Android | ✅ in Robolectric with the real Android storage (not on a physical device) | `AuthAndroidTest` |
 
 ## Done and tested
 

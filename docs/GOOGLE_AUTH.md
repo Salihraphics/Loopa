@@ -79,3 +79,27 @@ LOOPA_E2E_URL=http://127.0.0.1:54321 LOOPA_E2E_ANON_KEY=<local publishable key> 
 
 What remains to verify with real Google once the provider is configured: the consent screen and
 the redirect into the installed app on a phone.
+
+## Verification status (2026-11-08)
+
+| Check | Result | How |
+|---|---|---|
+| Supabase: Google enabled, Web client ID, secret set, manual linking on, `loopa://auth-callback` allowed | ✅ | Management API + `/auth/v1/settings` |
+| Supabase `authorize` → Google with `redirect_uri=https://zxtrxbgphutuiizznakd.supabase.co/auth/v1/callback` | ✅ | Google answered with its sign-in page (no `invalid_client` / `redirect_uri_mismatch`) |
+| Linking URL for an anonymous user (`/user/identities/authorize`) accepted by Supabase and Google | ✅ | same |
+| `loopa://auth-callback` resolves to `MainActivity` (`singleTask`); other URIs not claimed | ✅ | Robolectric, merged manifest |
+| androidx.startup initializers for session storage present in the APK | ✅ | `aapt2 dump` + Robolectric |
+| Session restored after app restart (real Android storage, hosted project) | ✅ | `AuthAndroidTest.guestSessionSurvivesAppRestart` |
+| Link completes after process death; same user id; persists after restart | ✅ | `AuthAndroidTest.linkCompletesAfterProcessDeathAndSurvivesRestart` (OIDC test provider) |
+| Real Google login, real browser → app return on a phone | ❌ **not tested** | needs a phone and a Google account |
+
+### Phone test checklist
+1. Install `app-debug.apk`. If the Google OAuth consent screen is in *Testing* mode, add your Google account as a test user.
+2. Fresh install → onboarding → **Misafir olarak devam et**, play one match (so there is XP and history).
+3. Note the 8-character "Oyuncu kimliği" in Ayarlar → Hesap.
+4. **Google hesabına bağla** → pick an account → the browser must return to LOOPA, showing "Hesabın Google'a bağlandı…".
+   Expected: Hesap türü = Google hesabı, same Oyuncu kimliği, same level/XP/avatar/history.
+5. Close LOOPA from recents, reopen: still signed in, same data.
+6. Second phone (or uninstall/reinstall): onboarding → **Google ile giriş yap** with the same account → the same profile appears.
+7. On a fresh guest, try linking the *same* Google account → the "Bu Google hesabı zaten kullanılıyor" dialog; choose "Misafir kal" and confirm the guest is unchanged.
+8. Ayarlar → Çıkış yap → Google ile giriş yap again → data is back.
