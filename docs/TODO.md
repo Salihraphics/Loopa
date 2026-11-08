@@ -13,6 +13,25 @@ Last updated: 2026-11-07 (session 1)
 - Anonymous sign-ins were still off on the project; switched on (`external_anonymous_users_enabled`).
 - Live 4-client E2E passed against the hosted project with the publishable key; test data was deleted afterwards.
 
+## Version 0.3 (2026-11-09)
+
+| Item | Status | Verified by |
+|---|---|---|
+| Dictionary v3 (130,929 entries), İ/I and Ö/O letter bug, food wrong-category rule, compound dishes, controlled fallback, suggestion model | ✅ | SQL suites locally **and on the hosted DB**, gold/held-out evaluation, re-classification of real answers |
+| Room-code keyboard overlap | ✅ in Robolectric with emulated keyboard insets (4 screen sizes) | `KeyboardLayoutTest` (fails without the fix); **not yet confirmed on a phone** |
+| Results consistency (totals, XP, same on all clients) | ✅ | live 4-client E2E on the hosted project |
+| Guest → Google linking keeps the user id | ✅ on real Supabase Auth with an OIDC test provider; **not yet observed in production** (both real Google accounts were created by direct Google sign-in) | `AccountLinkingE2ETest`, `AuthAndroidTest`, hosted auth data |
+
+### Known issues / limitations (0.3)
+- Professions recorded on people (Wikidata P106) could not be fetched: QLever rate-limited the
+  build machine (HTTP 429). Retry with `tools/dictionary/fetch.sh` and rebuild as version 4.
+- Weakest held-out categories: Marka 21/29, Meslek 35/41. Unknown words go to the vote, and votes
+  are now collected as suggestions.
+- "Salih" has two accounts in production: a guest (level 2) and a separate Google account.
+  Nothing was merged (by design). Moving progress between accounts would need a deliberate admin tool.
+- Wikidata-derived İsim/Ünlü lists contain many foreign names. This is harmless for accepting
+  names, but means İsim/Ünlü are never used as wrong-category evidence.
+
 ## Version 0.2 (2026-11-08)
 
 | Feature | Status | Verified by |
