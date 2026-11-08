@@ -19,3 +19,6 @@ captures/
 .env
 supabase/.temp/
 supabase/.branches/
+
+# Kotlin compiler session caches
+.kotlin/
