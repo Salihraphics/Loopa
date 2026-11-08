@@ -43,6 +43,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.layout.ime
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -82,14 +86,22 @@ data class PlayUiState(
     val loadedPublic: Boolean = false,
 )
 
+/** Room-code alphabet used by the server (no 0/O/1/I to avoid confusion). */
+const val ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+/**
+ * Normalises whatever the keyboard or clipboard delivers into a room code:
+ * upper-case (Turkish keyboards may send "ı"/"i" variants), no spaces or separators,
+ * only valid characters, at most 6.  " lop-7x 2 " -> "LOP7X2".
+ */
+fun normalizeRoomCode(input: String): String =
+    input.uppercase(java.util.Locale.ROOT).replace('İ', 'I').filter { it in ROOM_CODE_ALPHABET }.take(6)
+
 class PlayViewModel(private val c: DataContainer) : ViewModel() {
     private val _ui = MutableStateFlow(PlayUiState())
     val ui: StateFlow<PlayUiState> = _ui.asStateFlow()
 
-    private val allowed = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    fun setCode(v: String) = _ui.update { s ->
-        s.copy(code = v.uppercase().filter { it in allowed }.take(6), error = null)
-    }
+    fun setCode(v: String) = _ui.update { s -> s.copy(code = normalizeRoomCode(v), error = null) }
     fun setPublic(v: Boolean) = _ui.update { it.copy(isPublic = v) }
     fun dismissError() = _ui.update { it.copy(error = null) }
 
@@ -115,12 +127,24 @@ class PlayViewModel(private val c: DataContainer) : ViewModel() {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun PlayScreen(onRoomReady: (String) -> Unit, onPublicRooms: () -> Unit, focusJoin: Boolean = false) {
     val vm = containerViewModel { PlayViewModel(it) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val joinCard = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    var codeFocused by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val imeBottom = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)
     LaunchedEffect(focusJoin) { if (focusJoin) runCatching { focus.requestFocus() } }
+    // Keep the whole join card (field + buttons) visible while the keyboard opens or resizes.
+    LaunchedEffect(codeFocused, imeBottom) { if (codeFocused) joinCard.bringIntoView() }
+    // A complete code needs no more typing: close the keyboard so the Join button is reachable.
+    LaunchedEffect(ui.code) {
+        if (ui.code.length == 6 && codeFocused) { keyboard?.hide(); focusManager.clearFocus() }
+    }
 
     Box(Modifier.fillMaxSize().background(Loopa.colors.background)) {
         Column(
@@ -153,22 +177,28 @@ fun PlayScreen(onRoomReady: (String) -> Unit, onPublicRooms: () -> Unit, focusJo
                     loading = ui.busy == "create", modifier = Modifier.fillMaxWidth(), sfx = Sfx.JOIN)
             }
 
-            LoopaCard(color = LoopaPalette.Butter.copy(alpha = 0.8f)) {
+            LoopaCard(color = LoopaPalette.Butter.copy(alpha = 0.8f), modifier = Modifier.bringIntoViewRequester(joinCard)) {
                 Text("Odaya Katıl", style = MaterialTheme.typography.headlineSmall, color = LoopaPalette.Ink)
                 Spacer(Modifier.height(10.dp))
                 LoopaTextField(
                     value = ui.code,
                     onValueChange = vm::setCode,
-                    placeholder = "ÖRN. LOP7X2",
-                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                    placeholder = "ÖRN. KPX7A2",
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus)
+                        .onFocusChanged { codeFocused = it.isFocused }
+                        .testTag("room_code_field"),
                     accent = LoopaPalette.ButterDeep,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Go, autoCorrectEnabled = false),
-                    keyboardActions = KeyboardActions(onGo = { vm.join(onRoomReady) }),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Go,
+                        autoCorrectEnabled = false, keyboardType = androidx.compose.ui.text.input.KeyboardType.Ascii,
+                    ),
+                    keyboardActions = KeyboardActions(onGo = { keyboard?.hide(); focusManager.clearFocus(); vm.join(onRoomReady) }),
+                    trailing = { Text("${ui.code.length}/6", style = MaterialTheme.typography.labelMedium, color = LoopaPalette.Ink.copy(alpha = 0.6f)) },
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     LoopaButton("Katıl", { vm.join(onRoomReady) }, icon = Icons.AutoMirrored.Rounded.Login, color = androidx.compose.ui.graphics.Color.White,
-                        loading = ui.busy == "join", enabled = ui.code.length == 6, modifier = Modifier.weight(1f), sfx = Sfx.JOIN)
+                        loading = ui.busy == "join", enabled = ui.code.length == 6, modifier = Modifier.weight(1f).testTag("join_button"), sfx = Sfx.JOIN)
                     LoopaButton("İzle", { vm.join(onRoomReady, spectator = true) }, icon = Icons.Rounded.Visibility, color = LoopaPalette.Sky,
                         loading = ui.busy == "spectate", enabled = ui.code.length == 6, modifier = Modifier.weight(0.8f))
                 }

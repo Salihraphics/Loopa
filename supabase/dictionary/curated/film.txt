@@ -37,3 +37,48 @@ Başlangıç|Inception
 Yıldızlararası|Interstellar
 Esaretin Bedeli
 Baba|The Godfather
+# --- v3: popular titles as players type them
+Süpermen|Superman
+Yenilmezler|Avengers
+Buz Devri|Ice Age
+Kayıp Balık Nemo|Nemo
+Karayip Korsanları
+Psikopat|Psycho
+Örümcek Adam|Spider-Man|Spiderman
+Demir Adam|Iron Man
+Kara Şövalye|The Dark Knight
+Hızlı ve Öfkeli
+Görevimiz Tehlike|Mission: Impossible
+James Bond
+Rambo
+Rocky
+Terminatör|Terminator
+Alien|Yaratık
+Jaws|Denizin Dişleri
+Avatar
+Arabalar|Cars
+Oyuncak Hikayesi|Toy Story
+Ratatuy|Ratatouille
+Coco
+Zootropolis
+Moana
+Minyonlar|Minions
+Çılgın Hayvanat Bahçesi|Madagascar
+Kung Fu Panda
+Şrek|Shrek
+Mucize|Mucize 2
+Kelebekler
+Kurtlar Vadisi Irak
+Kolpaçino
+Ayas
+Hokkabaz
+Masumiyet
+Uzak
+Ahlat Ağacı
+Çalgı Çengi
+Eyyvah Eyvah
+Çakallarla Dans
+Dabbe
+Siccin
+Babam ve Oğlum
+Bekçi Tom|Tom ve Jerry

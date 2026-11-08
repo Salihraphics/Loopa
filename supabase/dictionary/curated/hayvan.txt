@@ -144,3 +144,68 @@ Yılan
 Yunus
 Zebra
 Zürafa
+# --- v3
+Çipura
+Hamsi
+Lüfer
+İstavrit
+Kefal
+Kalkan
+Mezgit
+Barbunya balığı|Barbun
+Alabalık
+Sardalya
+Uskumru
+Orfoz
+Lagos
+Sinarit
+Turna balığı
+Yayın balığı
+Kerevit
+Karides
+İstiridye
+Kalamar
+Denizkestanesi|Deniz kestanesi
+Manda
+Katır
+Tay
+Sıpa
+Oğlak
+Kuzu
+Buzağı
+Civciv
+Piliç
+Bıldırcın
+Keklik
+Sülün
+Tavuskuşu
+Saksağan
+Kumru
+İbibik
+Kırlangıç
+Kuzgun
+Akbaba
+Flamingo
+Pelikan
+Su samuru
+Porsuk
+Gelincik
+Sansar
+Kokarca
+Kunduz
+Hamster
+Tarla faresi
+Köstebek
+Yarasa
+Ateş böceği
+Çekirge
+Cırcır böceği
+Hamamböceği
+Tahtakurusu
+Pire
+Kene
+Bit
+Tırtıl
+Sülük
+Denizanası
+Mercan

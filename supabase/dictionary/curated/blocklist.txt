@@ -13,3 +13,22 @@ yemek|tatlı
 yemek|Yemek
 esya|takı
 esya|Seviye sensörü
+# --- v3
+hayvan|İnsan
+yemek|Triticum
+yemek|Chlorella
+yemek|Calla
+yemek|Makedonya
+yemek|Hermann
+yemek|atom
+yemek|gastronomi
+yemek|Diyet
+yemek|Leftovers
+yemek|Take-out
+yemek|Entree
+yemek|Aroma
+yemek|Tohum
+yemek|Fond
+yemek|Kan
+yemek|Malt
+yemek|Gui

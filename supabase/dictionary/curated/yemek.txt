@@ -139,3 +139,106 @@ Zerde
 Zeytinyağlı yaprak sarma
 Ziron
 Suşi|Sushi
+# --- v3: regional and everyday dishes
+Kelle paça|Paça
+Tandır|Tandır kebabı
+Kuzu tandır
+Kuzu kapama|Kapama
+Karalahana çorbası|Kara lahana çorbası
+Karalahana sarması|Kara lahana sarması
+Mısır ekmeği
+Hamsili pilav
+Hamsi buğulama
+Kaygana
+Muhlama
+Laz böreği
+Kete
+Bazlama
+Katmer
+Cartlak kebabı
+Ciğer kebabı
+Kuşbaşı
+Perde pilavı
+Beyran
+Yuvalama
+Analı kızlı
+Kaburga dolması
+Patlıcan musakka
+Kabak çiçeği dolması
+Zeytinyağlı enginar
+Topik
+Oruk
+Mumbar dolması|Mumbar
+Bumbar
+Sakızlı muhallebi
+Keşkül
+Kemalpaşa tatlısı
+Höşmerim
+Cevizli sucuk
+Pestil
+Köme
+Hasuta
+Herle
+Hıngel|Hingel
+Siron
+Kuymak
+Erişte aşı
+Tutmaç
+Toyga çorbası
+Düğün çorbası
+İşkembe çorbası|İşkembe
+Kelle
+Paçanga böreği
+Sigara böreği
+Talaş böreği
+Kol böreği
+Tepsi böreği
+Çibörek|Çiğ börek
+Hamsikoli
+Kumru
+Islak burger
+Sulu köfte
+Terbiyeli köfte
+Kadınbudu
+Tavuk döner
+Et döner
+Kuzu şiş
+Ciğer şiş
+Kanat
+Pirzola
+Biftek
+Kuru köfte
+Fırın makarna
+Erişte
+Şehriye pilavı
+Nohutlu pilav
+İç pilav
+Zeytinyağlı fasulye
+Barbunya pilaki|Pilaki
+Fasulye pilaki
+Ispanak yemeği
+Pırasa yemeği
+Kereviz yemeği
+Patates yemeği
+Bezelye yemeği
+Etli nohut
+Tavuk çorbası
+Domates çorbası
+Mantar çorbası
+Ezo gelin|Ezogelin çorbası
+Revani
+Şekerpare
+Tulumba
+Kalburabastı
+Hanımgöbeği
+Lokma tatlısı
+Su muhallebisi
+Keşkek
+Kaşık helvası
+Tahin helvası
+Pişmaniye
+Lokum
+Çökelek
+Menemen
+Sucuklu yumurta
+Pastırmalı yumurta

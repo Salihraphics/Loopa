@@ -278,3 +278,92 @@ Zımpara
 Zil
 Zincir
 Zıpkın
+# --- v3
+Diş fırçası
+Diş macunu
+Saç fırçası
+Saç tokası|Toka
+Tıraş makinesi
+Jilet
+Tırnak makası
+Fön
+Saç düzleştirici
+Elektrik süpürgesi
+Bulaşık makinesi
+Kurutma makinesi
+Mikrodalga
+Blender
+Kahve makinesi
+Çay bardağı
+Su bardağı
+Kupa
+Kepçe
+Spatula
+Rende
+Süzgeç
+Kesme tahtası
+Oklava
+Tepsi
+Çaydanlık
+Demlik
+Semaver
+Sürahi
+Matara
+Cep telefonu
+Tablet
+Şarj aleti
+Powerbank
+Uzaktan kumanda|Kumanda
+Hoparlör
+Mikrofon
+Kamera
+Fotoğraf makinesi
+Dürbün
+Pusula
+El feneri|Fener
+Çakmak
+Kibrit
+Mum
+Abajur
+Avize
+Askı
+Elbise askısı
+Gardırop
+Komodin
+Şifonyer
+Kitaplık
+Raf
+Sehpa
+Tabure
+Puf
+Minder
+Kilim
+Paspas
+Kova
+Faraş
+Çöp kutusu
+Mandal
+Çamaşır sepeti
+Valiz|Bavul
+Sırt çantası
+Bel çantası
+Okul çantası
+Kalemlik
+Kalemtıraş
+Boya kalemi
+Pastel boya
+Fosforlu kalem
+Tükenmez kalem
+Kurşun kalem
+Dolma kalem
+Zımba
+Ataş
+Raptiye
+Yapıştırıcı
+Bant
+Not defteri
+Ajanda
+Takvim
+Duvar saati
+Kol saati
+Çalar saat

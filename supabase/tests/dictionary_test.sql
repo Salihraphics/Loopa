@@ -170,6 +170,39 @@ select pg_temp.expect('film', 'E', 'Eşkıya', 'valid', 'dictionary');
 select pg_temp.expect('oyun', 'S', 'Satranç', 'valid', 'dictionary');
 select pg_temp.expect('unlu', 'T', 'Tarkan', 'valid', 'dictionary');
 select pg_temp.expect('unlu', 'A', 'Atatürk', 'valid', 'dictionary');
+-- ---- reported in real play (2026-11-08)
+select pg_temp.expect('yemek', 'T', 'Tarhana', 'valid', 'dictionary');
+select pg_temp.expect('yemek', 'T', 'tarhana çorbası', 'valid', 'dictionary');
+select pg_temp.expect('bitki', 'T', 'Tarhana', 'invalid', 'wrong_category');   -- typed into Bitki in the real game
+select pg_temp.expect('hayvan', 'T', 'Tarhana', 'invalid', 'wrong_category');
+select pg_temp.expect('isim', 'T', 'Tarık', 'valid', 'dictionary');
+select pg_temp.expect('isim', 'T', 'TARIK', 'valid', 'dictionary');
+select pg_temp.expect('isim', 'T', 'tarik', 'valid', 'dictionary');
+select pg_temp.expect('isim', 'İ', 'İrfan', 'valid', 'dictionary');           -- was rejected as wrong letter
+select pg_temp.expect('isim', 'İ', 'İhsan', 'valid', 'dictionary');           -- was rejected as wrong letter
+select pg_temp.expect('isim', 'İ', 'irfan', 'valid', 'dictionary');
+select pg_temp.expect('isim', 'N', 'Nejdet', 'valid', 'dictionary');
+select pg_temp.expect('isim', 'Ö', 'Özcan', 'valid', 'dictionary');           -- dictionary has the foreign spelling "Ozcan"
+select pg_temp.expect('ulke', 'İ', 'Irak', 'invalid', 'wrong_letter');        -- Irak starts with I, not İ
+select pg_temp.expect('yemek', 'K', 'Kıymalı pide', 'valid', 'compound');
+select pg_temp.expect('yemek', 'E', 'Etli bamya', 'valid', 'compound');
+select pg_temp.expect('yemek', 'F', 'Fıstıklı baklava', 'valid', 'compound');
+select pg_temp.expect('yemek', 'K', 'Kıymalı masa', 'uncertain', 'not_found'); -- modifier + non-dish is not a dish
+select pg_temp.expect('sehir', 'İ', 'İstanbul', 'valid', 'dictionary');
+select pg_temp.expect('sehir', 'I', 'İstanbul', 'invalid', 'wrong_letter');   -- I (dotless) is a different letter
+select pg_temp.expect('sehir', 'Ş', 'Şanlıurfa', 'valid', 'dictionary');
+select pg_temp.expect('hayvan', 'İ', 'İnsan', 'uncertain', 'not_found');      -- no longer auto-accepted as an animal
+select pg_temp.expect('bitki', 'L', 'Lahmacun', 'invalid', 'wrong_category');
+select pg_temp.expect('esya', 'B', 'Baklava', 'invalid', 'wrong_category');
+select pg_temp.expect('bitki', 'P', 'Patates', 'valid', 'dictionary');        -- shared ingredient stays valid
+select pg_temp.expect('hayvan', 'H', 'Hamsi', 'valid', 'dictionary');
+select pg_temp.expect('hayvan', 'T', 'Tavuk', 'valid', 'dictionary');
+select pg_temp.expect('unlu', 'M', 'Mozart', 'valid', 'dictionary');           -- surname alias of a very famous person
+select pg_temp.expect('unlu', 'L', 'Leonardo DiCaprio', 'valid', 'dictionary');
+-- made-up words are never auto-accepted
+select pg_temp.expect('hayvan', 'T', 'Tqzxwpl', 'uncertain', 'not_found');
+select pg_temp.expect('yemek', 'K', 'Kalamzırt', 'uncertain', 'not_found');
+select pg_temp.expect('isim', 'A', 'Asdasdasd', 'uncertain', 'not_found');
 -- wrong categories
 select pg_temp.expect('sehir', 'K', 'Kedi', 'invalid', 'wrong_category');
 select pg_temp.expect('ulke', 'K', 'Kalem', 'invalid', 'wrong_category');

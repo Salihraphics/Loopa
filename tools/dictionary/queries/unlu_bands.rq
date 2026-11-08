@@ -1,0 +1,8 @@
+# Music groups with a Turkish Wikipedia article (Turkish) or >= 40 sitelinks
+SELECT ?item ?label ?lang ?n WHERE {
+  VALUES ?c { wd:Q215380 wd:Q5741069 }
+  ?item wdt:P31 ?c; wikibase:sitelinks ?n .
+  OPTIONAL { ?item wdt:P495 ?o } OPTIONAL { ?a schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item . }
+  FILTER((BOUND(?a) && ?o = wd:Q43) || ?n >= 40)
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
+}

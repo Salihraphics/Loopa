@@ -1,0 +1,6 @@
+# Companies, brands, chains and products based in Turkey (country P17 = Turkey)
+SELECT ?item ?label ?lang ?n WHERE {
+  VALUES ?c { wd:Q431289 wd:Q4830453 wd:Q891723 wd:Q783794 wd:Q6881511 wd:Q167037 wd:Q507619 wd:Q18534 wd:Q2385804 wd:Q1137109 wd:Q22687 wd:Q46970 wd:Q10283556 }
+  ?item wdt:P31 ?c; wdt:P17 wd:Q43; wikibase:sitelinks ?n .
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
+}

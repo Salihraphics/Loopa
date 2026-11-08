@@ -1,0 +1,6 @@
+# Film series / franchises (e.g. Harry Potter, Karayip Korsanları) with >= 15 sitelinks
+SELECT ?item ?label ?lang ?n WHERE {
+  VALUES ?c { wd:Q24856 wd:Q196600 }
+  ?item wdt:P31 ?c; wikibase:sitelinks ?n . FILTER(?n >= 15)
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
+}

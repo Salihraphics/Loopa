@@ -1,0 +1,98 @@
+{
+  "version": 3,
+  "wikidata_fetched_at": "2026-11-08T12:57Z",
+  "licence": "CC0 1.0 (Wikidata + LOOPA curated)",
+  "categories": {
+    "isim": {
+      "entries": 47714,
+      "aliases": 74,
+      "curated": 0,
+      "wikidata": 47714,
+      "merged_as_alias": 2216
+    },
+    "sehir": {
+      "entries": 5726,
+      "aliases": 1278,
+      "curated": 32,
+      "wikidata": 5694,
+      "merged_as_alias": 47
+    },
+    "hayvan": {
+      "entries": 5040,
+      "aliases": 2,
+      "curated": 188,
+      "wikidata": 4852,
+      "merged_as_alias": 11
+    },
+    "bitki": {
+      "entries": 2103,
+      "aliases": 5,
+      "curated": 170,
+      "wikidata": 1933,
+      "merged_as_alias": 13
+    },
+    "esya": {
+      "entries": 2129,
+      "aliases": 12,
+      "curated": 319,
+      "wikidata": 1810,
+      "merged_as_alias": 6
+    },
+    "ulke": {
+      "entries": 208,
+      "aliases": 127,
+      "curated": 22,
+      "wikidata": 186,
+      "merged_as_alias": 7
+    },
+    "meslek": {
+      "entries": 1358,
+      "aliases": 786,
+      "curated": 191,
+      "wikidata": 1167,
+      "merged_as_alias": 28
+    },
+    "unlu": {
+      "entries": 46287,
+      "aliases": 9070,
+      "curated": 40,
+      "wikidata": 46247,
+      "merged_as_alias": 60
+    },
+    "marka": {
+      "entries": 4748,
+      "aliases": 1141,
+      "curated": 121,
+      "wikidata": 4627,
+      "merged_as_alias": 5
+    },
+    "yemek": {
+      "entries": 1255,
+      "aliases": 233,
+      "curated": 232,
+      "wikidata": 1023,
+      "merged_as_alias": 17
+    },
+    "film": {
+      "entries": 11342,
+      "aliases": 5226,
+      "curated": 81,
+      "wikidata": 11261,
+      "merged_as_alias": 96
+    },
+    "oyun": {
+      "entries": 2937,
+      "aliases": 343,
+      "curated": 108,
+      "wikidata": 2829,
+      "merged_as_alias": 6
+    }
+  },
+  "blocklisted": {
+    "meslek": 7,
+    "yemek": 19,
+    "esya": 2,
+    "hayvan": 1
+  },
+  "total_entries": 130847
+}

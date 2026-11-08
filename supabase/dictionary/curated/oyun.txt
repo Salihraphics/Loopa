@@ -51,3 +51,64 @@ PUBG
 Pac-Man|Pacman
 Super Mario|Mario
 Grand Theft Auto|GTA
+# --- v3: traditional, table and popular games
+Misket|Bilye
+Mendil kapmaca
+Uzun eşek
+İp atlama
+Kör ebe
+Ebelemece
+Kovalamaca
+Beş taş
+Topaç
+Uçurtma uçurma
+Kuka
+Dokuz taş
+Köşe kapmaca
+Sessiz sinema
+Adam asmaca
+Amiral battı
+Kelime avı
+Bulmaca
+Yapboz
+Batak
+King
+Pinpon|Masa tenisi
+Tenis
+Badminton
+Okçuluk
+Cirit
+Güreş
+Yağlı güreş
+Atletizm
+Yüzme
+Bisiklet
+Kayak
+Snowboard
+Sörf
+Kaykay
+Paten
+Satranç
+Go
+Scrabble
+Risk
+Catan
+Kızma Birader
+Monopoly
+Cluedo
+Candy Crush
+Angry Birds
+Among Us
+Valorant
+Pokémon Go|Pokemon Go
+Clash of Clans
+Clash Royale
+Subway Surfers
+Roblox
+Free Fire
+PUBG Mobile
+Call of Duty
+The Sims
+Need for Speed
+Pro Evolution Soccer|PES
+Assassin's Creed

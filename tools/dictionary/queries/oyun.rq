@@ -1,8 +1,7 @@
-# Video games, board/card/children's games and sports with a Turkish Wikipedia article
-SELECT ?item ?label ?alt WHERE {
+# Games and sports with a Turkish Wikipedia article (video, board, card, children's games, sports)
+SELECT ?item ?label ?lang ?n WHERE {
   VALUES ?c { wd:Q7889 wd:Q131436 wd:Q142714 wd:Q349 wd:Q1137556 wd:Q11410 wd:Q31629 wd:Q1781513 }
-  ?item wdt:P31 ?c .
+  ?item wdt:P31 ?c; wikibase:sitelinks ?n .
   ?article schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item .
-  ?item rdfs:label ?label FILTER(lang(?label)="tr")
-  OPTIONAL { ?item skos:altLabel ?alt FILTER(lang(?alt)="tr") }
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
 }

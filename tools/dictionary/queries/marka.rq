@@ -1,7 +1,8 @@
-SELECT ?item ?label ?alt WHERE {
-  VALUES ?c { wd:Q431289 wd:Q4830453 wd:Q891723 wd:Q783794 wd:Q6881511 wd:Q167037 wd:Q1631129 }
-  ?item wdt:P31 ?c; wikibase:sitelinks ?n . FILTER(?n >= 12)
-  ?article schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item .
-  ?item rdfs:label ?label FILTER(lang(?label)="tr")
-  OPTIONAL { ?item skos:altLabel ?alt FILTER(lang(?alt)="tr") }
+# Brands and companies: Turkish Wikipedia article or >= 30 sitelinks
+SELECT ?item ?label ?lang ?n WHERE {
+  VALUES ?c { wd:Q431289 wd:Q4830453 wd:Q891723 wd:Q783794 wd:Q6881511 wd:Q167037 wd:Q1631129 wd:Q507619 wd:Q2385804 }
+  ?item wdt:P31 ?c; wikibase:sitelinks ?n . FILTER(?n >= 8)
+  OPTIONAL { ?a schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item . }
+  FILTER(BOUND(?a) || ?n >= 30)
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
 }

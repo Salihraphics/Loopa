@@ -1,0 +1,6 @@
+# Dishes of Turkish cuisine (P2012 cuisine = Turkish cuisine, or country of origin Turkey for foods/dishes)
+SELECT ?item ?label ?lang WHERE {
+  { ?item wdt:P2012 wd:Q654493 }
+  UNION { ?item wdt:P495 wd:Q43 . VALUES ?c { wd:Q746549 wd:Q2095 wd:Q182940 wd:Q41415 wd:Q7802 } ?item wdt:P31 ?c }
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul"))
+}

@@ -1,6 +1,7 @@
-SELECT ?item ?label ?alt WHERE {
-  ?item wdt:P31 wd:Q11424 .
-  ?article schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item .
-  ?item rdfs:label ?label FILTER(lang(?label)="tr")
-  OPTIONAL { ?item skos:altLabel ?alt FILTER(lang(?alt)="tr") }
+# Films with a Turkish Wikipedia article or >= 40 sitelinks; Turkish title preferred, original title kept as alias
+SELECT ?item ?label ?lang ?n WHERE {
+  ?item wdt:P31 wd:Q11424; wikibase:sitelinks ?n .
+  OPTIONAL { ?a schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item . }
+  FILTER(BOUND(?a) || ?n >= 40)
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
 }

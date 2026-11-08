@@ -83,3 +83,174 @@ Vali
 Yazar
 Yönetmen
 Zabıta
+# --- v3: trades and everyday occupations
+Boyacı
+Duvarcı
+Sıvacı
+Kaynakçı
+Tornacı
+Demirci
+Kaportacı
+Oto tamircisi
+Lastikçi
+Taksici|Taksi şoförü
+Otobüs şoförü
+Kamyon şoförü
+Makinist
+Kaptan pilot
+Hostes|Kabin memuru
+Kamyoncu
+Kurye
+Kargocu
+Postacı
+Gazeteci
+Muhabir
+Spiker
+Sunucu
+Editör
+Yayıncı
+Kitapçı
+Kırtasiyeci
+Matbaacı
+Ciltçi
+Saatçi
+Gözlükçü
+Ayakkabıcı
+Kunduracı
+Terzi
+Modacı
+Tasarımcı
+Mimar
+İç mimar
+Peyzaj mimarı
+Şehir plancısı
+Harita mühendisi
+İnşaat mühendisi
+Makine mühendisi
+Elektrik mühendisi
+Bilgisayar mühendisi
+Yazılım mühendisi
+Veri bilimci
+Siber güvenlik uzmanı
+Teknisyen
+Laborant
+Biyolog
+Kimyager
+Fizikçi
+Matematikçi
+Astronom
+Jeolog
+Arkeolog
+Tarihçi
+Sosyolog
+Psikolog
+Psikiyatrist
+Pedagog
+Öğretim görevlisi
+Profesör
+Akademisyen
+Okul müdürü
+Anaokulu öğretmeni
+Bebek bakıcısı
+Hasta bakıcı
+Ebe
+Paramedik
+Cerrah
+Kardiyolog
+Diyetisyen
+Fizyoterapist
+Optisyen
+Eczacı
+Veteriner
+Ziraat mühendisi
+Bahçıvan
+Arıcı
+Hayvancı
+Kasap
+Balıkçı
+Manav
+Bakkal
+Market çalışanı
+Kasiyer
+Satış temsilcisi
+Pazarlamacı
+Reklamcı
+Emlakçı
+Sigortacı
+Muhasebeci
+Mali müşavir
+Denetçi
+Ekonomist
+Bankacı
+Borsacı
+Avukat
+Hakim|Yargıç
+Savcı
+Noter
+Arabulucu
+Polis
+Bekçi
+Güvenlik görevlisi
+Asker
+Jandarma
+İtfaiyeci
+Cankurtaran
+Dalgıç
+Madenci
+Çiftçi
+Çoban
+Aşçı
+Pastacı
+Fırıncı
+Simitçi
+Kebapçı
+Dönerci
+Garson
+Barista
+Barmen
+Komi
+Bulaşıkçı
+Temizlikçi
+Kapıcı
+Hamal
+Berber
+Kuaför
+Manikürcü
+Makyöz
+Fotoğrafçı
+Kameraman
+Yönetmen
+Senarist
+Oyuncu
+Dublör
+Dansçı
+Koreograf
+Şarkıcı
+Besteci
+Müzisyen
+Davulcu
+Gitarist
+Piyanist
+Kemancı
+DJ
+Ressam
+Heykeltıraş
+Seramikçi
+Hattat
+Yazar
+Şair
+Çevirmen
+Tercüman
+Rehber
+Antrenör
+Futbolcu
+Basketbolcu
+Voleybolcu
+Güreşçi
+Boksör
+Yüzücü
+Atlet
+Hakem
+Jokey
+Pilot
+Astronot

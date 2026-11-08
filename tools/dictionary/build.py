@@ -54,10 +54,16 @@ TURKISH_CHARS = set("çğıöşüÇĞİÖŞÜ")
 
 # Wikidata files feeding each category.
 SOURCES = {
-    "isim": ["isim"], "sehir": ["sehir_tr", "sehir_world"], "hayvan": ["hayvan"], "bitki": ["bitki"],
-    "esya": ["esya"], "ulke": ["ulke"], "meslek": ["meslek"], "unlu": ["unlu"], "marka": ["marka"],
-    "yemek": ["yemek"], "film": ["film"], "oyun": ["oyun"],
+    "isim": ["isim", "isim_turkish"], "sehir": ["sehir_tr", "sehir_world", "sehir_world2"], "hayvan": ["hayvan"], "bitki": ["bitki"],
+    "esya": ["esya"], "ulke": ["ulke", "ulke_constituent"], "meslek": ["meslek", "meslek_used"],
+    "unlu": ["unlu", "unlu_turkey", "unlu_bands"], "marka": ["marka", "marka_turkey"],
+    "yemek": ["yemek", "yemek_turkish"], "film": ["film", "film_series"], "oyun": ["oyun", "oyun_video"],
 }
+# Minimum "n" per source file (isim_turkish: number of Turkish citizens bearing the name).
+MIN_N = {"isim_turkish": 2, "meslek_used": 3}
+# Very famous people (sitelinks) also match by surname alone: "Mozart", "Picasso", "Einstein".
+SURNAME_ALIAS_MIN_SITELINKS = 120
+LANG_RANK = {"tr": 0, "mul": 1, "en": 2}
 COMMON_NOUN = {"hayvan", "bitki", "esya", "meslek", "yemek"}
 
 
@@ -111,25 +117,44 @@ def read_curated(category):
 
 
 def read_wikidata(category):
+    """One entry per Wikidata item: Turkish label preferred, then language-neutral (mul), then English.
+    Other labels and Turkish alternative labels become aliases."""
     groups = OrderedDict()
     for name in SOURCES[category]:
         path = os.path.join(WIKIDATA, f"{name}.tsv")
         if not os.path.exists(path):
             continue
+        cols = ["item", "label", "alt"]
         for line in open(path, encoding="utf-8"):
-            cols = line.rstrip("\n").split("\t")
-            if len(cols) < 2:
+            line = line.rstrip("\n")
+            if line.startswith("#"):
+                cols = line[1:].split("\t")
                 continue
-            qid = cols[0].rsplit("/", 1)[-1]
-            g = groups.setdefault(qid, {"label": cols[1], "alts": []})
-            if len(cols) > 2 and cols[2]:
-                g["alts"].append(cols[2])
+            row = dict(zip(cols, line.split("\t")))
+            if not row.get("label"):
+                continue
+            n = int(row["n"]) if row.get("n", "").isdigit() else None
+            if name in MIN_N and (n or 0) < MIN_N[name]:
+                continue
+            qid = row["item"].rsplit("/", 1)[-1]
+            g = groups.setdefault(qid, {"labels": {}, "alts": [], "n": 0})
+            lang = row.get("lang") or "tr"
+            g["labels"].setdefault(lang, row["label"])
+            if row.get("alt"):
+                g["alts"].append(row["alt"])
+            g["n"] = max(g["n"], n or 0)
     out = []
     for qid, g in groups.items():
-        canonical = clean(g["label"], category)
-        if canonical is None:
+        ordered = [g["labels"][l] for l in sorted(g["labels"], key=lambda l: LANG_RANK.get(l, 9))]
+        cleaned = [c for c in (clean(x, category) for x in ordered) if c]
+        if not cleaned:
             continue
-        alts = [a for a in (clean(x, category) for x in g["alts"]) if a]
+        canonical, alts = cleaned[0], cleaned[1:]
+        alts += [a for a in (clean(x, category) for x in g["alts"]) if a]
+        if category == "unlu" and g["n"] >= SURNAME_ALIAS_MIN_SITELINKS:
+            parts = canonical.split(" ")
+            if len(parts) >= 2 and len(parts[-1]) >= 4 and parts[-1][0].isupper():
+                alts.append(parts[-1])
         out.append((canonical, alts, f"wikidata:{qid}"))
     return out
 

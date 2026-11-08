@@ -123,3 +123,71 @@ Zakkum
 Zambak
 Zencefil
 Zeytin
+# --- v3: trees, crops, produce
+Köknar
+Gürgen
+Kızılağaç
+Dişbudak
+Huş|Huş ağacı
+Akçaağaç
+Kestane
+Ihlamur
+Pirinç|Çeltik
+Çavdar
+Darı
+Kinoa
+Soya
+Susam
+Haşhaş
+Kenevir
+Kolza
+Yerfıstığı|Yer fıstığı
+Antep fıstığı
+Hurma
+Kızılcık
+Ahududu
+Böğürtlen
+Yaban mersini
+Frenk üzümü
+Kuşburnu
+Alıç
+Muşmula
+Trabzon hurması
+Ananas
+Avokado
+Mango
+Papaya
+Hindistan cevizi
+Kivi
+Ayva
+Pancar
+Şalgam
+Turp
+Kereviz
+Pırasa
+Enginar
+Kuşkonmaz
+Semizotu
+Roka
+Tere
+Kara lahana|Karalahana
+Brüksel lahanası
+Börülce
+Barbunya
+Bakla
+Mercimek
+Kenger
+Hardal
+Zencefil
+Zerdeçal
+Tarçın
+Karabiber
+Kimyon
+Sumak
+Pul biber
+Isırgan otu
+Ebegümeci
+Madımak
+Çiriş otu
+Kuzukulağı
+Kazayağı

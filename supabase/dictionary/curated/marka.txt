@@ -61,3 +61,63 @@ Nutella
 Starbucks
 McDonald's|McDonalds|Mcdonalds
 Burger King
+# --- v3: Turkish brands and chains
+A101
+Yemeksepeti
+Fanta
+Sprite
+Lipton
+Doğadan
+Torku
+Dimes
+Tamek
+Tat
+Tukaş
+Banvit
+Şenpiliç
+Bizim Mutfak|Bizim
+Nuh'un Ankara Makarnası|Nuh'un Ankara
+Filiz
+Ülker Çikolatalı Gofret|Çikolatalı Gofret
+Albeni
+Biskrem
+Hanımeller
+Halley
+Laviva
+Metro
+Tadelle
+Kinder
+Haribo
+Bosch
+Siemens
+Philips
+Tefal
+Karaca
+Paşabahçe
+English Home
+Madame Coco
+Koçtaş
+Bauhaus
+Media Markt|MediaMarkt
+Vatan Bilgisayar|Vatan
+Gratis
+Watsons
+Eczacıbaşı
+Ziraat Bankası|Ziraat
+İş Bankası
+Garanti BBVA|Garanti
+Akbank
+Yapı Kredi
+Halkbank
+VakıfBank
+Pegasus
+AJet
+Opet
+Shell
+Petrol Ofisi
+Doğuş Çay
+Uludağ Gazoz
+Beypazarı
+Kızılay
+Sırma
+Saka

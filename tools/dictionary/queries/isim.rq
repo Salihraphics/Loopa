@@ -1,4 +1,5 @@
-SELECT ?item ?label WHERE {
+# Given names (male / female / unisex) with a Turkish or language-neutral ("mul") label
+SELECT ?item ?label ?lang WHERE {
   VALUES ?c { wd:Q12308941 wd:Q11879590 wd:Q3409032 }
-  ?item wdt:P31 ?c . ?item rdfs:label ?label FILTER(lang(?label)="tr")
+  ?item wdt:P31 ?c . ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul"))
 }

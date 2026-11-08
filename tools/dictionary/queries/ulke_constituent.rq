@@ -1,0 +1,5 @@
+# Countries of the United Kingdom and similar constituent countries (İskoçya, Galler …)
+SELECT ?item ?label ?lang WHERE {
+  VALUES ?c { wd:Q3336843 wd:Q1763527 }
+  ?item wdt:P31 ?c . ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul"))
+}

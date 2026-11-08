@@ -1,0 +1,6 @@
+# Public figures of Turkey: citizens of Turkey with a Turkish Wikipedia article and >= 4 sitelinks
+SELECT ?item ?label ?lang ?n WHERE {
+  ?item wdt:P27 wd:Q43; wdt:P31 wd:Q5; wikibase:sitelinks ?n . FILTER(?n >= 4)
+  ?article schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?item .
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
+}

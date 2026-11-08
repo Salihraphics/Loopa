@@ -19,9 +19,16 @@ def query(sparql, retries=6):
         except Exception as e:
             print(f"  retry {i+1}: {e}", file=sys.stderr); time.sleep(15 * (i + 1))
     raise SystemExit("query failed")
+def query_vars(sparql):
+    """Returns (variable names in SELECT order, rows)."""
+    import re
+    head = re.search(r"SELECT\s+(DISTINCT\s+)?(.*?)\s+WHERE", sparql, re.S | re.I).group(2)
+    names = [v.lstrip("?") for v in re.findall(r"\?\w+", head)]
+    return names, query(sparql)
+
 if __name__ == "__main__":
     q = open(sys.argv[2]).read() if sys.argv[1] == "-f" else sys.argv[1]
-    rows = query(q)
-    cols = list(rows[0].keys()) if rows else []
+    names, rows = query_vars(q)
+    print("#" + "\t".join(names))
     for row in rows:
-        print("\t".join(row.get(c, "").replace("\t", " ").replace("\n", " ") for c in ["item", "label", "alt"] if c in row or c == "alt"))
+        print("\t".join(row.get(c, "").replace("\t", " ").replace("\n", " ") for c in names))

@@ -119,6 +119,7 @@ class MultiplayerE2ETest {
         assertTrue("spectator sees game", d.state!!.isSpectator)
         all.filter { it != d }.forEach { assertEquals("one starting joker", 1, it.state!!.match!!.myJokers.size) }
 
+        val roundTotals = mutableMapOf<String, Int>()   // user -> sum of per-round points seen in RESULTS
         for (roundNo in 1..3) {
             val r = a.await("round $roundNo") { it.round?.number == roundNo && it.round?.phase == RoundPhase.ANSWERING }.round!!
             val letter = r.letter
@@ -189,6 +190,8 @@ class MultiplayerE2ETest {
             a.s.skipReveal()     // host fast-forwards reveal
             a.await("results", 5_000) { it.round?.id == r.id && it.round!!.phase in setOf(RoundPhase.RESULTS, RoundPhase.FINISHED) || it.round?.id != r.id || !it.room.inGame }
             val rr = a.state!!.round!!
+            assertEquals("round $roundNo results reached", r.id, rr.id)
+            rr.players.forEach { roundTotals[it.userId] = (roundTotals[it.userId] ?: 0) + (it.points ?: 0) }
             if (rr.id == r.id) {
                 val winners = rr.players.filter { it.isRoundWinner }
                 log("round $roundNo winners=${winners.map { w -> all.first { it.id == w.userId }.name }} points=${rr.players.map { it.points }}")
@@ -217,6 +220,18 @@ class MultiplayerE2ETest {
         assertTrue("profile XP updated", pa.xp >= 20 && pa.stats!!.matchesPlayed == 1)
         assertEquals("history entry", 1, pa.history.size)
         log("results: ${results.players.map { "${it.username}#${it.finalRank}:${it.totalPoints}p/+${it.xpEarned}xp" }}")
+
+        // --- consistency of the final results
+        results.players.forEach { p ->
+            assertEquals("${p.username}: total = sum of round points", roundTotals[p.userId] ?: 0, p.totalPoints)
+            val rankXp = when (p.finalRank) { 1 -> 100; 2 -> 50; 3 -> 30; else -> 0 }
+            assertEquals("${p.username}: XP = 20 + rank + 30 x round wins", 20 + rankXp + 30 * p.roundWins, p.xpEarned)
+        }
+        val byPoints = results.players.sortedWith(compareByDescending<com.loopa.core.model.MatchResultPlayer> { it.totalPoints }.thenByDescending { it.roundWins })
+        assertEquals("ranks follow points", byPoints.map { it.userId }, results.players.sortedBy { it.finalRank }.map { it.userId })
+        assertEquals("every client sees the same results", results, b.rooms.matchResults(matchId))
+        assertEquals("every client sees the same results", results, c.rooms.matchResults(matchId))
+        log("results consistent: totals match per-round points, XP matches the reward table, identical on all clients")
 
         // --- host disconnect -> controlled host transfer
         a.session!!.stop()

@@ -1,0 +1,6 @@
+# Occupations recorded (P106) for >= 3 people who have a Turkish Wikipedia article; Turkish label
+SELECT ?item ?label ?lang (COUNT(DISTINCT ?p) AS ?n) WHERE {
+  ?a schema:isPartOf <https://tr.wikipedia.org/>; schema:about ?p .
+  ?p wdt:P106 ?item .
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang = "tr")
+} GROUP BY ?item ?label ?lang

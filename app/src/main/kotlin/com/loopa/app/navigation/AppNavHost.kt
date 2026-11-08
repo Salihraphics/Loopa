@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Face
 import androidx.compose.material.icons.rounded.Home
@@ -117,22 +120,26 @@ fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Un
 }
 
 @Composable
-private fun MainTabs(
+internal fun MainTabs(
     versionName: String,
     onRoomReady: (String) -> Unit,
     onPublicRooms: () -> Unit,
     onShop: () -> Unit,
     onLoggedOut: () -> Unit,
     onAccountSwitched: () -> Unit,
+    initialTab: Tab = Tab.HOME,
 ) {
-    var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
+    var tab by rememberSaveable { mutableStateOf(initialTab) }
+    // Edge-to-edge: the window is not resized for the keyboard, so the content handles IME insets.
+    val imeVisible = androidx.compose.foundation.layout.WindowInsets.isImeVisible
     var focusJoin by rememberSaveable { mutableStateOf(false) }
     val holder = rememberSaveableStateHolder()
     val feedback = LocalFeedback.current
     Scaffold(
         containerColor = Loopa.colors.background,
         bottomBar = {
-            NavigationBar(containerColor = Loopa.colors.card, tonalElevation = androidx.compose.ui.unit.Dp(0f)) {
+            // Hidden while typing: more room above the keyboard on small phones.
+            if (!imeVisible) NavigationBar(containerColor = Loopa.colors.card, tonalElevation = androidx.compose.ui.unit.Dp(0f)) {
                 Tab.entries.forEach { t ->
                     NavigationBarItem(
                         selected = tab == t,
@@ -151,7 +158,12 @@ private fun MainTabs(
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).statusBarsPadding()) {
+        Column(
+            Modifier.fillMaxSize().padding(padding)
+                .consumeWindowInsets(padding)   // bottom bar / navigation bar already accounted for
+                .statusBarsPadding()
+                .imePadding(),                  // content (and its scroll area) ends above the keyboard
+        ) {
             AnimatedContent(tab, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "tabs") { t ->
                 holder.SaveableStateProvider(t.name) {
                     when (t) {

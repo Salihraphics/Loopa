@@ -1,0 +1,6 @@
+# Any human settlement with >= 150,000 inhabitants (covers municipality classes like Sevilla's)
+SELECT ?item ?label ?lang WHERE {
+  ?item wdt:P1082 ?pop . FILTER(?pop >= 150000)
+  ?item wdt:P31/wdt:P279* wd:Q486972 .
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul"))
+}

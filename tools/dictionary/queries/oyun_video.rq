@@ -1,0 +1,5 @@
+# Widely known video games (>= 20 sitelinks)
+SELECT ?item ?label ?lang ?n WHERE {
+  ?item wdt:P31 wd:Q7889; wikibase:sitelinks ?n . FILTER(?n >= 20)
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
+}

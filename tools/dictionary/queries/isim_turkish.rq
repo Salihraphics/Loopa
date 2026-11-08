@@ -1,0 +1,5 @@
+# Given names actually borne by citizens of Turkey (P27 = Turkey, P735 = given name); n = number of people
+SELECT ?item ?label ?lang (COUNT(DISTINCT ?p) AS ?n) WHERE {
+  ?p wdt:P27 wd:Q43; wdt:P735 ?item .
+  ?item rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("tr", "mul", "en"))
+} GROUP BY ?item ?label ?lang
