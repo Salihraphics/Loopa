@@ -13,6 +13,18 @@ Last updated: 2026-11-07 (session 1)
 - Anonymous sign-ins were still off on the project; switched on (`external_anonymous_users_enabled`).
 - Live 4-client E2E passed against the hosted project with the publishable key; test data was deleted afterwards.
 
+## Next: game modes, LOOPA Plus, rotation, admin (stage 2, 2026-11-08)
+
+Design and decisions: [PLUS.md](PLUS.md).
+
+| Item | Status | Verified by |
+|---|---|---|
+| Migrations `20261110000001..3` (plans/entitlements/admin, promo codes, modes/rotation/gating) | ✅ prepared, **local only, not applied to hosted** | SQL suites on plain PG, local Supabase (Docker) HTTP E2E 26/26, unchanged 0.3.0 Multiplayer E2E |
+| App UI (Plus status, promo field, mode picker, rotation screen) | ❌ not started (stage 3) | — |
+| Common engine and the 9 new modes | ❌ not started (stage 4+); `start_match` refuses them with `MODE_NOT_IMPLEMENTED` | — |
+| Payment | ❌ out of scope; `entitlements.source = 'store'` reserved | — |
+| Real Google account claiming admin / redeeming LOPPAWEEK | ❌ not tested (Google link simulated as GoTrue stores it) | — |
+
 ## Version 0.3 (2026-11-09)
 
 | Item | Status | Verified by |

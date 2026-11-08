@@ -14,6 +14,9 @@ create table if not exists auth.users (id uuid primary key, created_at timestamp
     email text, is_anonymous boolean not null default true);
 create table if not exists auth.identities (id text primary key, user_id uuid references auth.users(id) on delete cascade,
     provider text not null, created_at timestamptz default now());
+-- Columns that exist in real Supabase Auth and are read by the plan/admin functions.
+alter table auth.users add column if not exists email_confirmed_at timestamptz;
+alter table auth.identities add column if not exists identity_data jsonb not null default '{}'::jsonb;
 create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
