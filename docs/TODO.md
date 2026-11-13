@@ -13,6 +13,12 @@ Last updated: 2026-11-15
 - Anonymous sign-ins were still off on the project; switched on (`external_anonymous_users_enabled`).
 - Live 4-client E2E passed against the hosted project with the publishable key; test data was deleted afterwards.
 
+## Hosted project changes (2026-11-13)
+- Stage-2 and 0.5.0 migrations (`20261110000001`–`03`, `20261115000001`–`03`) applied through the Management API and
+  recorded in `schema_migrations`; `modes_test.sql` passed on hosted (rolled back, no residue).
+- Weekly rotation started: `rotation_settings.anchor_week = 2026-11-09` (week 1 = launch week), logged in
+  `admin_audit_log` as a console action. LOPPAWEEK still inactive, admin allowlist empty.
+
 ## Version 0.5.0 — all 10 games playable (2026-11-15)
 
 Details: [GAMES.md](GAMES.md).
