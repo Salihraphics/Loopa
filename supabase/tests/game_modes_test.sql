@@ -68,7 +68,8 @@ begin
     v := public.get_game_catalog();
     perform pg_temp.check(not (v#>>'{rotation,active}')::boolean and v#>'{rotation,free_modes}' = '[]'::jsonb, 'rotation inactive');
     perform pg_temp.check((select (x#>>'{access,allowed}')::boolean from jsonb_array_elements(v->'modes') x where x->>'id' = 'isim_sehir'), 'free host may host İsim Şehir');
-    perform pg_temp.check((select x#>>'{access,reason}' from jsonb_array_elements(v->'modes') x where x->>'id' = 'gizli_kelime') = 'MODE_NOT_AVAILABLE', 'coming soon locked');
+    perform pg_temp.check((select x#>>'{access,reason}' from jsonb_array_elements(v->'modes') x where x->>'id' = 'gizli_kelime') = 'PLUS_REQUIRED', 'rotation not started: other games need Plus');
+    -- 'coming_soon' still locks a game for everybody but admins (status set by an admin below).
 
     -- ---------------- week arithmetic (Monday 00:00 Europe/Istanbul) ----------------
     perform pg_temp.act(AD);
@@ -105,6 +106,7 @@ begin
     perform pg_temp.check(public._mode_access(FH, 'gizli_kelime')->>'reason' = 'PLUS_REQUIRED', 'free host: other mode needs Plus');
     perform pg_temp.check(public._mode_access(FH, 'isim_sehir')->>'unlocked_by' = 'always_free', 'İsim Şehir always free');
     perform pg_temp.check(public._mode_access(PH, 'gizli_kelime')->>'unlocked_by' = 'plus', 'plus host: everything');
+    perform pg_temp.act(AD); perform public.admin_set_mode_status('anlat_bakalim', 'coming_soon'); perform pg_temp.act(FH);
     perform pg_temp.check(public._mode_access(PH, 'anlat_bakalim')->>'reason' = 'MODE_NOT_AVAILABLE', 'plus host: coming soon still locked');
     perform pg_temp.check(public._mode_access(AD, 'anlat_bakalim')->>'unlocked_by' = 'admin', 'admin may select coming soon (testing)');
     -- Next week the rotation moves on: at week 2 the free host gets gizli_kelime, loses ciz_tahmin.
@@ -138,10 +140,10 @@ begin
     perform pg_temp.check((select x->>'game_mode' from jsonb_array_elements(public.list_public_rooms()) x
                             where (x->>'id')::uuid = room) = 'ciz_tahmin', 'public list shows the mode');
     perform public.update_room_settings(room, s, false);
-    -- Not implemented yet => cannot start, and nothing is created.
+    -- Çiz ve Tahmin Et needs 3 players => cannot start with 2, and nothing is created.
     perform pg_temp.act(FP); perform public.set_ready(room, true);
     perform pg_temp.act(FH);
-    perform pg_temp.expect_error(format($q$select public.start_match(%L)$q$, room), 'LOOPA:MODE_NOT_IMPLEMENTED');
+    perform pg_temp.expect_error(format($q$select public.start_match(%L)$q$, room), 'LOOPA:NOT_ENOUGH_PLAYERS');
     perform pg_temp.check(not exists (select 1 from public.matches where room_id = room), 'no match created');
     perform pg_temp.check((select status from public.rooms where id = room) = 'lobby', 'room still in lobby');
 
@@ -159,14 +161,14 @@ begin
     perform pg_temp.check((select count(*) from public.rounds where match_id = m) = 1, 'first round started');
     perform public.close_room(room);
 
-    -- Plus host room: gizli_kelime selectable; start passes the plan check and stops at the engine.
+    -- Plus host room: gizli_kelime selectable; start passes the plan check and stops at the player minimum (3).
     perform pg_temp.act(PH);
     v := public.create_room(false); room := (v->>'id')::uuid; code := v->>'code';
     select settings into s from public.rooms where id = room;
     s := public.update_room_settings(room, s || '{"game_mode":"gizli_kelime"}', false);
     perform pg_temp.act(FP); perform public.join_room(code); perform public.set_ready(room, true);
     perform pg_temp.act(PH);
-    perform pg_temp.expect_error(format($q$select public.start_match(%L)$q$, room), 'LOOPA:MODE_NOT_IMPLEMENTED');
+    perform pg_temp.expect_error(format($q$select public.start_match(%L)$q$, room), 'LOOPA:NOT_ENOUGH_PLAYERS');
     -- Host transferred to a Free player: they keep the room but cannot start the locked mode
     -- and may switch it back to an unlocked one.
     perform public.transfer_host(room, FP);
