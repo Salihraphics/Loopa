@@ -19,6 +19,8 @@ class DataContainer(context: Context, val config: SupabaseConfig = SupabaseConfi
     val auth = AuthRepository(backend)
     val profiles = ProfileRepository(backend)
     val rooms = RoomRepository(backend)
+    val membership = MembershipRepository(backend)
+    val catalog = GameCatalogRepository(backend)
     val sessions = RoomSessionManager(backend, clock)
 }
 

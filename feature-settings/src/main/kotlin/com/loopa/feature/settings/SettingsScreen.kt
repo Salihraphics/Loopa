@@ -105,11 +105,11 @@ class SettingsViewModel(private val c: DataContainer) : ViewModel() {
         when (result) {
             is com.loopa.core.data.AuthCallbackResult.Linked -> {
                 _message.value = "Hesabın Google'a bağlandı. Seviyen, XP'n, avatarın, kozmetiklerin ve maç geçmişin korundu."
-                refreshAccount(); viewModelScope.launch { runCatching { c.profiles.refresh() } }
+                refreshAccount(); viewModelScope.launch { runCatching { c.profiles.refresh() }; c.membership.refresh(); c.catalog.refresh() }
             }
             is com.loopa.core.data.AuthCallbackResult.SignedIn ->
                 if (result.switchedFrom != null) viewModelScope.launch {
-                    c.sessions.close(); c.profiles.clear(); onAccountSwitched()
+                    c.sessions.close(); c.profiles.clear(); c.membership.clear(); c.catalog.clear(); onAccountSwitched()
                 } else refreshAccount()
             is com.loopa.core.data.AuthCallbackResult.Failed ->
                 if (result.error == com.loopa.core.game.LoopaError.IDENTITY_ALREADY_LINKED) _conflict.value = true
@@ -125,6 +125,7 @@ class SettingsViewModel(private val c: DataContainer) : ViewModel() {
         c.sessions.close()
         runCatching { c.auth.signOut() }
         c.profiles.clear()
+        c.membership.clear(); c.catalog.clear()
         c.settings.setOnboardingDone(false)
         done()
     }
@@ -134,8 +135,9 @@ class SettingsViewModel(private val c: DataContainer) : ViewModel() {
 private val languages = listOf("tr" to "Türkçe", "en" to "English (yakında)")
 
 @Composable
-fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitched: () -> Unit = onLoggedOut) {
+fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitched: () -> Unit = onLoggedOut, onOpenPlus: () -> Unit = {}) {
     val vm = containerViewModel { SettingsViewModel(it) }
+    val membershipVm = containerViewModel { MembershipViewModel(it) }
     val s by vm.settings.collectAsStateWithLifecycle()
     val profile by vm.profile.collectAsStateWithLifecycle()
     val account by vm.account.collectAsStateWithLifecycle()
@@ -235,6 +237,9 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitch
                 LoopaButton("Çıkış yap", { confirmLogout = true }, icon = Icons.AutoMirrored.Rounded.Logout, color = LoopaPalette.Peach, compact = true)
             }
 
+            SectionTitle("Üyelik")
+            MembershipSettings(onOpenPlus, membershipVm)
+
             SectionTitle("Gizlilik")
             LoopaCard {
                 Row(verticalAlignment = Alignment.Top) {
@@ -262,7 +267,7 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitch
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Arkadaşlarınla oynayabileceğin çok oyunculu parti oyunu. İlk mod: İsim Şehir. Yazı tipleri: Baloo 2 ve Nunito (SIL Open Font License).",
+                    "Arkadaşlarınla oynayabileceğin çok oyunculu parti oyunu. Şu an oynanabilen oyun: İsim Şehir; diğer 9 oyun yolda. Yazı tipleri: Baloo 2 ve Nunito (SIL Open Font License).",
                     style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
                 )
             }

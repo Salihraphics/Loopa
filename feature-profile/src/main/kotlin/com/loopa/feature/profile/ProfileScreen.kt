@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -73,7 +74,10 @@ class ProfileViewModel(private val c: DataContainer) : ViewModel() {
     private val _catalogSize = MutableStateFlow(0)
     val catalogSize: StateFlow<Int> = _catalogSize.asStateFlow()
 
+    val membership: StateFlow<com.loopa.core.data.Remote<com.loopa.core.model.Membership>> = c.membership.state
+
     fun refresh() = viewModelScope.launch {
+        launch { c.membership.refresh() }
         runCatching { c.profiles.refresh() }
         runCatching { _catalogSize.value = c.profiles.catalog().size }
     }
@@ -91,8 +95,9 @@ private val reasonText = mapOf(
 )
 
 @Composable
-fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit) {
+fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: () -> Unit = {}) {
     val vm = containerViewModel { ProfileViewModel(it) }
+    val membership by vm.membership.collectAsStateWithLifecycle()
     val profile by vm.profile.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
     val catalogSize by vm.catalogSize.collectAsStateWithLifecycle()
@@ -118,6 +123,8 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit) {
                         IconButton(onClick = { editing = true }) { Icon(Icons.Rounded.Edit, "Adı düzenle", tint = LoopaPalette.Ink) }
                     }
                     Text("Seviye ${p?.level ?: 1} · ${p?.xp ?: 0} toplam XP", style = MaterialTheme.typography.bodyMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
+                    Spacer(Modifier.height(8.dp))
+                    MembershipLine(membership, onOpenPlus)
                     Spacer(Modifier.height(10.dp))
                     XpBar(p?.xp ?: 0)
                     Spacer(Modifier.height(12.dp))
@@ -222,5 +229,30 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit) {
             confirmButton = { TextButton(onClick = { vm.rename(name.trim()) { editing = false } }, enabled = name.trim().length >= 3) { Text("Kaydet") } },
             dismissButton = { TextButton(onClick = { editing = false }) { Text("Vazgeç") } },
         )
+    }
+}
+
+/** Plan badge and one line from the server's answer. Unknown => no claim. */
+@Composable
+private fun MembershipLine(state: com.loopa.core.data.Remote<com.loopa.core.model.Membership>, onOpenPlus: () -> Unit) {
+    val m = state.data
+    val text = when {
+        m == null && state.unsupported -> null
+        m == null && state.error != null -> "Üyelik bilgisi alınamadı"
+        m == null -> null
+        m.tier == com.loopa.core.model.PlanTier.PLUS && !m.plusUnlimited ->
+            com.loopa.core.game.PlusFormat.date(m.plusUntil)?.let { "Bitiş: $it" }
+        else -> null
+    }
+    if (m == null && state.unsupported) return
+    Row(
+        Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50)).clickable(onClick = onOpenPlus).padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        com.loopa.core.ui.components.PlanBadge(m?.tier)
+        if (text != null) {
+            Spacer(Modifier.width(8.dp))
+            Text(text, style = MaterialTheme.typography.labelMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
+        }
     }
 }

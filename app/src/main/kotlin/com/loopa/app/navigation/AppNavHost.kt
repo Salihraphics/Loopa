@@ -48,10 +48,12 @@ import com.loopa.core.ui.theme.Loopa
 import com.loopa.core.ui.theme.LoopaPalette
 import com.loopa.feature.avatar.AvatarEditorScreen
 import com.loopa.feature.home.HomeScreen
+import com.loopa.feature.lobby.GamesScreen
 import com.loopa.feature.lobby.PlayScreen
 import com.loopa.feature.lobby.PublicRoomsScreen
 import com.loopa.feature.profile.ProfileScreen
 import com.loopa.feature.settings.SettingsScreen
+import com.loopa.feature.shop.PlusScreen
 import com.loopa.feature.shop.ShopScreen
 import kotlinx.serialization.Serializable
 
@@ -59,6 +61,8 @@ import kotlinx.serialization.Serializable
 @Serializable data class RoomRoute(val roomId: String)
 @Serializable data object PublicRoomsRoute
 @Serializable data object ShopRoute
+@Serializable data object GamesRoute
+@Serializable data object PlusRoute
 
 enum class Tab(val title: String, val icon: ImageVector) {
     HOME("Ana Sayfa", Icons.Rounded.Home),
@@ -75,6 +79,9 @@ fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Un
     LaunchedEffect(resumeRoomId) {
         if (resumeRoomId != null) nav.navigate(RoomRoute(resumeRoomId)) { launchSingleTop = true }
     }
+    val container = com.loopa.core.data.rememberDataContainer()
+    /** Tab requested from a screen outside the tabs (e.g. Plus → promo code in Settings). */
+    var requestedTab by rememberSaveable { mutableStateOf<Tab?>(null) }
     fun openRoom(id: String) = nav.navigate(RoomRoute(id)) {
         launchSingleTop = true
         popUpTo(MainRoute)
@@ -91,6 +98,8 @@ fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Un
     ) {
         composable<MainRoute> {
             LaunchedEffect(Unit) { feedback.setMusicPlaying(true) }
+            // Plan and catalogue come from the server; failures are kept in the repositories' state.
+            LaunchedEffect(Unit) { container.membership.refresh(); container.catalog.refresh() }
             MainTabs(
                 versionName = versionName,
                 onRoomReady = ::openRoom,
@@ -98,6 +107,10 @@ fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Un
                 onShop = { nav.navigate(ShopRoute) },
                 onLoggedOut = onLoggedOut,
                 onAccountSwitched = onAccountSwitched,
+                onGames = { nav.navigate(GamesRoute) { launchSingleTop = true } },
+                onPlus = { nav.navigate(PlusRoute) { launchSingleTop = true } },
+                requestedTab = requestedTab,
+                onTabRequestHandled = { requestedTab = null },
             )
         }
         composable<RoomRoute> { entry ->
@@ -111,6 +124,19 @@ fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Un
         composable<PublicRoomsRoute> {
             Box(Modifier.fillMaxSize().statusBarsPadding()) {
                 PublicRoomsScreen(onBack = { nav.popBackStack() }, onRoomReady = ::openRoom)
+            }
+        }
+        composable<GamesRoute> {
+            Box(Modifier.fillMaxSize().statusBarsPadding()) {
+                GamesScreen(onBack = { nav.popBackStack() }, onRoomReady = ::openRoom, onOpenPlus = { nav.navigate(PlusRoute) { launchSingleTop = true } })
+            }
+        }
+        composable<PlusRoute> {
+            Box(Modifier.fillMaxSize().statusBarsPadding()) {
+                PlusScreen(onBack = { nav.popBackStack() }, onOpenPromo = {
+                    requestedTab = Tab.SETTINGS
+                    if (!nav.popBackStack(MainRoute, inclusive = false)) nav.navigate(MainRoute)
+                })
             }
         }
         composable<ShopRoute> {
@@ -128,8 +154,13 @@ internal fun MainTabs(
     onLoggedOut: () -> Unit,
     onAccountSwitched: () -> Unit,
     initialTab: Tab = Tab.HOME,
+    onGames: () -> Unit = {},
+    onPlus: () -> Unit = {},
+    requestedTab: Tab? = null,
+    onTabRequestHandled: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
+    LaunchedEffect(requestedTab) { if (requestedTab != null) { tab = requestedTab; onTabRequestHandled() } }
     // Edge-to-edge: the window is not resized for the keyboard, so the content handles IME insets.
     val imeVisible = androidx.compose.foundation.layout.WindowInsets.isImeVisible
     var focusJoin by rememberSaveable { mutableStateOf(false) }
@@ -174,10 +205,10 @@ internal fun MainTabs(
                             onOpenProfile = { tab = Tab.PROFILE },
                             onOpenAvatar = { tab = Tab.AVATAR },
                         )
-                        Tab.PLAY -> PlayScreen(onRoomReady = onRoomReady, onPublicRooms = onPublicRooms, focusJoin = focusJoin)
-                        Tab.PROFILE -> ProfileScreen(onEditAvatar = { tab = Tab.AVATAR }, onOpenShop = onShop)
+                        Tab.PLAY -> PlayScreen(onRoomReady = onRoomReady, onPublicRooms = onPublicRooms, focusJoin = focusJoin, onOpenGames = onGames)
+                        Tab.PROFILE -> ProfileScreen(onEditAvatar = { tab = Tab.AVATAR }, onOpenShop = onShop, onOpenPlus = onPlus)
                         Tab.AVATAR -> AvatarEditorScreen(onOpenShop = onShop)
-                        Tab.SETTINGS -> SettingsScreen(versionName = versionName, onLoggedOut = onLoggedOut, onAccountSwitched = onAccountSwitched)
+                        Tab.SETTINGS -> SettingsScreen(versionName = versionName, onLoggedOut = onLoggedOut, onAccountSwitched = onAccountSwitched, onOpenPlus = onPlus)
                     }
                 }
             }

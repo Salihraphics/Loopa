@@ -23,4 +23,12 @@ class ErrorMappingTest {
     @Test fun realTransportErrorsAreNetwork() {
         assertEquals(LoopaError.NETWORK, LoopaBackend.classify(IOException("Unable to resolve host")))
     }
+
+    @Test fun missingRpcMeansOlderServer() {
+        // Body PostgREST returns when a migration is not applied yet (seen on a local stack).
+        val body = "{\"code\":\"PGRST202\",\"message\":\"Could not find the function public.get_my_plan without parameters in the schema cache\"}"
+        assertEquals(LoopaError.SERVER_OUTDATED, LoopaBackend.classify(RuntimeException(body)))
+        // A real LOOPA code still wins.
+        assertEquals(LoopaError.PROMO_INVALID, LoopaBackend.classify(RuntimeException("LOOPA:PROMO_INVALID")))
+    }
 }

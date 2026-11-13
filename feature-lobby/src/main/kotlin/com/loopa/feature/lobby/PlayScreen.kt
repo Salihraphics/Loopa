@@ -129,7 +129,7 @@ class PlayViewModel(private val c: DataContainer) : ViewModel() {
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun PlayScreen(onRoomReady: (String) -> Unit, onPublicRooms: () -> Unit, focusJoin: Boolean = false) {
+fun PlayScreen(onRoomReady: (String) -> Unit, onPublicRooms: () -> Unit, focusJoin: Boolean = false, onOpenGames: () -> Unit = {}) {
     val vm = containerViewModel { PlayViewModel(it) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
@@ -152,11 +152,26 @@ fun PlayScreen(onRoomReady: (String) -> Unit, onPublicRooms: () -> Unit, focusJo
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("Oyna", style = MaterialTheme.typography.displaySmall, color = Loopa.colors.text)
-            Text("İsim Şehir · Klasik mod", style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft)
+            Text("10 oyun · İsim Şehir her zaman ücretsiz", style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft)
             ErrorBanner(ui.error, onDismiss = vm::dismissError)
+
+            LoopaCard(color = LoopaPalette.Lavender.copy(alpha = 0.6f), onClick = onOpenGames, modifier = Modifier.testTag("open_games")) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(horizontalArrangement = Arrangement.spacedBy((-14).dp)) {
+                        listOf("isim_sehir", "ciz_tahmin", "bilgi_arenasi").forEach { com.loopa.core.ui.components.GameIcon(it, size = 40.dp) }
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Oyunlar", style = MaterialTheme.typography.headlineSmall, color = LoopaPalette.Ink)
+                        Text("10 oyunu, haftanın ücretsiz oyunlarını ve yakında gelecekleri gör.", style = MaterialTheme.typography.bodySmall, color = LoopaPalette.Ink.copy(alpha = 0.75f))
+                    }
+                }
+            }
 
             LoopaCard(color = LoopaPalette.Mint.copy(alpha = 0.7f)) {
                 Text("Oda Kur", style = MaterialTheme.typography.headlineSmall, color = LoopaPalette.Ink)
+                Spacer(Modifier.height(6.dp))
+                Pill("Oyun: İsim Şehir", LoopaPalette.Butter)
                 Spacer(Modifier.height(6.dp))
                 Text("Sen oda sahibi olursun: süreyi, tur sayısını ve kategorileri sen belirlersin.", style = MaterialTheme.typography.bodyMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
                 Spacer(Modifier.height(12.dp))
@@ -253,6 +268,7 @@ fun PublicRoomsScreen(onBack: () -> Unit, onRoomReady: (String) -> Unit) {
                                     Text("${room.hostName} odası", style = MaterialTheme.typography.titleMedium, color = Loopa.colors.text)
                                     Spacer(Modifier.height(4.dp))
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Pill(com.loopa.core.game.GameModes.name(room.gameMode), com.loopa.core.ui.components.gameVisual(room.gameMode).color)
                                         Pill("${room.roundSeconds} sn", LoopaPalette.Butter)
                                         Pill("${room.rounds} tur", LoopaPalette.Peach)
                                         Pill("${room.categories} kategori", LoopaPalette.Mint)

@@ -1,6 +1,6 @@
 # LOOPA — status and TODO
 
-Last updated: 2026-11-07 (session 1)
+Last updated: 2026-11-13
 
 ## Hosted project (zxtrxbgphutuiizznakd, "Loopa", eu-west-2)
 
@@ -13,6 +13,18 @@ Last updated: 2026-11-07 (session 1)
 - Anonymous sign-ins were still off on the project; switched on (`external_anonymous_users_enabled`).
 - Live 4-client E2E passed against the hosted project with the publishable key; test data was deleted afterwards.
 
+## Version 0.4.0 — membership and 10-game UI (stage 3, 2026-11-13)
+
+| Item | Status | Verified by |
+|---|---|---|
+| Membership (Free / LOOPA Plus / Admin) read from `get_my_plan`; badge on Profile, card in Settings, never shown as "Ücretsiz" while unknown | ✅ | `PlusUiTest`, `PlusRepositoriesE2ETest` (local Supabase) |
+| Game list with all 10 games, lock reasons, this/next week preview, "Yakında" for unfinished games, nothing claimed while the rotation is off | ✅ | `GameCardsTest` (15), `PlusUiTest` |
+| Promo code field (LOPPAWEEK: 7 days, Google-linked only, once per account), server answer shown as is | ✅ against local Supabase | `PlusRepositoriesE2ETest` (wrong spellings, guest refused, success, second use) |
+| Plus info screen (6 benefits marked "Yakında", no tournaments, purchase button disabled) | ✅ | `PlusUiTest` |
+| Lobby: game shown; a host whose game cannot be started is told why (re-checked after host changes) | ✅ (code); only İsim Şehir rooms exist today | compile, `MultiplayerE2ETest` |
+| Older server (hosted without stage-2 migrations): app works as 0.3.0, Plus parts say "not active on this server" | ✅ | `ErrorMappingTest` (PGRST202), `PlusUiTest.olderServerWithoutPlus` |
+| On a phone / against hosted with the migrations / with a real Google account | ❌ not tested | — |
+
 ## Next: game modes, LOOPA Plus, rotation, admin (stage 2, 2026-11-08)
 
 Design and decisions: [PLUS.md](PLUS.md).
@@ -20,7 +32,7 @@ Design and decisions: [PLUS.md](PLUS.md).
 | Item | Status | Verified by |
 |---|---|---|
 | Migrations `20261110000001..3` (plans/entitlements/admin, promo codes, modes/rotation/gating) | ✅ prepared, **local only, not applied to hosted** | SQL suites on plain PG, local Supabase (Docker) HTTP E2E 26/26, unchanged 0.3.0 Multiplayer E2E |
-| App UI (Plus status, promo field, mode picker, rotation screen) | ❌ not started (stage 3) | — |
+| App UI (Plus status, promo field, mode picker, rotation screen) | ✅ in 0.4.0 (see above) | — |
 | Common engine and the 9 new modes | ❌ not started (stage 4+); `start_match` refuses them with `MODE_NOT_IMPLEMENTED` | — |
 | Payment | ❌ out of scope; `entitlements.source = 'store'` reserved | — |
 | Real Google account claiming admin / redeeming LOPPAWEEK | ❌ not tested (Google link simulated as GoTrue stores it) | — |

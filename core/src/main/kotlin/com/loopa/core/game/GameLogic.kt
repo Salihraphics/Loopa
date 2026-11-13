@@ -231,6 +231,16 @@ enum class LoopaError(val message: String) {
     AUTH_CANCELLED("Google girişi iptal edildi."),
     OAUTH_FAILED("Google girişi tamamlanamadı. Lütfen tekrar dene."),
     NOT_SIGNED_IN("Önce oturum açmalısın."),
+    PLUS_REQUIRED("Bu oyunu başlatmak için oda sahibinin LOOPA Plus üyesi olması gerekir. İsim Şehir ya da bu hafta ücretsiz bir oyun seçebilirsin."),
+    MODE_NOT_AVAILABLE("Bu oyun şu anda kullanılamıyor."),
+    MODE_NOT_FOUND("Oyun bulunamadı."),
+    MODE_NOT_IMPLEMENTED("Bu oyun henüz hazır değil. Yakında!"),
+    PROMO_INVALID("Kod geçersiz ya da şu anda kullanılamıyor. Yazımı kontrol et."),
+    PROMO_EXHAUSTED("Bu kodun kullanım hakkı doldu."),
+    GOOGLE_LINK_REQUIRED("Promosyon kodunu kullanmak için önce hesabını Google'a bağlamalısın."),
+    PLUS_ALREADY_UNLIMITED("Süresiz LOOPA Plus üyeliğin var; koda gerek yok."),
+    NOT_ADMIN("Bu işlem için yetkin yok."),
+    SERVER_OUTDATED("Sunucu bu özelliği henüz desteklemiyor."),
     NETWORK("Bağlantı hatası. İnternetini kontrol et."),
     NOT_CONFIGURED("Sunucu yapılandırılmamış."),
     UNKNOWN("Beklenmeyen bir hata oluştu.");
@@ -259,6 +269,10 @@ enum class LoopaError(val message: String) {
             message.contains("over_request_rate_limit") || message.contains("rate limit", ignoreCase = true) -> AUTH_RATE_LIMITED
             else -> null
         }
+
+        /** PostgREST answers PGRST202 when an RPC does not exist (server without the newer migrations). */
+        fun isMissingFunction(message: String?): Boolean =
+            message != null && (message.contains("PGRST202") || message.contains("Could not find the function", ignoreCase = true))
 
         fun fromMessage(message: String?): LoopaError? {
             val code = message?.let { pattern.find(it)?.groupValues?.get(1) } ?: return null

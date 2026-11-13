@@ -49,6 +49,8 @@ data class Room(
 
 @Serializable
 data class RoomSettings(
+    /** Absent on rooms created before game modes existed: those are İsim Şehir. */
+    @SerialName("game_mode") val gameMode: String = "isim_sehir",
     @SerialName("round_seconds") val roundSeconds: Int = 60,
     val rounds: Int = 5,
     @SerialName("max_players") val maxPlayers: Int = 10,
@@ -208,6 +210,7 @@ data class PublicRoom(
     @SerialName("round_seconds") val roundSeconds: Int,
     val rounds: Int,
     val categories: Int,
+    @SerialName("game_mode") val gameMode: String = "isim_sehir",
 )
 
 @Serializable

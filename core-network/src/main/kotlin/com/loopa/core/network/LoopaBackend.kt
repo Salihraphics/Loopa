@@ -119,6 +119,7 @@ class LoopaBackend(
             val text = chain.flatMap { t -> listOfNotNull(t.message, (t as? RestException)?.error, (t as? RestException)?.description) }
             text.firstNotNullOfOrNull { LoopaError.fromAuthMessage(it) }?.let { return it }
             text.firstNotNullOfOrNull { m -> LoopaError.fromMessage(m)?.takeIf { it != LoopaError.UNKNOWN } }?.let { return it }
+            if (text.any { LoopaError.isMissingFunction(it) }) return LoopaError.SERVER_OUTDATED
             if (chain.any { it is RestException }) return LoopaError.UNKNOWN
             if (chain.any { it is HttpRequestException || it is IOException }) return LoopaError.NETWORK
             return LoopaError.UNKNOWN

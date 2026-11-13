@@ -15,6 +15,8 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
                 it.systemProperty("loopa.e2e.url", System.getenv("LOOPA_E2E_URL") ?: "")
                 it.systemProperty("loopa.e2e.key", System.getenv("LOOPA_E2E_ANON_KEY") ?: "")
                 it.systemProperty("loopa.e2e.oauth", System.getenv("LOOPA_E2E_OAUTH") ?: "")
+                // Local stacks only: psql connection used by E2E tests for console steps (e.g. activating a promo code).
+                it.systemProperty("loopa.e2e.db", System.getenv("LOOPA_E2E_DB") ?: "")
                 it.testLogging { events("passed", "failed", "skipped", "standardOut"); showStandardStreams = true }
                 it.outputs.upToDateWhen { false }
             }

@@ -59,6 +59,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -129,6 +130,15 @@ class LobbyViewModel(private val c: DataContainer, roomId: String) : ViewModel()
         c.sessions.close()
         onClosed()
     }
+    /** Host only: can this room's game be started by the current host? Asked from the server catalogue. */
+    private val _modeStatus = MutableStateFlow<com.loopa.core.game.GameCardStatus?>(null)
+    val modeStatus: StateFlow<com.loopa.core.game.GameCardStatus?> = _modeStatus.asStateFlow()
+    fun checkMode(modeId: String) = viewModelScope.launch {
+        if (modeId == com.loopa.core.game.GameModes.ISIM_SEHIR) { _modeStatus.value = null; return@launch }
+        val catalog = c.catalog.refresh().data
+        _modeStatus.value = com.loopa.core.game.GameCards.status(com.loopa.core.game.GameModes.info(modeId), catalog)
+    }
+
     fun leave(onLeft: () -> Unit) {
         viewModelScope.launch {
             session.leave()
@@ -152,7 +162,12 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
     val me = state.player(state.me.userId)
     val players = state.activePlayers
     val notReady = players.count { !it.isReady && !it.isHost }
-    val canStart = state.isHost && players.size >= 2 && notReady == 0
+    val modeId = state.room.settings.gameMode
+    val modeStatus by vm.modeStatus.collectAsStateWithLifecycle()
+    // Re-checked whenever this client becomes host (e.g. after the previous host left) or the mode changes.
+    LaunchedEffect(state.isHost, modeId, state.room.hostId) { if (state.isHost) vm.checkMode(modeId) }
+    val modeBlocked = state.isHost && modeId != com.loopa.core.game.GameModes.ISIM_SEHIR && modeStatus?.canStart != true
+    val canStart = state.isHost && players.size >= 2 && notReady == 0 && !modeBlocked
 
     // joining / readiness sounds
     var lastCount by remember { mutableStateOf(players.size) }
@@ -222,6 +237,12 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
             ) {
                 when {
                     state.isHost -> {
+                        if (modeBlocked) Text(
+                            modeStatus?.let { "${com.loopa.core.game.GameModes.name(modeId)} bu oda için başlatılamıyor. ${it.explanation} Oda ayarlarından İsim Şehir'e geçebilirsin." }
+                                ?: "Oyunun erişim durumu kontrol ediliyor…",
+                            style = MaterialTheme.typography.bodySmall, color = LoopaPalette.PeachDeep,
+                            modifier = Modifier.testTag("lobby_mode_blocked"),
+                        )
                         LoopaButton(
                             text = when {
                                 players.size < 2 -> "Oyuncu bekleniyor…"
@@ -354,6 +375,7 @@ private fun SettingsSummary(s: RoomSettings, isHost: Boolean, onEdit: () -> Unit
         }
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill("🎮 ${com.loopa.core.game.GameModes.name(s.gameMode)}", com.loopa.core.ui.components.gameVisual(s.gameMode).color, Modifier.testTag("lobby_game_mode"))
             Pill("⏱ ${s.roundSeconds} sn", LoopaPalette.Butter)
             Pill("🔁 ${s.rounds} tur", LoopaPalette.Peach)
             Pill("👥 en fazla ${s.maxPlayers}", LoopaPalette.Sky)

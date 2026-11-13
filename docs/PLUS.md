@@ -1,7 +1,8 @@
 # LOOPA Plus, game modes, rotation and admin: design (stage 2)
 
 Status: **migrations prepared and tested locally. NOT applied to the hosted project.**
-There is no payment integration. Nothing in the app uses these functions yet (UI is a later stage).
+There is no payment integration. The 0.4.0 app uses them (stage 3, below) and falls back to
+0.3.0 behaviour on a server without them.
 
 ## Decisions this design follows (2026-11-08)
 1. İsim Şehir is always free. The weekly rotation covers only the other 9 modes.
@@ -136,3 +137,15 @@ payload)` with **no** client policy (secret words, chains, lies; served per play
 - **Plus cosmetics / content packs**: a `requires_plus` column on `cosmetic_items` and a
   `content_packs` table, checked through `_user_plan`. Not added yet.
 - **Price** (proposal only, nothing implemented): 49,99 TL / month through Google Play Billing.
+
+## Android (stage 3, version 0.4.0)
+- `core`: `PlusModels.kt` (server answers), `GameModes.kt` (the 10 games, `GameCards.status`: card
+  state from the server catalogue; `implemented = {isim_sehir}` so nothing else can be started from
+  this app, whatever the server says), `PlusFormat` (date display only).
+- `core-data`: `MembershipRepository` (`get_my_plan`, `redeem_promo_code`) and
+  `GameCatalogRepository` (`get_game_catalog`), both exposing `Remote<T>` (data / loading / error;
+  the last good value is kept on failure). PostgREST PGRST202 maps to `SERVER_OUTDATED`.
+- Screens: Oyunlar (`feature-lobby/GamesScreen`), LOOPA Plus (`feature-shop/PlusScreen`), Üyelik +
+  Promosyon kodu (`feature-settings/MembershipSection`), plan badge on the profile, game pill in the
+  lobby and in public rooms.
+- Joining is never gated on the client: Free players see no Plus prompt when they join a room.
