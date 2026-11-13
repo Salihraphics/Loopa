@@ -98,7 +98,7 @@ Room rules:
 - `start_match` checks again (a new Free host, or an expired Plus, cannot start a locked mode) and
   stores `matches.entitlement_snapshot` (host, plan, how it was unlocked, week). A running match
   never re-checks the plan, so it is not interrupted when the host leaves or Plus ends.
-- Modes other than İsim Şehir have no engine yet: `start_match` answers `MODE_NOT_IMPLEMENTED`.
+- Since 0.5.0 every game has an engine (see GAMES.md); the 0.5.0 migration sets all games to `available`.
 
 ## Verification (local only)
 | Check | Result |

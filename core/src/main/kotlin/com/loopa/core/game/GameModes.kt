@@ -9,7 +9,10 @@ data class GameModeInfo(
     val name: String,
     val tagline: String,
     val players: String,
-)
+) {
+    /** Minimum players, read from [players] ("3-10 oyuncu"); the server enforces the real limit. */
+    val minPlayers: Int get() = players.substringBefore('-').trim().toIntOrNull() ?: 2
+}
 
 object GameModes {
     const val ISIM_SEHIR = "isim_sehir"
@@ -18,7 +21,7 @@ object GameModes {
      * Games this app version can actually play. A mode the server marks as available but that is
      * not in this set is shown as "Yakında" and can never be started from this client.
      */
-    val implemented: Set<String> = setOf(ISIM_SEHIR)
+    val implemented: Set<String> by lazy { all.map { it.id }.toSet() }
 
     val all: List<GameModeInfo> = listOf(
         GameModeInfo(ISIM_SEHIR, "İsim Şehir", "Harf gelsin, kategorileri en hızlı sen doldur.", "2-10 oyuncu"),

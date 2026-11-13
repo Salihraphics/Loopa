@@ -8,6 +8,7 @@ import com.loopa.core.game.Timestamps
 import com.loopa.core.model.JokerEvent
 import com.loopa.core.model.JokerType
 import com.loopa.core.model.RoomSettings
+import com.loopa.core.model.ModeState
 import com.loopa.core.model.RoomState
 import com.loopa.core.network.LiveStatus
 import com.loopa.core.network.LoopaBackend
@@ -75,7 +76,17 @@ class RoomSession(
     val events: SharedFlow<SessionEvent> = _events.asSharedFlow()
     private val fetchOk = MutableStateFlow(true)
     private val refreshRequests = Channel<Unit>(capacity = 1, onBufferOverflow = BufferOverflow.DROP_LATEST)
-    private val signals = RoomSignalListener(backend, roomId, scope) { requestRefresh() }
+    private val signals = RoomSignalListener(backend, roomId, scope, onSignal = { requestRefresh() }, onInk = { inkRequests.trySend(Unit) })
+    private val inkRequests = Channel<Unit>(capacity = 1, onBufferOverflow = BufferOverflow.DROP_LATEST)
+
+    // ---- games of the mode engine (every game except İsim Şehir)
+    private val _mode = MutableStateFlow<ModeState?>(null)
+    /** Per-player snapshot of the running game; null for İsim Şehir and in the lobby. */
+    val mode: StateFlow<ModeState?> = _mode.asStateFlow()
+    private var lastActorNudge: String? = null
+    private val _strokes = MutableStateFlow<StrokeBuffer>(StrokeBuffer())
+    /** Strokes of the current Çiz ve Tahmin Et round (others' view; the drawer keeps its own). */
+    val strokes: StateFlow<StrokeBuffer> = _strokes.asStateFlow()
     private val seenJokerEvents = mutableSetOf<String>()
     private var started = false
     private var lastMatchSeen: String? = null
@@ -99,6 +110,8 @@ class RoomSession(
         scope.launch { heartbeatLoop() }
         scope.launch { safetyPollLoop() }
         scope.launch { tickLoop() }
+        scope.launch { modeTickLoop() }
+        scope.launch { strokeLoop() }
         requestRefresh()
     }
 
@@ -123,6 +136,7 @@ class RoomSession(
             Timestamps.parse(s.serverTime)?.let { clock.addSample(sent, received, it) }
             fetchOk.value = true
             apply(s)
+            fetchMode(s)
         } catch (e: CancellationException) {
             throw e
         } catch (e: LoopaException) {
@@ -148,6 +162,71 @@ class RoomSession(
         val me = s.me.userId
         s.round?.jokerEvents?.forEach { ev ->
             if (seenJokerEvents.add(ev.id) && prev != null && ev.targetUserId == me) _events.tryEmit(SessionEvent.JokerHit(ev))
+        }
+    }
+
+    private suspend fun fetchMode(s: RoomState) {
+        val gameMode = s.match?.settings?.gameMode
+        if (s.me.status != "active" || gameMode == null || gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) {
+            if (!s.room.inGame) _mode.value = null
+            return
+        }
+        val sent = System.currentTimeMillis()
+        val el = runCatching { backend.rpc("get_mode_state") { put("p_room_id", roomId) } }.getOrNull() ?: return
+        if (el !is JsonObject) return
+        val m = runCatching { LoopaJson.decodeFromJsonElement(ModeState.serializer(), el) }.getOrNull() ?: return
+        Timestamps.parse(m.serverTime)?.let { clock.addSample(sent, System.currentTimeMillis(), it) }
+        if (m.round?.id != _mode.value?.round?.id) _strokes.value = StrokeBuffer(roundId = m.round?.id)
+        _mode.value = m
+        if (m.mode == "ciz_tahmin") inkRequests.trySend(Unit)
+        // The player whose turn it is left the room: ask the server to close the turn now
+        // instead of waiting for the deadline (the server checks it itself).
+        val actor = m.round?.actorId
+        if (actor != null && m.matchStatus == "in_progress" && s.activePlayers.none { it.userId == actor } && actor != lastActorNudge) {
+            lastActorNudge = actor
+            scope.launch { runCatching { backend.rpc("game_tick") { put("p_room_id", roomId) } }; requestRefresh(); signals.poke() }
+        }
+    }
+
+    /** Asks the server to advance a mode game at its next deadline (the server re-checks it). */
+    private suspend fun modeTickLoop() {
+        _mode.map { m -> m?.round?.let { it.id + it.phase + it.deadlineAt } }.distinctUntilChanged().collectLatest { key ->
+            if (key == null) return@collectLatest
+            val at = com.loopa.core.game.modes.ModeTiming.nextTransitionAt(_mode.value) ?: return@collectLatest
+            val wait = at - clock.now() + Random.nextLong(150, 700)
+            if (wait > 0) delay(wait)
+            var attempts = 0
+            while (attempts < 8) {
+                attempts++
+                val advanced = runCatching {
+                    (backend.rpc("game_tick") { put("p_room_id", roomId) } as? JsonPrimitive)?.content == "true"
+                }.getOrDefault(false)
+                requestRefresh()
+                if (advanced) { signals.poke(); break }
+                delay(1_500L)
+            }
+        }
+    }
+
+    /** Fetches new strokes after an "ink" hint, and every 1.2 s while a drawing round is open. */
+    private suspend fun strokeLoop() {
+        while (true) {
+            withTimeoutOrNull(1_200) { inkRequests.receive() }
+            val m = _mode.value ?: continue
+            val r = m.round ?: continue
+            // The drawer fetches too: after a restart its canvas is rebuilt from the server.
+            if (m.mode != "ciz_tahmin" || r.phase != "play" && _strokes.value.roundId == r.id && _strokes.value.lastSeq > 0) continue
+            val buf = _strokes.value.takeIf { it.roundId == r.id } ?: StrokeBuffer(roundId = r.id)
+            val el = runCatching { backend.rpc("get_strokes") { put("p_round_id", r.id); put("p_after", buf.lastSeq) } }.getOrNull()
+            val entries = (el as? kotlinx.serialization.json.JsonArray)?.mapNotNull {
+                runCatching { LoopaJson.decodeFromJsonElement(com.loopa.core.game.modes.StrokeEntry.serializer(), it) }.getOrNull()
+            }.orEmpty()
+            if (entries.isEmpty()) continue
+            if (_strokes.value.roundId != r.id && _strokes.value.roundId != null) continue
+            _strokes.value = buf.copy(
+                lastSeq = entries.maxOf { it.seq },
+                strokes = buf.strokes + entries.mapNotNull { com.loopa.core.game.modes.DrawingCodec.decode(it.stroke) },
+            )
         }
     }
 
@@ -214,6 +293,25 @@ class RoomSession(
     suspend fun closeRoom() = act { backend.rpc("close_room") { put("p_room_id", roomId) } }
     suspend fun skipReveal() = act { backend.rpc("skip_reveal") { put("p_room_id", roomId) } }
 
+    /** One action in a mode game (guess, answer, vote, word, statements, step …). Returns the server's answer. */
+    suspend fun modeAct(roundId: String, kind: String, payload: JsonObject = JsonObject(emptyMap())): JsonObject {
+        var res: JsonObject = JsonObject(emptyMap())
+        act {
+            res = backend.rpc("mode_act") { put("p_round_id", roundId); put("p_kind", kind); put("p_payload", payload) } as? JsonObject
+                ?: JsonObject(emptyMap())
+        }
+        return res
+    }
+
+    /** Sends a batch of the drawer's strokes and hints the others to fetch them. */
+    suspend fun draw(roundId: String, strokes: List<com.loopa.core.game.modes.Stroke>) {
+        if (strokes.isEmpty()) return
+        backend.rpc("mode_draw") { put("p_round_id", roundId); put("p_strokes", com.loopa.core.game.modes.DrawingCodec.encodeAll(strokes)) }
+        signals.ink()
+    }
+
+    suspend fun modeSkip() = act { backend.rpc("mode_skip") { put("p_room_id", roomId) } }
+
     suspend fun updateSettings(settings: RoomSettings, isPublic: Boolean) = act {
         backend.rpc("update_room_settings") {
             put("p_room_id", roomId)
@@ -261,6 +359,9 @@ class RoomSession(
         backend.rpc("cast_vote") { put("p_answer_id", answerId); put("p_accept", accept) }
     }
 }
+
+/** Strokes received for one round, with the last sequence number fetched. */
+data class StrokeBuffer(val roundId: String? = null, val lastSeq: Long = 0, val strokes: List<com.loopa.core.game.modes.Stroke> = emptyList())
 
 /** Keeps exactly one live [RoomSession] for the room the player is in. */
 class RoomSessionManager(private val backend: LoopaBackend, private val clock: ServerClock) {

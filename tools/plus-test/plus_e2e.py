@@ -158,13 +158,13 @@ try:
     prid = b["id"]
     s, b = rpc(g_tok, "update_room_settings", p_room_id=prid, p_settings=dict(settings, game_mode="gizli_kelime"), p_is_public=False)
     check(s == 200 and b["game_mode"] == "gizli_kelime", "Plus host may pick gizli_kelime")
-    s, b = rpc(a_tok, "admin_set_mode_status", p_mode="gizli_kelime", p_status="coming_soon")
+    s, b = rpc(a_tok, "admin_set_mode_status", p_mode="gizli_kelime", p_status="available")
     rpc(f_tok, "close_room", p_room_id=rid); rpc(g_tok, "close_room", p_room_id=prid)
 finally:
     ids = ",".join(f"'{u}'" for u in users)
     if ids:
         n = sql(f"select count(*) from public.promo_redemptions where user_id in ({ids})")
-        sql(f"""update public.game_modes set status = 'coming_soon' where id = 'gizli_kelime';
+        sql(f"""update public.game_modes set status = 'available' where id = 'gizli_kelime';
                 delete from public.admin_allowlist where email like '%{TAG}@loopa-test.invalid';
                 delete from public.admin_audit_log where actor_id in ({ids}) or target_user in ({ids})
                     or details->>'email_hash' = md5('admin{TAG}@loopa-test.invalid');

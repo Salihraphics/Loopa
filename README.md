@@ -2,11 +2,12 @@
 
 **Play together. Think faster.**
 
-LOOPA is a native Android multiplayer party game. The first mode is a polished
-**İsim Şehir** (Name, City, Animal, Plant, Object…): friends create a room with
-a 6-character code, get a random Turkish letter every round, race to fill in
-categories, use jokers, vote on doubtful answers and watch a synchronized,
-category-by-category answer reveal.
+LOOPA is a native Android multiplayer party game with 10 games: **İsim Şehir** (Name, City,
+Animal, Plant, Object…: a random Turkish letter, categories, jokers, votes and a synchronized
+reveal) plus Gizli Kelime, Kelime Zinciri, Bilgi Arenası, İki Doğru Bir Yalan, Çiz ve Tahmin Et,
+En Muhtemel Kim?, Anlat Bakalım, Çizim Telefonu and Sessiz Sinema on a common server-side game
+engine. Friends create a room with a 6-character code; LOOPA Plus and a weekly rotation decide which
+games a host may start.
 
 - Kotlin · Jetpack Compose · Material 3 with a custom LOOPA design system
 - MVVM · Coroutines/Flow · Navigation Compose · Gradle Kotlin DSL (convention plugins)
@@ -14,6 +15,7 @@ category-by-category answer reveal.
 - **Server-authoritative**: rooms, timers, jokers, validation, votes, scores and
   XP are all decided by Postgres functions; the APK only ships the public anon key.
 
+> Games: [`docs/GAMES.md`](docs/GAMES.md) · Plus / rotation / admin: [`docs/PLUS.md`](docs/PLUS.md) ·
 > Dictionary: [`docs/DICTIONARY.md`](docs/DICTIONARY.md) · Google sign-in: [`docs/GOOGLE_AUTH.md`](docs/GOOGLE_AUTH.md)
 >
 > Status: see [`docs/TODO.md`](docs/TODO.md) for what is done, what was tested,

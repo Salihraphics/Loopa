@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -76,8 +77,12 @@ class ProfileViewModel(private val c: DataContainer) : ViewModel() {
 
     val membership: StateFlow<com.loopa.core.data.Remote<com.loopa.core.model.Membership>> = c.membership.state
 
+    private val _modeStats = MutableStateFlow<List<com.loopa.core.model.ModeStat>>(emptyList())
+    val modeStats: StateFlow<List<com.loopa.core.model.ModeStat>> = _modeStats.asStateFlow()
+
     fun refresh() = viewModelScope.launch {
         launch { c.membership.refresh() }
+        launch { _modeStats.value = c.profiles.modeStats() }
         runCatching { c.profiles.refresh() }
         runCatching { _catalogSize.value = c.profiles.catalog().size }
     }
@@ -98,6 +103,7 @@ private val reasonText = mapOf(
 fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: () -> Unit = {}) {
     val vm = containerViewModel { ProfileViewModel(it) }
     val membership by vm.membership.collectAsStateWithLifecycle()
+    val modeStats by vm.modeStats.collectAsStateWithLifecycle()
     val profile by vm.profile.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
     val catalogSize by vm.catalogSize.collectAsStateWithLifecycle()
@@ -136,6 +142,10 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
             }
             ErrorBanner(error, onDismiss = vm::dismissError)
 
+            if (modeStats.isNotEmpty()) {
+                SectionTitle("Oyunlara göre")
+                ModeStatsCard(modeStats)
+            }
             SectionTitle("İstatistikler")
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("Toplam maç", "${stats?.matchesPlayed ?: 0}", LoopaPalette.Lavender, Modifier.weight(1f))
@@ -253,6 +263,27 @@ private fun MembershipLine(state: com.loopa.core.data.Remote<com.loopa.core.mode
         if (text != null) {
             Spacer(Modifier.width(8.dp))
             Text(text, style = MaterialTheme.typography.labelMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
+        }
+    }
+}
+
+/** Matches, wins and best score per game (from get_my_mode_stats). */
+@Composable
+private fun ModeStatsCard(stats: List<com.loopa.core.model.ModeStat>) {
+    LoopaCard(modifier = Modifier.testTag("mode_stats")) {
+        stats.forEach { st ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.loopa.core.ui.components.GameIcon(st.gameMode, size = 34.dp)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(com.loopa.core.game.GameModes.name(st.gameMode), style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                    Text("${st.matchesPlayed} maç · ${st.wins} galibiyet", style = MaterialTheme.typography.labelSmall, color = Loopa.colors.textSoft)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("${st.bestPoints}", style = MaterialTheme.typography.titleMedium, color = Loopa.colors.text)
+                    Text("en iyi", style = MaterialTheme.typography.labelSmall, color = Loopa.colors.textSoft)
+                }
+            }
         }
     }
 }

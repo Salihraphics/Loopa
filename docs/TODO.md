@@ -1,6 +1,6 @@
 # LOOPA — status and TODO
 
-Last updated: 2026-11-13
+Last updated: 2026-11-15
 
 ## Hosted project (zxtrxbgphutuiizznakd, "Loopa", eu-west-2)
 
@@ -12,6 +12,19 @@ Last updated: 2026-11-13
   publication, seeds (12 categories, 87 cosmetics, 1,752 words).
 - Anonymous sign-ins were still off on the project; switched on (`external_anonymous_users_enabled`).
 - Live 4-client E2E passed against the hosted project with the publishable key; test data was deleted afterwards.
+
+## Version 0.5.0 — all 10 games playable (2026-11-15)
+
+Details: [GAMES.md](GAMES.md).
+
+| Item | Status | Verified by |
+|---|---|---|
+| Common mode engine + 9 games (server rules, scoring, timers, secrecy, disconnect / host change) | ✅ local only, **not applied to hosted** | `modes_test.sql`, `ModesE2ETest` (4 clients, local Supabase) |
+| 9 game screens, lobby game picker, results and profile per game | ✅ | `ModeScreensTest`, `PlusUiTest`, screenshots |
+| İsim Şehir unchanged | ✅ | `game_flow_test.sql`, `ten_players_test.sql`, dictionary suites, `MultiplayerE2ETest` |
+| Deadlock between heartbeat and room actions (bug since 0.1) fixed: `20261115000003_room_lock_order.sql` | ✅ local; **hosted still has the bug** | `lock_order_stress.sh`: 476 deadlocks before, 0 after |
+| On a phone / hosted backend | ❌ not tested | — |
+| Report / block for user-written text (İki Doğru Bir Yalan) | ❌ missing | — |
 
 ## Version 0.4.0 — membership and 10-game UI (stage 3, 2026-11-13)
 
@@ -33,7 +46,7 @@ Design and decisions: [PLUS.md](PLUS.md).
 |---|---|---|
 | Migrations `20261110000001..3` (plans/entitlements/admin, promo codes, modes/rotation/gating) | ✅ prepared, **local only, not applied to hosted** | SQL suites on plain PG, local Supabase (Docker) HTTP E2E 26/26, unchanged 0.3.0 Multiplayer E2E |
 | App UI (Plus status, promo field, mode picker, rotation screen) | ✅ in 0.4.0 (see above) | — |
-| Common engine and the 9 new modes | ❌ not started (stage 4+); `start_match` refuses them with `MODE_NOT_IMPLEMENTED` | — |
+| Common engine and the 9 new modes | ✅ in 0.5.0 (see above) | — |
 | Payment | ❌ out of scope; `entitlements.source = 'store'` reserved | — |
 | Real Google account claiming admin / redeeming LOPPAWEEK | ❌ not tested (Google link simulated as GoTrue stores it) | — |
 

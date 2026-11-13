@@ -231,12 +231,39 @@ class ProfileRepository(private val backend: LoopaBackend) {
         return list
     }
 
+    /** Per-game statistics of the signed-in player (empty on servers without the mode engine). */
+    suspend fun modeStats(): List<com.loopa.core.model.ModeStat> = runCatching {
+        backend.rpc("get_my_mode_stats", ListSerializer(com.loopa.core.model.ModeStat.serializer()))
+    }.getOrDefault(emptyList())
+
     fun clear() { _profile.value = null }
 }
 
 class RoomRepository(private val backend: LoopaBackend) {
     suspend fun createRoom(isPublic: Boolean): RoomRef =
         backend.rpc("create_room", RoomRef.serializer()) { put("p_is_public", isPublic) }
+
+    /**
+     * Creates a room and selects [gameMode]. New rooms are İsim Şehir; any other game is set with
+     * update_room_settings, where the server checks that this host may host it.
+     */
+    suspend fun createRoom(isPublic: Boolean, gameMode: String): RoomRef {
+        val ref = createRoom(isPublic)
+        if (gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) return ref
+        val state = backend.rpc("get_room_state", com.loopa.core.model.RoomState.serializer()) { put("p_room_id", ref.id) }
+        try {
+            backend.rpc("update_room_settings") {
+                put("p_room_id", ref.id)
+                put("p_settings", com.loopa.core.network.LoopaJson.encodeToJsonElement(
+                    com.loopa.core.model.RoomSettings.serializer(), state.room.settings.copy(gameMode = gameMode)))
+                put("p_is_public", isPublic)
+            }
+        } catch (e: com.loopa.core.game.LoopaException) {
+            runCatching { backend.rpc("close_room") { put("p_room_id", ref.id) } }   // do not leave an unwanted room behind
+            throw e
+        }
+        return ref
+    }
 
     suspend fun joinRoom(code: String, asSpectator: Boolean = false): RoomRef =
         backend.rpc("join_room", RoomRef.serializer()) {

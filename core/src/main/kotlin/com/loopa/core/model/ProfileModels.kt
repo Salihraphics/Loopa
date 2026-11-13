@@ -71,6 +71,8 @@ data class MatchResults(
     @SerialName("rounds_played") val roundsPlayed: Int = 0,
     val players: List<MatchResultPlayer> = emptyList(),
     @SerialName("round_winners") val roundWinners: List<RoundWinners> = emptyList(),
+    @SerialName("game_mode") val gameMode: String = "isim_sehir",
+    @SerialName("mode_public") val modePublic: kotlinx.serialization.json.JsonObject? = null,
 )
 
 @Serializable
@@ -86,6 +88,8 @@ data class MatchResultPlayer(
     @SerialName("xp_earned") val xpEarned: Int = 0,
     @SerialName("valid_answers") val validAnswers: Int = 0,
     @SerialName("unique_answers") val uniqueAnswers: Int = 0,
+    /** Correct guesses / answers / votes in the other games. */
+    @SerialName("correct_actions") val correctActions: Int = 0,
     @SerialName("early_bonuses") val earlyBonuses: Int = 0,
 )
 

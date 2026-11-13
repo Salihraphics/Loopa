@@ -95,11 +95,10 @@ class GamesViewModel(private val c: DataContainer) : ViewModel() {
     fun create(info: GameModeInfo, onReady: (String) -> Unit) {
         val status = GameCards.status(info, catalog.value.data)
         if (!status.canStart || _creating.value != null) return
-        // This app version can only play İsim Şehir, which every new room already is.
-        if (info.id != GameModes.ISIM_SEHIR) { _error.value = com.loopa.core.game.LoopaError.MODE_NOT_IMPLEMENTED.message; return }
         _creating.value = info.id
         viewModelScope.launch {
-            try { onReady(c.rooms.createRoom(false).id) } catch (e: LoopaException) { _error.value = e.error.message }
+            // The server checks again that this host may host the game.
+            try { onReady(c.rooms.createRoom(false, info.id).id) } catch (e: LoopaException) { _error.value = e.error.message }
             _creating.value = null
         }
     }

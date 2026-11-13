@@ -119,13 +119,14 @@ class PlusUiTest {
 
     private fun scrollTo(tag: String) = compose.onNodeWithTag("games_list").performScrollToNode(hasTestTag(tag))
 
-    private fun assertOnlyIsimSehirStartable() {
+    /** [badge]: "Yakında" when the server says coming soon, "Bilgi yok" when there is no catalogue. */
+    private fun assertOnlyIsimSehirStartable(badge: String = "Yakında") {
         scrollTo("game_card_isim_sehir"); compose.onNodeWithTag("game_create_isim_sehir").assertIsDisplayed()
         GameModes.all.drop(1).forEach { info ->
             scrollTo("game_card_${info.id}")
             assertEquals("no create button for ${info.id}", 0, compose.onAllNodesWithTag("game_create_${info.id}").fetchSemanticsNodes().size)
             compose.onNodeWithTag("game_status_${info.id}").assertIsDisplayed()
-            compose.onNodeWithTag("game_card_${info.id}", useUnmergedTree = true).assert(hasAnyDescendant(hasText("Yakında")))
+            compose.onNodeWithTag("game_card_${info.id}", useUnmergedTree = true).assert(hasAnyDescendant(hasText(badge)))
         }
     }
 
@@ -182,7 +183,7 @@ class PlusUiTest {
         snap("23_games_older_server")
         compose.onNodeWithTag("rotation_unsupported").assertIsDisplayed()
         assertEquals(0, compose.onAllNodesWithText("Ücretsiz").fetchSemanticsNodes().size)   // plan unknown: no "Ücretsiz" badge
-        assertOnlyIsimSehirStartable()
+        assertOnlyIsimSehirStartable("Bilgi yok")
     }
 
     @Test fun offlineCatalogue() {
@@ -190,18 +191,50 @@ class PlusUiTest {
         compose.onNodeWithTag("rotation_error").assertIsDisplayed()
         compose.onNodeWithText("Üyelik bilgisi alınamadı.").assertIsDisplayed()
         assertEquals(0, compose.onAllNodesWithText("Üyelik bilgisi yükleniyor…").fetchSemanticsNodes().size)
-        assertOnlyIsimSehirStartable()
+        assertOnlyIsimSehirStartable("Bilgi yok")
     }
 
     @Test fun lockedCardOffersPlusOnlyToFreeUsers() {
-        // A server where gizli_kelime is available but needs Plus; this app cannot play it yet,
-        // so the card stays "Yakında" and there is nothing to buy on it.
+        // gizli_kelime is available on the server but this Free host may not start it this week.
         val c = catalog("free").let { cat -> cat.copy(modes = cat.modes.map {
             if (it.id == "gizli_kelime") it.copy(status = "available", access = ModeAccess(allowed = false, reason = "PLUS_REQUIRED")) else it }) }
         render { games(Remote(c), Remote(free)) }
         scrollTo("game_card_gizli_kelime")
-        assertEquals(0, compose.onAllNodesWithTag("game_plus_gizli_kelime").fetchSemanticsNodes().size)
+        compose.onNodeWithTag("game_plus_gizli_kelime").assertIsDisplayed()
         assertEquals(0, compose.onAllNodesWithTag("game_create_gizli_kelime").fetchSemanticsNodes().size)
+        compose.onNodeWithText("Bir Plus üyesinin odasına katılarak da oynayabilirsin.", substring = true).assertIsDisplayed()
+    }
+
+    /** What the 0.5.0 server returns: every game available, access by plan and rotation. */
+    private fun liveCatalog(plan: String, rotation: Rotation = Rotation()) = GameCatalog(plan = plan, rotation = rotation,
+        modes = GameModes.all.map { info ->
+            val isim = info.id == GameModes.ISIM_SEHIR
+            val free = rotation.active && info.id in rotation.freeModes
+            CatalogMode(id = info.id, name = info.name, status = "available", alwaysFree = isim, access = when {
+                isim -> ModeAccess(allowed = true, unlockedBy = "always_free")
+                plan != "free" -> ModeAccess(allowed = true, unlockedBy = plan)
+                free -> ModeAccess(allowed = true, unlockedBy = "rotation")
+                else -> ModeAccess(allowed = false, reason = "PLUS_REQUIRED")
+            })
+        })
+
+    @Test fun plusHostCanStartEveryGame() {
+        render { games(Remote(liveCatalog("plus")), Remote(plus)) }
+        snap("29_games_plus_all")
+        GameModes.all.forEach { info ->
+            scrollTo("game_card_${info.id}")
+            compose.onNodeWithTag("game_create_${info.id}").assertIsDisplayed()
+        }
+    }
+
+    @Test fun freeHostGetsTheWeeksGamesAndLocksTheRest() {
+        render { games(Remote(liveCatalog("free", activeRotation)), Remote(free)) }
+        scrollTo("game_card_isim_sehir"); compose.onNodeWithTag("game_create_isim_sehir").assertIsDisplayed()
+        scrollTo("game_card_ciz_tahmin"); compose.onNodeWithTag("game_create_ciz_tahmin").assertIsDisplayed()
+        scrollTo("game_card_gizli_kelime")
+        assertEquals(0, compose.onAllNodesWithTag("game_create_gizli_kelime").fetchSemanticsNodes().size)
+        compose.onNodeWithTag("game_plus_gizli_kelime").assertIsDisplayed()
+        compose.onNodeWithText("Gelecek hafta herkese ücretsiz!", substring = true).assertIsDisplayed()
     }
 
     // ---------------------------------------------------------------- Plus screen

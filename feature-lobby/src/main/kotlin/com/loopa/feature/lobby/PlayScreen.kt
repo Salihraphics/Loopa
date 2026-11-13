@@ -173,7 +173,7 @@ fun PlayScreen(onRoomReady: (String) -> Unit, onPublicRooms: () -> Unit, focusJo
                 Spacer(Modifier.height(6.dp))
                 Pill("Oyun: İsim Şehir", LoopaPalette.Butter)
                 Spacer(Modifier.height(6.dp))
-                Text("Sen oda sahibi olursun: süreyi, tur sayısını ve kategorileri sen belirlersin.", style = MaterialTheme.typography.bodyMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
+                Text("Sen oda sahibi olursun: süreyi, tur sayısını ve kategorileri sen belirlersin. Oyunu lobide oda ayarlarından değiştirebilir ya da Oyunlar'dan seçebilirsin.", style = MaterialTheme.typography.bodyMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(if (ui.isPublic) Icons.Rounded.Public else Icons.Rounded.Lock, null, tint = LoopaPalette.Ink)

@@ -102,6 +102,8 @@ fun RoomHost(roomId: String, onExit: () -> Unit) {
             onReturnToLobby = { resultsMatchId = null },
             onLeaveRoom = { exitRoom() },
         )
+        inGame && s.match?.settings?.gameMode != com.loopa.core.game.GameModes.ISIM_SEHIR ->
+            com.loopa.feature.game.modes.ModeGameScreen(roomId, s, onLeft = onExit)
         inGame -> GameScreen(roomId, s, onLeft = onExit)
         else -> LobbyScreen(roomId, s, onLeft = onExit)
     }

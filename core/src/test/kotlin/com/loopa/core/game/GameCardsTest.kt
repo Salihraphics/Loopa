@@ -32,7 +32,7 @@ class GameCardsTest {
                 "En Muhtemel Kim?", "Anlat Bakalım", "Çizim Telefonu", "Sessiz Sinema"),
             GameModes.all.map { it.name },
         )
-        assertEquals(setOf("isim_sehir"), GameModes.implemented)
+        assertEquals(GameModes.all.map { it.id }.toSet(), GameModes.implemented)
     }
 
     @Test fun isimSehirIsAlwaysPlayableEvenWithoutCatalogue() {
@@ -42,10 +42,11 @@ class GameCardsTest {
         assertEquals("Her zaman ücretsiz", s.badge)
     }
 
-    @Test fun withoutCatalogueOtherGamesAreComingSoonAndClaimNothing() {
+    @Test fun withoutCatalogueOtherGamesClaimNothingAndCannotStart() {
+        // Offline / older server: no access information, so nothing but İsim Şehir can be started.
         GameModes.all.drop(1).forEach {
             val s = GameCards.status(it, null)
-            assertEquals(it.id, GameCardKind.COMING_SOON, s.kind)
+            assertEquals(it.id, GameCardKind.UNAVAILABLE, s.kind)
             assertFalse(s.canStart)
             assertFalse(s.freeThisWeek); assertFalse(s.freeNextWeek)
         }
@@ -61,7 +62,7 @@ class GameCardsTest {
     @Test fun serverAvailableButNotImplementedInThisAppIsComingSoon() {
         // An admin may switch a mode to "available" before this app version can play it.
         val c = catalog(mode("gizli_kelime", allowed = true, by = "plus"))
-        val s = GameCards.status(info("gizli_kelime"), c)
+        val s = GameCards.status(info("gizli_kelime"), c, implemented = setOf("isim_sehir"))   // an older app version
         assertEquals(GameCardKind.COMING_SOON, s.kind)
         assertFalse(s.canStart)
     }

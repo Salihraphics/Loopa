@@ -16,4 +16,5 @@ for t in supabase/tests/*_test.sql; do
   psql -v ON_ERROR_STOP=1 -q -d "$DB" -f "$t"
 done
 LOOPA_TEST_DB=$DB ./supabase/tests/promo_concurrency.sh
+LOOPA_TEST_DB=$DB ./supabase/tests/lock_order_stress.sh
 echo "ALL BACKEND TESTS PASSED"

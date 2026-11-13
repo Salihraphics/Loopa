@@ -77,7 +77,8 @@ class PlusRepositoriesE2ETest {
             GameModes.all.forEach { info ->
                 val s = GameCards.status(info, c)
                 if (info.id == GameModes.ISIM_SEHIR) assertTrue(s.canStart) else {
-                    assertEquals(info.id, GameCardKind.COMING_SOON, s.kind); assertFalse(s.canStart)
+                    // 0.5.0: every game exists; a Free host without an active rotation week needs Plus.
+                    assertEquals(info.id, GameCardKind.LOCKED_PLUS, s.kind); assertFalse(s.canStart)
                 }
             }
 
@@ -98,8 +99,8 @@ class PlusRepositoriesE2ETest {
                 put("p_settings", LoopaJson.encodeToJsonElement(com.loopa.core.model.RoomSettings.serializer(), state.room.settings.copy(rounds = 3)))
                 put("p_is_public", false)
             }
-            // A Free host cannot switch to a locked / not-ready mode: the server refuses.
-            expectError(LoopaError.MODE_NOT_AVAILABLE) {
+            // A Free host cannot switch to a locked game: the server refuses.
+            expectError(LoopaError.PLUS_REQUIRED) {
                 backend.rpc("update_room_settings") {
                     put("p_room_id", room.id)
                     put("p_settings", LoopaJson.encodeToJsonElement(com.loopa.core.model.RoomSettings.serializer(), state.room.settings.copy(gameMode = "gizli_kelime")))
@@ -134,10 +135,10 @@ class PlusRepositoriesE2ETest {
             assertEquals(r.plusUntil, again.plusUntil)
             assertEquals(1, membership.state.value.data!!.entitlements.size)
 
-            // Plus host: the catalogue now reports Plus access, but unfinished games still cannot start.
+            // Plus host: the catalogue now reports Plus access and every game can be started.
             val pc = catalog.refresh().data!!
             assertEquals("plus", pc.plan)
-            assertEquals(GameCardKind.COMING_SOON, GameCards.status(GameModes.info("gizli_kelime"), pc).kind)
+            GameModes.all.forEach { assertTrue(it.id, GameCards.status(it, pc).canStart) }
             assertTrue(GameCards.status(GameModes.info(GameModes.ISIM_SEHIR), pc).canStart)
         } finally {
             if (db.isNotBlank()) psql("""

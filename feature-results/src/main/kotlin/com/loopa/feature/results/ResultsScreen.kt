@@ -164,14 +164,17 @@ fun ResultsScreen(
                             style = MaterialTheme.typography.bodyLarge, color = Loopa.colors.textSoft,
                         )
                         if (results.status == "abandoned") Pill("Maç yarıda kaldı", LoopaPalette.Peach)
+                        Spacer(Modifier.height(6.dp))
+                        Pill(com.loopa.core.game.GameModes.name(results.gameMode), com.loopa.core.ui.components.gameVisual(results.gameMode).color)
+                        TeamSummary(results)
                     }
                 }
                 item { Podium(results.players) }
                 if (me != null) {
-                    item { MyRewards(me, ui.myXp, leveledUp, ui.levelAfter) }
+                    item { MyRewards(me, ui.myXp, leveledUp, ui.levelAfter, results.gameMode) }
                 }
                 item { Text("Sıralama", style = MaterialTheme.typography.titleLarge, color = Loopa.colors.text) }
-                items(results.players, key = { it.userId }) { p -> RankRow(p, isMe = p.userId == vm.myId) }
+                items(results.players, key = { it.userId }) { p -> RankRow(p, isMe = p.userId == vm.myId, gameMode = results.gameMode) }
                 if (results.roundWinners.isNotEmpty()) {
                     item {
                         LoopaCard {
@@ -253,7 +256,7 @@ private fun PodiumColumn(p: MatchResultPlayer?, place: Int, height: Dp, color: C
 }
 
 @Composable
-private fun MyRewards(me: MatchResultPlayer, xp: Int, leveledUp: Boolean, level: Int?) {
+private fun MyRewards(me: MatchResultPlayer, xp: Int, leveledUp: Boolean, level: Int?, gameMode: String = com.loopa.core.game.GameModes.ISIM_SEHIR) {
     val earned by animateIntAsState(me.xpEarned, tween(1400), label = "xp")
     val pulse = remember { Animatable(1f) }
     LaunchedEffect(leveledUp) { if (leveledUp) { kotlinx.coroutines.delay(1_200); pulse.animateTo(1.15f, tween(200)); pulse.animateTo(1f, spring(dampingRatio = Spring.DampingRatioHighBouncy)) } }
@@ -274,9 +277,13 @@ private fun MyRewards(me: MatchResultPlayer, xp: Int, leveledUp: Boolean, level:
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Pill("${me.roundWins} tur galibiyeti", LoopaPalette.Butter)
-            Pill("${me.validAnswers} geçerli", LoopaPalette.Mint)
-            Pill("${me.uniqueAnswers} benzersiz", LoopaPalette.Sky)
-            if (me.earlyBonuses > 0) Pill("⚡${me.earlyBonuses}", LoopaPalette.Peach)
+            if (gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) {
+                Pill("${me.validAnswers} geçerli", LoopaPalette.Mint)
+                Pill("${me.uniqueAnswers} benzersiz", LoopaPalette.Sky)
+                if (me.earlyBonuses > 0) Pill("⚡${me.earlyBonuses}", LoopaPalette.Peach)
+            } else {
+                Pill("${me.correctActions} isabet", LoopaPalette.Mint)
+            }
         }
         Text(
             "XP: maçı tamamlama +20, tur galibiyeti +30, 1./2./3. +100/+50/+30. Seviyeler yalnızca kozmetik açar.",
@@ -286,7 +293,7 @@ private fun MyRewards(me: MatchResultPlayer, xp: Int, leveledUp: Boolean, level:
 }
 
 @Composable
-private fun RankRow(p: MatchResultPlayer, isMe: Boolean) {
+private fun RankRow(p: MatchResultPlayer, isMe: Boolean, gameMode: String = com.loopa.core.game.GameModes.ISIM_SEHIR) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
             .background(if (isMe) LoopaPalette.Lavender.copy(alpha = 0.3f) else Loopa.colors.card).padding(12.dp),
@@ -297,7 +304,8 @@ private fun RankRow(p: MatchResultPlayer, isMe: Boolean) {
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(p.username + if (isMe) " (sen)" else "", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
-            Text("${p.roundWins} tur · ${p.validAnswers} geçerli cevap", style = MaterialTheme.typography.labelSmall, color = Loopa.colors.textSoft)
+            Text(if (gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) "${p.roundWins} tur · ${p.validAnswers} geçerli cevap" else "${p.roundWins} tur · ${p.correctActions} isabet",
+                style = MaterialTheme.typography.labelSmall, color = Loopa.colors.textSoft)
         }
         Column(horizontalAlignment = Alignment.End) {
             Text("${p.totalPoints}", style = MaterialTheme.typography.titleLarge, color = Loopa.colors.text)
@@ -325,5 +333,16 @@ fun Confetti(modifier: Modifier = Modifier, intense: Boolean = true) {
                 drawRect(color, Offset(x - p[5] / 2, y - p[5] / 4), Size(p[5], p[5] / 2))
             }
         }
+    }
+}
+
+/** Anlat Bakalım: the two team totals. */
+@Composable
+private fun TeamSummary(results: com.loopa.core.model.MatchResults) {
+    if (results.gameMode != "anlat_bakalim") return
+    val pub = results.modePublic.let { com.loopa.core.model.ModeJson.decodeFromJsonElement(com.loopa.core.game.modes.AnlatPublic.serializer(),
+        it ?: kotlinx.serialization.json.JsonObject(emptyMap())) }
+    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        pub.teamScores.forEachIndexed { t, sc -> Pill("${com.loopa.core.game.modes.AnlatBakalimLogic.teamName(t)}: $sc", if (t == 0) LoopaPalette.Sky else LoopaPalette.Peach) }
     }
 }

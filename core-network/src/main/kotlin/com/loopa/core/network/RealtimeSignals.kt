@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
 private const val POKE = "poke"
+/** Data-free "new strokes" hint for Çiz ve Tahmin Et; receivers fetch strokes with get_strokes. */
+private const val INK = "ink"
 
 enum class LiveStatus { CONNECTING, LIVE, OFFLINE }
 
@@ -35,6 +37,7 @@ class RoomSignalListener(
     private val roomId: String,
     private val scope: CoroutineScope,
     private val onSignal: () -> Unit,
+    private val onInk: () -> Unit = {},
 ) {
     private val _status = MutableStateFlow(LiveStatus.CONNECTING)
     val status: StateFlow<LiveStatus> = _status.asStateFlow()
@@ -50,6 +53,7 @@ class RoomSignalListener(
             filter("room_id", FilterOperator.EQ, roomId)
         }.onEach { onSignal() }.launchIn(scope)
         jobs += ch.broadcastFlow<JsonObject>(POKE).onEach { onSignal() }.launchIn(scope)
+        jobs += ch.broadcastFlow<JsonObject>(INK).onEach { onInk() }.launchIn(scope)
         jobs += ch.status.onEach { s ->
             val before = _status.value
             _status.value = when (s) {
@@ -74,6 +78,13 @@ class RoomSignalListener(
         val ch = channel ?: return
         if (ch.status.value != RealtimeChannel.Status.SUBSCRIBED) return
         scope.launch { runCatching { ch.broadcast(POKE, JsonObject(emptyMap())) } }
+    }
+
+    /** Tell the others that new strokes were saved. Best effort; they also poll while a drawing is open. */
+    fun ink() {
+        val ch = channel ?: return
+        if (ch.status.value != RealtimeChannel.Status.SUBSCRIBED) return
+        scope.launch { runCatching { ch.broadcast(INK, JsonObject(emptyMap())) } }
     }
 
     suspend fun stop() {

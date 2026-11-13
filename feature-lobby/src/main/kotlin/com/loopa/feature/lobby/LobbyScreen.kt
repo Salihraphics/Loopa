@@ -139,6 +139,9 @@ class LobbyViewModel(private val c: DataContainer, roomId: String) : ViewModel()
         _modeStatus.value = com.loopa.core.game.GameCards.status(com.loopa.core.game.GameModes.info(modeId), catalog)
     }
 
+    val catalog = c.catalog.state
+    fun refreshCatalog() = viewModelScope.launch { c.catalog.refresh() }
+
     fun leave(onLeft: () -> Unit) {
         viewModelScope.launch {
             session.leave()
@@ -167,7 +170,9 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
     // Re-checked whenever this client becomes host (e.g. after the previous host left) or the mode changes.
     LaunchedEffect(state.isHost, modeId, state.room.hostId) { if (state.isHost) vm.checkMode(modeId) }
     val modeBlocked = state.isHost && modeId != com.loopa.core.game.GameModes.ISIM_SEHIR && modeStatus?.canStart != true
-    val canStart = state.isHost && players.size >= 2 && notReady == 0 && !modeBlocked
+    val minPlayers = com.loopa.core.game.GameModes.info(modeId).minPlayers
+    val canStart = state.isHost && players.size >= minPlayers && notReady == 0 && !modeBlocked
+    val catalog by vm.catalog.collectAsStateWithLifecycle()
 
     // joining / readiness sounds
     var lastCount by remember { mutableStateOf(players.size) }
@@ -215,10 +220,10 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
                         modifier = Modifier.animateItem(),
                     )
                 }
-                if (players.size < 2) {
+                if (players.size < minPlayers) {
                     item {
                         Text(
-                            "Başlamak için en az 2 oyuncu gerekli. Oda kodunu paylaş!",
+                            "${com.loopa.core.game.GameModes.name(modeId)} için en az $minPlayers oyuncu gerekli. Oda kodunu paylaş!",
                             style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft,
                         )
                     }
@@ -245,7 +250,7 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
                         )
                         LoopaButton(
                             text = when {
-                                players.size < 2 -> "Oyuncu bekleniyor…"
+                                players.size < minPlayers -> "En az $minPlayers oyuncu gerekli"
                                 notReady > 0 -> "$notReady oyuncu hazır değil"
                                 else -> "Oyunu Başlat"
                             },
@@ -284,7 +289,9 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
             saving = busy == "settings",
             onDismiss = { showSettings = false },
             onSave = { s, pub -> vm.saveSettings(s, pub) { showSettings = false } },
+            gameStatus = { id -> com.loopa.core.game.GameCards.status(com.loopa.core.game.GameModes.info(id), catalog.data) },
         )
+        LaunchedEffect(Unit) { vm.refreshCatalog() }
     }
     if (confirmLeave) {
         ConfirmDialog(
@@ -321,7 +328,7 @@ fun ConnectionPill(state: ConnectionState) {
 private fun shareCode(context: Context, code: String) {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, "LOOPA'da benimle İsim Şehir oyna! Oda kodu: $code\nPlay together. Think faster.")
+        putExtra(Intent.EXTRA_TEXT, "LOOPA'da benimle oyna! Oda kodu: $code\nPlay together. Think faster.")
     }
     context.startActivity(Intent.createChooser(intent, "Oda kodunu paylaş"))
 }
@@ -379,14 +386,21 @@ private fun SettingsSummary(s: RoomSettings, isHost: Boolean, onEdit: () -> Unit
             Pill("⏱ ${s.roundSeconds} sn", LoopaPalette.Butter)
             Pill("🔁 ${s.rounds} tur", LoopaPalette.Peach)
             Pill("👥 en fazla ${s.maxPlayers}", LoopaPalette.Sky)
-            Pill("🗳 oylama ${s.voteSeconds} sn", LoopaPalette.Lavender)
-            if (s.excludedLetters.isNotEmpty()) Pill("Hariç: ${s.excludedLetters.joinToString(" ")}", Loopa.colors.cardHigh, textColor = Loopa.colors.text)
-        }
-        Spacer(Modifier.height(10.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            s.categories.forEachIndexed { i, cat ->
-                Pill(cat.name + if (cat.custom) " ★" else "", LoopaPalette.accent(i).copy(alpha = 0.7f))
+            if (s.gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) {
+                Pill("🗳 oylama ${s.voteSeconds} sn", LoopaPalette.Lavender)
+                if (s.excludedLetters.isNotEmpty()) Pill("Hariç: ${s.excludedLetters.joinToString(" ")}", Loopa.colors.cardHigh, textColor = Loopa.colors.text)
             }
+        }
+        if (s.gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) {
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                s.categories.forEachIndexed { i, cat ->
+                    Pill(cat.name + if (cat.custom) " ★" else "", LoopaPalette.accent(i).copy(alpha = 0.7f))
+                }
+            }
+        } else {
+            Spacer(Modifier.height(8.dp))
+            Text(com.loopa.core.game.GameModes.info(s.gameMode).tagline, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
         }
     }
 }

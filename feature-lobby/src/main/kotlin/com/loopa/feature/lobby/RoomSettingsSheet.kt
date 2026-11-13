@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -65,6 +66,8 @@ fun RoomSettingsSheet(
     saving: Boolean,
     onDismiss: () -> Unit,
     onSave: (RoomSettings, Boolean) -> Unit,
+    /** Card state of each game for this host (from the server catalogue); null = not loaded. */
+    gameStatus: (String) -> com.loopa.core.game.GameCardStatus? = { null },
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var s by remember { mutableStateOf(initial) }
@@ -93,17 +96,34 @@ fun RoomSettingsSheet(
         ) {
             Text("Oda Ayarları", style = MaterialTheme.typography.headlineMedium, color = Loopa.colors.text)
 
-            Section("Tur süresi") {
+            Text("Oyun", style = MaterialTheme.typography.titleMedium, color = Loopa.colors.text)
+            FlowRow(Modifier.testTag("settings_games"), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.loopa.core.game.GameModes.all.forEach { g ->
+                    val st = gameStatus(g.id)
+                    // The current game stays selectable; others only when the server says this host may start them.
+                    val allowed = g.id == s.gameMode || g.id == com.loopa.core.game.GameModes.ISIM_SEHIR || st?.canStart == true
+                    LoopaChip(g.name, s.gameMode == g.id, { s = s.copy(gameMode = g.id); localError = null },
+                        color = com.loopa.core.ui.components.gameVisual(g.id).color, enabled = allowed,
+                        leading = { com.loopa.core.ui.components.GameIcon(g.id, size = 20.dp, dimmed = !allowed) })
+                }
+            }
+            Text(com.loopa.core.game.GameModes.info(s.gameMode).let { "${it.tagline} (${it.players})" },
+                style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
+            val labels = ModeSettingsLabels.of(s.gameMode)
+
+            if (labels.duration != null) Section(labels.duration) {
                 RoomSettings.DURATIONS.forEach { d -> LoopaChip("$d sn", s.roundSeconds == d, { s = s.copy(roundSeconds = d) }, color = LoopaPalette.Butter) }
             }
-            Section("Tur sayısı") {
-                RoomSettings.ROUNDS.forEach { r -> LoopaChip("$r tur", s.rounds == r, { s = s.copy(rounds = r) }, color = LoopaPalette.Peach) }
+            if (labels.rounds != null) Section(labels.rounds) {
+                RoomSettings.ROUNDS.forEach { r -> LoopaChip("$r", s.rounds == r, { s = s.copy(rounds = r) }, color = LoopaPalette.Peach) }
             }
+            labels.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft) }
             Section("Oyuncu sınırı") {
                 RoomSettings.PLAYER_LIMITS.forEach { m ->
                     LoopaChip("$m kişi", s.maxPlayers == m, { s = s.copy(maxPlayers = m) }, color = LoopaPalette.Sky, enabled = m >= currentPlayers)
                 }
             }
+            if (s.gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) {
             Section("Oylama süresi") {
                 listOf(15, 20, 30, 45).forEach { v -> LoopaChip("$v sn", s.voteSeconds == v, { s = s.copy(voteSeconds = v) }, color = LoopaPalette.Lavender) }
             }
@@ -186,6 +206,7 @@ fun RoomSettingsSheet(
                     }
                 }
             }
+            }   // İsim Şehir only
 
             ToggleRow("Açık oda", "Oda tarayıcısında görünür.", isPublic) { isPublic = it }
             ToggleRow("İzleyici modu", "İzleyiciler oyunu izleyebilir ama etkileyemez.", s.allowSpectators) { s = s.copy(allowSpectators = it) }
@@ -223,5 +244,22 @@ private fun ToggleRow(title: String, body: String, checked: Boolean, onChange: (
             Text(body, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
         }
         Switch(checked, onChange, colors = SwitchDefaults.colors(checkedTrackColor = LoopaPalette.MintDeep))
+    }
+}
+
+/** Which settings a game uses, with labels in its own terms. */
+data class ModeSettingsLabels(val duration: String?, val rounds: String?, val note: String? = null) {
+    companion object {
+        fun of(mode: String) = when (mode) {
+            "isim_sehir" -> ModeSettingsLabels("Tur süresi", "Tur sayısı")
+            "gizli_kelime", "sessiz_sinema", "anlat_bakalim" -> ModeSettingsLabels("Anlatma süresi", "Tur sayısı", "Süre 45-120 sn arasında uygulanır.")
+            "ciz_tahmin" -> ModeSettingsLabels("Çizim süresi", "Tur sayısı", "Süre 45-120 sn arasında uygulanır.")
+            "bilgi_arenasi" -> ModeSettingsLabels(null, "Soru sayısı", "Her soru için 20 saniye.")
+            "en_muhtemel_kim" -> ModeSettingsLabels(null, "Soru sayısı", "Her oylama 20 saniye.")
+            "kelime_zinciri" -> ModeSettingsLabels("Hamle süresi (30→15, 60→20, 90→25, 120→30 sn)", "Tur (her oyuncu için)")
+            "iki_dogru_bir_yalan" -> ModeSettingsLabels("Yazma süresi", null, "Her yazan oyuncu için bir oylama turu.")
+            "cizim_telefonu" -> ModeSettingsLabels("Çizim süresi", null, "Adım sayısı oyuncu sayısı kadardır; tahminler 35 saniye.")
+            else -> ModeSettingsLabels("Süre", "Tur sayısı")
+        }
     }
 }
