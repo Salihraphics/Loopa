@@ -449,7 +449,9 @@ begin
             if coalesce((p->>'special')::boolean, false) and (role <> 'brute' or s->'p'->me->'used' ? 'special') then raise exception 'LOOPA:ABILITY_USED'; end if;
         end if;
         if role in ('villager','mayor','jester') then raise exception 'LOOPA:NO_NIGHT_ACTION'; end if;
-        if role = 'medium' then
+        if p ? 'attack' and not (p ?| array['target','heal','poison','a','b','revive']) then
+            null;                                                            -- attack vote only; the ability may be sent separately
+        elsif role = 'medium' then
             if s->'p'->me->'used' ? 'revive' then raise exception 'LOOPA:ABILITY_USED'; end if;
             tgt := p->>'revive';
             if tgt is null or not (s->'p' ? tgt) or (s->'p'->tgt->>'alive')::boolean then raise exception 'LOOPA:INVALID_TARGET'; end if;
@@ -467,7 +469,8 @@ begin
         elsif not (p ? 'attack') then
             raise exception 'LOOPA:NO_NIGHT_ACTION';                         -- plain wolves only vote the attack
         end if;
-        s := jsonb_set(s, array['actions', me], p);
+        -- ability and attack vote may come in separate calls: merge them
+        s := jsonb_set(s, array['actions', me], coalesce(s->'actions'->me, '{}'::jsonb) || p);
         -- everybody with a night action has acted: morning comes early
         select count(*) into n_alive from unnest(public._ka_alive_users(s)) x
          where public._ka_team(s->'p'->x->>'role') = 'wolf' or s->'p'->x->>'role' not in ('villager','mayor','jester');
@@ -544,7 +547,7 @@ begin
         'wolf_mates', case when public._ka_team(role) = 'wolf' then (select jsonb_agg(public._ka_user_seat(s, k)) from jsonb_object_keys(s->'p') k
                               where public._ka_team(s->'p'->k->>'role') = 'wolf' and k <> me and public._ka_user_seat(s, k) is not null) end,
         'wolf_votes', case when public._ka_team(role) = 'wolf' and s->>'phase' = 'night' then
-                           (select jsonb_object_agg(public._ka_user_seat(s, k)::text, s->'actions'->k->'target') from jsonb_object_keys(s->'actions') k
+                           (select jsonb_object_agg(public._ka_user_seat(s, k)::text, s->'actions'->k->'attack') from jsonb_object_keys(s->'actions') k
                              where public._ka_team(s->'p'->k->>'role') = 'wolf') end,
         'dead', case when role = 'medium' then (select coalesce(jsonb_agg(jsonb_build_object('user', k, 'seat', public._ka_user_seat(s, k),
                          'name', (select username from public.profiles where id = k::uuid))), '[]'::jsonb)
