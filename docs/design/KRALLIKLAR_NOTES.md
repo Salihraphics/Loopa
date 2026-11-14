@@ -1,0 +1,81 @@
+# Krallıklar — uygulama notları (0.8.0)
+
+Kaynak: kullanıcının gönderdiği Krallıklar spesifikasyonu. Sunucu motoru:
+`supabase/migrations/20261120000008_kralliklar.sql`, testler: `supabase/tests/kralliklar_test.sql`.
+
+## Spesifikasyondan birebir uygulananlar
+- 4–20 oyuncu. Harita boyutu oyuncu sayısına göre 200…600 altıgen karo (tablo `_kr_map_size`).
+- Rastgele, bağlantılı altıgen harita. Arazi kümeler halinde dağılır: ova, orman, maden, altın, tarım arazisi.
+- Her krallığın bir adı, bir rengi ve tek karoluk bir başkenti vardır. Ad ve renk ilk turda değiştirilebilir; renkler benzersizdir.
+- Başkentini kaybeden krallık elenir. Toprakları onu fethedene geçer.
+- Savaş sisi: kendi karoların ve 1 karoluk çevre görünür. Diğer karoların yalnızca koordinatları bilinir.
+- Kaynaklar:
+  - Odun (orman) 5 tur, Demir (maden) 10 tur, Altın (altın) 20 tur ve daha az miktarda.
+  - Tükenen karo sahibinde kalır ve yeniden dolmaz.
+- Binalar:
+  - Kışla: tur başına 5 asker üretir.
+  - Pazar ve Çiftlik.
+  - Bina maliyetleri kaynakla ödenir.
+- Asker sayısı sınırsızdır. Yürüme süresi mesafeye bağlıdır. Savaşlar tur sonunda sunucuda çözülür: sayılar, savunan konumu, arazi bonusu ve sınırlı şans.
+- Diplomasi:
+  - Özel mektuplar (alıcı, konu, metin).
+  - Resmî teklifler: saldırmazlık, ittifak, ticaret, ortak düşman, barış.
+- İttifaklar en fazla 3 krallıktır. Müttefike saldıran ittifaktan çıkar ve bu herkese duyurulur.
+- Ticaret iki krallık arasında atomik bir takastır. Taraflardan birinin kaynağı yetmezse başarısız olur ve hiçbir şey el değiştirmez.
+- 60 saniyelik eşzamanlı planlama turları vardır. Herkes "hazır" derse tur erken biter.
+- Zafer: ayakta kalan son krallık.
+
+## Tur sonu işleme sırası
+1. Binalar, verilme sırasıyla ödenir. Karşılanamayan bina başarısız olur ve bildirim gelir.
+2. Kalkışlar: askerler karolarından ayrılır.
+3. Varışlar ve savaşlar:
+   - Önce aynı krallığın takviyeleri sayılır, sonra saldırılar en büyükten küçüğe çözülür.
+   - Düşen başkent krallığı eler.
+4. Üretim: başkent geliri, ömrü olan kaynak karoları, çiftlik, pazar ve kışla (kışlanın yiyecek bakım bedeli vardır).
+5. Süresi dolan pakt ve tekliflerin temizlenmesi.
+6. Zafer kontrolü.
+
+## GEÇİCİ denge değerleri (spesifikasyon bölüm 16: test edilmeden kesinleştirilmedi)
+Tüm değerler `economy_config['kralliklar_balance']` içinden admin tarafından değiştirilebilir. Değişiklik yeni başlayan oyunlara uygulanır. Varsayılanlar `_kr_default_balance()` içindedir:
+
+| Değer | Geçici varsayılan |
+|---|---|
+| Tur süresi | 60 sn |
+| Hız | 2 karo/tur (komşu ve 2 karo aynı turda varır) |
+| Başlangıç askeri | 15 (başkentte) |
+| Başlangıç kaynakları | odun 40, demir 20, altın 5, yiyecek 40 |
+| Başkent geliri / tur | odun 3, altın 1, yiyecek 3, asker 2 |
+| Orman | 8 odun/tur, 5 tur |
+| Maden | 5 demir/tur, 10 tur |
+| Altın | 2 altın/tur, 20 tur |
+| Tarım arazisi | 6 yiyecek/tur, **15 tur (spesifikasyonda TBD)** |
+| Savunma bonusu | orman +%20, maden +%30, altın +%10, başkent +%50 |
+| Şans | ±%10 (her iki taraf) |
+| Tarafsız garnizon | kaynak karolarında 2 |
+| Kışla | 30 odun + 15 demir; 5 asker/tur; 3 yiyecek bakım |
+| Pazar | 25 odun + 5 demir; +2 altın/tur |
+| Çiftlik | 15 odun; +4 yiyecek/tur |
+| Teklif geçerliliği | 2 tur |
+| Saldırmazlık / ortak düşman | varsayılan 5 tur; barış varsayılanı 10 tur (2–30 seçilebilir) |
+
+Savaş formülü:
+- Saldırı gücü: saldıran × (1 ± şans).
+- Savunma gücü: savunan × (1 + arazi + başkent) × (1 ± şans).
+- Kazanan tarafta kalan asker: kazanan × (1 − kaybeden gücü / kazanan gücü). Saldıran kazanırsa en az 1 asker kalır.
+- Kaybeden tarafın askerlerinin hepsi ölür.
+
+## Yorum / karar gerektiren noktalar (kullanıcı onayı bekliyor)
+- **Başlangıç toprağı:** başkent ve çevresindeki 6 karo. Çevredeki arazi herkes için aynıdır (2 orman, 2 tarım, 1 maden, 1 ova) ki başlangıç adil olsun.
+- **Yürüme:** mesafe altıgen mesafesidir. Yoldaki karolar savaş üretmez; ordu yalnız hedefte çarpışır. Yoldaki ordular başka krallıklara görünmez.
+- **Elenme:** elenen krallığın stok kaynakları da fethedene geçer. Diğer karolarındaki askerler dağılır, karolar boş olarak devredilir. Yoldaki orduları dağılır.
+- **İttifak:** üyeler görüşü paylaşır. İttifak üyelikleri herkese açıktır.
+- **Saldırmazlık, barış ve ortak düşman:** resmî kayıtlardır. Mekanik bir yasak getirmezler; bozulmaları herkese duyurulur.
+- **Asker bakımı:** yalnızca kışla için yiyecek bedeli var. Ordu başına yiyecek tüketimi spesifikasyonda TBD olduğu için uygulanmadı.
+- **Tur sınırı:** spesifikasyonda yok, güvenlik için eklendi. Varsayılan 100 tur; 60, 150 veya kapalı seçilebilir. Sınırda en güçlü krallık (karo ve asker) birinci olur.
+- **Sıralama ve puan:** sonra elenen daha üstte yer alır. Kazanan, kendisinden kötü sıralanan krallık sayısı kadar puan alır.
+- **Oyundan çıkan oyuncu:** krallığı pasif kalır (emir vermez) ve fethedilebilir.
+
+## Ölçümler (yerel Postgres 17)
+- 20 krallıklı oyunun başlangıcı, oda kurulumu dahil: yaklaşık 1,5 sn.
+- Bir tur işleme: yaklaşık 0,06 sn.
+- 20 oyuncunun özel görünümü: toplam yaklaşık 0,03 sn.
