@@ -129,6 +129,10 @@ fun ModeGameContent(
                 "kizma_birader" -> KizmaBiraderScreen(ctx, mode, ui)
                 "amiral_batti" -> AmiralBattiScreen(ctx, mode, ui)
                 "renk_kartlari" -> RenkKartlariScreen(ctx, mode, ui)
+                "okey" -> OkeyScreen(ctx, mode, ui)
+                "milyoner" -> MilyonerScreen(ctx, mode, ui)
+                "kurt_adam" -> KurtAdamScreen(ctx, mode, ui)
+                "kralliklar" -> KralliklarScreen(ctx, mode, ui)
                 else -> WaitingNote("Bu oyun bu sürümde desteklenmiyor.")
             }
         }

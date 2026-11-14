@@ -1,0 +1,48 @@
+package com.loopa.feature.game.modes
+
+/** The Milyoner board, the same as the server's _my_board() (display only; prices are enforced by the server). */
+internal object MilyonerBoard {
+    data class Sq(val type: String, val name: String, val group: Int, val price: Int, val house: Int, val tax: Int)
+    val squares: List<Sq> = listOf(
+        Sq("start", "Başlangıç", 0, 0, 0, 0),
+        Sq("prop", "Kasaba Yolu", 1, 60, 50, 0),
+        Sq("kader", "Kader", 0, 0, 0, 0),
+        Sq("prop", "Köy Meydanı", 1, 60, 50, 0),
+        Sq("tax", "Gelir Vergisi", 0, 0, 0, 200),
+        Sq("station", "Haydarpaşa Garı", 0, 200, 0, 0),
+        Sq("prop", "Eskişehir Caddesi", 2, 100, 50, 0),
+        Sq("sans", "Şans", 0, 0, 0, 0),
+        Sq("prop", "Bursa Caddesi", 2, 100, 50, 0),
+        Sq("prop", "Konya Caddesi", 2, 120, 50, 0),
+        Sq("jail", "Nezarethane", 0, 0, 0, 0),
+        Sq("prop", "Ege Sokağı", 3, 140, 100, 0),
+        Sq("utility", "Elektrik İdaresi", 0, 150, 0, 0),
+        Sq("prop", "İzmir Kordon", 3, 140, 100, 0),
+        Sq("prop", "Bodrum Limanı", 3, 160, 100, 0),
+        Sq("station", "Kadıköy İskelesi", 0, 200, 0, 0),
+        Sq("prop", "Kapadokya", 4, 180, 100, 0),
+        Sq("kader", "Kader", 0, 0, 0, 0),
+        Sq("prop", "Trabzon Sahili", 4, 180, 100, 0),
+        Sq("prop", "Rize Yaylası", 4, 200, 100, 0),
+        Sq("free", "Mola", 0, 0, 0, 0),
+        Sq("prop", "Antalya Bulvarı", 5, 220, 150, 0),
+        Sq("sans", "Şans", 0, 0, 0, 0),
+        Sq("prop", "Alanya Kalesi", 5, 220, 150, 0),
+        Sq("prop", "Fethiye Koyu", 5, 240, 150, 0),
+        Sq("station", "Sirkeci Garı", 0, 200, 0, 0),
+        Sq("prop", "Kızılay", 6, 260, 150, 0),
+        Sq("prop", "Çankaya", 6, 260, 150, 0),
+        Sq("utility", "Su İdaresi", 0, 150, 0, 0),
+        Sq("prop", "Ulus Meydanı", 6, 280, 150, 0),
+        Sq("gojail", "Nezarete Git", 0, 0, 0, 0),
+        Sq("prop", "Beşiktaş", 7, 300, 200, 0),
+        Sq("prop", "Kadıköy", 7, 300, 200, 0),
+        Sq("kader", "Kader", 0, 0, 0, 0),
+        Sq("prop", "Üsküdar", 7, 320, 200, 0),
+        Sq("station", "Karaköy İskelesi", 0, 200, 0, 0),
+        Sq("sans", "Şans", 0, 0, 0, 0),
+        Sq("prop", "Boğaz Tepesi", 8, 350, 200, 0),
+        Sq("tax", "Lüks Vergisi", 0, 0, 0, 100),
+        Sq("prop", "Sarayburnu", 8, 400, 200, 0),
+    )
+}
