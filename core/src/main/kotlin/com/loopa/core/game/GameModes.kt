@@ -66,7 +66,7 @@ object GameModes {
     const val ISIM_SEHIR = "isim_sehir"
 
     /** Games whose rooms open in "setup" (configured = false) until the host saves the options (0.8.0 flow). */
-    val SETUP_FLOW: Set<String> = setOf("tavla", "yirmi_bir", "kizma_birader", "amiral_batti", "renk_kartlari", "okey", "milyoner", "kurt_adam", "kralliklar")
+    val SETUP_FLOW: Set<String> = setOf("tavla", "yirmi_bir", "kizma_birader", "amiral_batti", "renk_kartlari", "okey", "milyoner", "kurt_adam", "kralliklar", "buckshot")
 
     /**
      * Games this app version can actually play. A mode the server marks as available but that is
@@ -95,6 +95,9 @@ object GameModes {
         GameModeInfo("milyoner", "Milyoner", "Zar at, mülk al, kira topla. Son ayakta kalan kazanır.", "2-6 oyuncu", GameCategory.STRATEJI, addedIn = "0.8.0", kind = GameKind.BOARD),
         GameModeInfo("kurt_adam", "Kurt Adam", "Gizli roller, gece yetenekleri, gündüz oylaması. Moderatör LOOPA.", "6-20 oyuncu", GameCategory.PARTI, addedIn = "0.8.0", kind = GameKind.HIDDEN_ROLE),
         GameModeInfo("kralliklar", "Krallıklar", "Kaynak topla, ordu kur, diplomasi yap; başkentini koru.", "4-20 oyuncu", GameCategory.STRATEJI, addedIn = "0.8.0", kind = GameKind.STRATEGY),
+        // 0.9.0
+        GameModeInfo("buckshot", "Buckshot", "Tek tüfek, gizli mermiler. Eşyalarını kullan, olasılığı hesapla, ayakta kal.", "2-4 oyuncu", GameCategory.STRATEJI,
+            addedIn = "0.9.0", orientation = GameOrientation.LANDSCAPE, kind = GameKind.TURN_BASED),
     )
 
     /** Categories that at least one game uses, in catalogue order. */

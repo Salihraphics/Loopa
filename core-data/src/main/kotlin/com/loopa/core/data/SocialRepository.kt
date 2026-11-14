@@ -151,7 +151,12 @@ class SocialRepository(private val backend: LoopaBackend) {
         } catch (e: LoopaException) {
             if (e.error == LoopaError.SERVER_OUTDATED) emptySet() else setOf(com.loopa.core.release.ServerFeature.PLATFORM_080)
         }
-        return social + platform
+        // Buckshot: the server's catalogue lists the game only after its migration
+        val buckshot = runCatching {
+            val c = backend.rpc("get_game_catalog", com.loopa.core.model.GameCatalog.serializer())
+            if (c.mode("buckshot") != null) setOf(com.loopa.core.release.ServerFeature.BUCKSHOT) else emptySet()
+        }.getOrDefault(emptySet())
+        return social + platform + buckshot
     }
 
     // ------------------------------------------------------------------ loads

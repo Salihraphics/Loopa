@@ -63,6 +63,14 @@ fun ModeGameScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
     var confirmLeave by remember { mutableStateOf(false) }
 
     val m = mode
+    // A game that declares LANDSCAPE (Buckshot) turns the screen while it is shown; restored on leave.
+    val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+    val wantsLandscape = m?.mode?.let { com.loopa.core.game.GameModes.info(it).orientation == com.loopa.core.game.GameOrientation.LANDSCAPE } == true
+    androidx.compose.runtime.DisposableEffect(wantsLandscape, activity) {
+        val before = activity?.requestedOrientation
+        if (wantsLandscape) activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        onDispose { if (wantsLandscape && before != null) activity.requestedOrientation = before }
+    }
     if (m == null) { FullScreenLoading("Oyun yükleniyor…"); return }
     val roundId = m.round?.id
     val ui = ModeUi(
@@ -133,6 +141,7 @@ fun ModeGameContent(
                 "milyoner" -> MilyonerScreen(ctx, mode, ui)
                 "kurt_adam" -> KurtAdamScreen(ctx, mode, ui)
                 "kralliklar" -> KralliklarScreen(ctx, mode, ui)
+                "buckshot" -> BuckshotScreen(ctx, mode, ui)
                 else -> WaitingNote("Bu oyun bu sürümde desteklenmiyor.")
             }
         }
@@ -153,6 +162,7 @@ private fun progressFor(m: ModeState): String = when (m.mode) {
         val night = (m.round?.public?.get("night") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "1"
         val day = (m.round?.public?.get("day") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "1"
         when (ph) { "night", "cub" -> "Gece $night"; else -> "Gün $day" } }
+    "buckshot" -> "Raund ${m.round?.number ?: 1}/3"
     "kralliklar" -> "Tur ${(m.round?.public?.get("turn_no") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "1"}"
     else -> m.progressLabel("Tur")
 }

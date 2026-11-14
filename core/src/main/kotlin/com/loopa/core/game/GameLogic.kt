@@ -350,6 +350,10 @@ enum class LoopaError(val message: String) {
     ALREADY_ALLIED("Bu krallıkla zaten müttefiksin."),
     NOT_ALLIED("Bir ittifakta değilsin."),
     OFFER_NOT_FOUND("Teklif artık geçerli değil."),
+    // Buckshot
+    DUPLICATE_ACTION("Bu hamle zaten işlendi."),
+    ITEM_NOT_OWNED("Bu eşya envanterinde yok."),
+    ITEM_NOT_USABLE("Bu eşya şu anda kullanılamaz."),
     NETWORK("Bağlantı hatası. İnternetini kontrol et."),
     NOT_CONFIGURED("Sunucu yapılandırılmamış."),
     UNKNOWN("Beklenmeyen bir hata oluştu.");

@@ -39,6 +39,7 @@ object ModeOptions {
         "kurt_adam" -> listOf(Choice("night_seconds", "Gece süresi", listOf(30, 45, 60), 45, sec), Choice("day_seconds", "Tartışma süresi", listOf(60, 90, 120, 180), 90, sec),
             Choice("vote_seconds", "Oylama süresi", listOf(20, 30, 45), 30, sec), Disabled("disabled", "Kapalı roller", kurtAdamRoles))
         "kralliklar" -> listOf(Choice("max_turns", "Güvenlik tur sınırı", listOf(0, 60, 100, 150), 100) { if (it == 0) "Kapalı" else "$it tur" })
+        "buckshot" -> listOf(Choice("turn_seconds", "Hamle süresi", listOf(20, 30, 45), 30, sec))
         else -> emptyList()
     }
 
@@ -67,6 +68,7 @@ object ModeOptions {
         "milyoner" -> listOf(4, 6)
         "kurt_adam" -> listOf(8, 12, 16, 20)
         "kralliklar" -> listOf(4, 8, 12, 16, 20)
+        "buckshot" -> listOf(2, 3, 4)
         else -> listOf(4, 6, 10)
     }
 

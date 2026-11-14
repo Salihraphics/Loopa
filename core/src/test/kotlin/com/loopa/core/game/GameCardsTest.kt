@@ -25,12 +25,12 @@ class GameCardsTest {
     private fun catalog(vararg modes: CatalogMode, rotation: Rotation = Rotation()) = GameCatalog(rotation = rotation, modes = modes.toList())
     private fun info(id: String) = GameModes.info(id)
 
-    @Test fun nineteenGamesInTheAgreedOrder() {
-        assertEquals(19, GameModes.all.size)
+    @Test fun twentyGamesInTheAgreedOrder() {
+        assertEquals(20, GameModes.all.size)
         assertEquals(
             listOf("İsim Şehir", "Gizli Kelime", "Kelime Zinciri", "Bilgi Arenası", "İki Doğru Bir Yalan", "Çiz ve Tahmin Et",
                 "En Muhtemel Kim?", "Anlat Bakalım", "Çizim Telefonu", "Sessiz Sinema",
-                "Tavla", "21", "Kızma Birader", "Amiral Battı", "Renk Kartları", "101 Okey", "Milyoner", "Kurt Adam", "Krallıklar"),
+                "Tavla", "21", "Kızma Birader", "Amiral Battı", "Renk Kartları", "101 Okey", "Milyoner", "Kurt Adam", "Krallıklar", "Buckshot"),
             GameModes.all.map { it.name },
         )
         assertEquals(GameModes.all.map { it.id }.toSet(), GameModes.implemented)
@@ -69,9 +69,9 @@ class GameCardsTest {
         val raw = javaClass.getResource("/catalog_pre_080_server.json")!!.readText()
         val c = json.decodeFromString(GameCatalog.serializer(), raw)
         assertEquals(10, c.modes.size)
-        val old = GameModes.all.filter { it.addedIn != "0.8.0" }
-        val new = GameModes.all.filter { it.addedIn == "0.8.0" }
-        assertEquals(10, old.size); assertEquals(9, new.size)
+        val old = GameModes.all.filter { it.addedIn < "0.8.0" }
+        val new = GameModes.all.filter { it.addedIn >= "0.8.0" }
+        assertEquals(10, old.size); assertEquals(10, new.size)
         old.forEach { g ->
             val s = GameCards.status(g, c)
             if (g.id == GameModes.ISIM_SEHIR) assertEquals(GameCardKind.PLAYABLE, s.kind)

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.ViewModule
+import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -97,6 +98,7 @@ fun gameVisual(modeId: String): GameVisual = when (modeId) {
     "milyoner" -> GameVisual(Icons.Rounded.Apartment, LoopaPalette.Butter)
     "kurt_adam" -> GameVisual(Icons.Rounded.NightsStay, LoopaPalette.Lavender)
     "kralliklar" -> GameVisual(Icons.Rounded.Flag, LoopaPalette.Sky)
+    "buckshot" -> GameVisual(Icons.Rounded.Whatshot, LoopaPalette.Peach)
     else -> GameVisual(Icons.Rounded.TextFields, LoopaPalette.Lavender)
 }
 

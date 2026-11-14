@@ -14,7 +14,7 @@ enum class FeatureArt { FRIENDS, SEARCH, INVITE, CHAT, BELL, PRIVACY, GAMES, SPA
 enum class Accent { LAVENDER, MINT, PEACH, BUTTER, SKY }
 
 /** Backend capabilities a feature depends on. Features whose backend is missing are not announced. */
-enum class ServerFeature { SOCIAL, PLATFORM_080 }
+enum class ServerFeature { SOCIAL, PLATFORM_080, BUCKSHOT }
 
 data class WhatsNewFeature(
     val title: String,
@@ -47,6 +47,20 @@ sealed interface WhatsNewDecision {
 
 object WhatsNew {
     val releases: List<ReleaseNotes> = listOf(
+        ReleaseNotes(
+            versionName = "0.9.0",
+            title = "Yeni oyun: Buckshot",
+            subtitle = "Tek tüfek, gizli mermiler, 2-4 oyuncu. Eşyalarını kullan, olasılığı hesapla, ayakta kal.",
+            hero = WhatsNewHero.GAMES,
+            features = listOf(
+                WhatsNewFeature("Buckshot", "Üç raundluk herkes tek maç. Her raund 8 mermilik şarjör, dolu ve boş sayıları açık, sırası gizli.",
+                    FeatureArt.GAMES, Accent.PEACH, ServerFeature.BUCKSHOT),
+                WhatsNewFeature("9 eşya", "Büyüteç, Telsiz, Testere, Çevirici, Kelepçe ve daha fazlası. Öğrendiğin mermi bilgisi yalnızca sende.",
+                    FeatureArt.SPARK, Accent.LAVENDER, ServerFeature.BUCKSHOT),
+                WhatsNewFeature("Para çantası", "Her raundun galibi coin kazanır. Bahis yok: kaybeden hiçbir şey kaybetmez.",
+                    FeatureArt.SPARK, Accent.BUTTER, ServerFeature.BUCKSHOT),
+            ),
+        ),
         ReleaseNotes(
             versionName = "0.8.0",
             title = "9 yeni oyun ve LOOPA Coin!",

@@ -27,12 +27,14 @@ class CatalogLogicTest {
     }
 
     @Test fun orientationDefaultsToFlexible() {
-        assertTrue(GameModes.all.all { it.orientation == GameOrientation.FLEXIBLE })
+        // Buckshot is the one landscape game; every other game adapts to both.
+        assertTrue(GameModes.all.filter { it.id != "buckshot" }.all { it.orientation == GameOrientation.FLEXIBLE })
+        assertEquals(GameOrientation.LANDSCAPE, GameModes.info("buckshot").orientation)
     }
 
     @Test fun roadmapIsPlanningOnly() {
         assertEquals(24, GameRoadmap.targetCount)
-        assertEquals((20..24).toList(), GameRoadmap.planned.map { it.number })
+        assertEquals((21..24).toList(), GameRoadmap.planned.map { it.number })
         val implemented = GameModes.all.map { it.id }.toSet()
         assertTrue(GameRoadmap.planned.none { it.id in implemented })
         assertEquals(GameRoadmap.planned.size, GameRoadmap.planned.map { it.id }.toSet().size)
@@ -41,7 +43,7 @@ class CatalogLogicTest {
     @Test fun everyGameDeclaresHowItSyncs() {
         // Krallıklar stores hidden orders and resolves them at the deadline; the rest re-fetch on a signal.
         assertTrue(GameModes.all.all { it.kind.sync == SyncModel.SNAPSHOT_ON_SIGNAL || it.kind == GameKind.STRATEGY })
-        assertEquals(19, GameModes.all.size)
+        assertEquals(20, GameModes.all.size)
         assertEquals(4, GameModes.info("okey").minPlayers)
         assertEquals(6, GameModes.info("kurt_adam").minPlayers)
     }

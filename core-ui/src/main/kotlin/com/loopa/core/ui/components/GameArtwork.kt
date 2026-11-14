@@ -67,6 +67,7 @@ private fun artFor(id: String): DrawScope.() -> Unit = when (id) {
     "milyoner" -> { -> milyoner() }
     "kurt_adam" -> { -> kurtAdam() }
     "kralliklar" -> { -> kralliklar() }
+    "buckshot" -> { -> buckshot() }
     else -> { -> isimSehir() }
 }
 
@@ -361,4 +362,21 @@ private fun DrawScope.kralliklar() = square { s, ox, oy ->
     drawLine(Ink, Offset(ox + s * 0.36f, oy + s * 0.56f), Offset(ox + s * 0.36f, oy + s * 0.24f), s * 0.025f, StrokeCap.Round)
     val flag = Path().apply { moveTo(ox + s * 0.37f, oy + s * 0.24f); lineTo(ox + s * 0.58f, oy + s * 0.3f); lineTo(ox + s * 0.37f, oy + s * 0.36f); close() }
     drawPath(flag, Color(0xFFE53935))
+}
+
+/** A dark metal table under a warm lamp: a shotgun and a row of red and grey shells. */
+private fun DrawScope.buckshot() {
+    drawRect(Color(0xFF1C1D22))
+    drawCircle(Color(0xFFFF8A3D).copy(alpha = 0.18f), size.minDimension * 0.55f, Offset(size.width * 0.5f, size.height * 0.1f))
+    square { s, ox, oy ->
+        // shotgun: stock, body, barrel
+        drawRoundRect(Color(0xFF6D4C41), Offset(ox + s * 0.14f, oy + s * 0.42f), Size(s * 0.2f, s * 0.12f), CornerRadius(s * 0.03f))
+        drawRoundRect(Color(0xFF3C3F48), Offset(ox + s * 0.32f, oy + s * 0.4f), Size(s * 0.18f, s * 0.11f), CornerRadius(s * 0.02f))
+        drawRoundRect(Color(0xFF9AA0A8), Offset(ox + s * 0.48f, oy + s * 0.41f), Size(s * 0.38f, s * 0.05f), CornerRadius(s * 0.02f))
+        listOf(true, false, true, true, false).forEachIndexed { i, live ->
+            val x = ox + s * (0.2f + i * 0.13f)
+            drawRoundRect(if (live) Color(0xFFE0533D) else Color(0xFF6E7A86), Offset(x, oy + s * 0.62f), Size(s * 0.08f, s * 0.18f), CornerRadius(s * 0.02f))
+            drawRect(Color(0xFFD4A84C), Offset(x, oy + s * 0.76f), Size(s * 0.08f, s * 0.04f))
+        }
+    }
 }

@@ -1,7 +1,7 @@
 package com.loopa.core.game
 
 /**
- * The planned games after the 19 playable ones (numbers 20–24). Planning data only: none of them is in [GameModes.all], so none is
+ * The planned games after the 20 playable ones (numbers 21–24). Planning data only: none of them is in [GameModes.all], so none is
  * shown or startable. When one is built it moves to [GameModes.all] with its server engine.
  */
 data class PlannedGame(
@@ -18,14 +18,12 @@ data class PlannedGame(
 
 object GameRoadmap {
     val planned: List<PlannedGame> = listOf(
-        PlannedGame(20, "araba_yarisi", "Araba Yarışı", "Yarış", GameKind.REALTIME, 2..6, GameOrientation.LANDSCAPE,
+        PlannedGame(21, "araba_yarisi", "Araba Yarışı", "Yarış", GameKind.REALTIME, 2..6, GameOrientation.LANDSCAPE,
             needs = listOf("Realtime broadcast ile girdi akışı", "istemci simülasyonu + sunucu sonuç doğrulaması", "düşük gecikme testi")),
-        PlannedGame(21, "adam_asmaca", "Adam Asmaca", "Kelime", GameKind.TURN_BASED, 2..8,
+        PlannedGame(22, "adam_asmaca", "Adam Asmaca", "Kelime", GameKind.TURN_BASED, 2..8,
             needs = listOf("mevcut mode engine yeterli (gizli kelime + tahminler)")),
-        PlannedGame(22, "bilardo", "Bilardo", "Beceri / Spor", GameKind.REALTIME, 2..2, GameOrientation.LANDSCAPE,
+        PlannedGame(23, "bilardo", "Bilardo", "Beceri / Spor", GameKind.REALTIME, 2..2, GameOrientation.LANDSCAPE,
             needs = listOf("deterministik fizik (aynı girdi → aynı sonuç)", "atış girdisinin sunucuda yeniden hesaplanması")),
-        PlannedGame(23, "kurusun_rulet", "Kurşun Ruleti (özgün)", "Gerilim / Parti", GameKind.TURN_BASED, 2..4,
-            needs = listOf("gizli sıra durumu (sunucu)", "özgün görsel ve kurallar")),
         PlannedGame(24, "dortlu_satranc", "4 Kişilik Satranç", "Strateji", GameKind.BOARD, 4..4,
             needs = listOf("hamle doğrulayıcı (sunucu)", "süre kontrolü", "uzun maç devam ettirme")),
     )
