@@ -161,6 +161,64 @@ begin
     perform pg_temp.check((select status from public.matches where id = m) = 'finished'
                           and (select final_rank from public.match_players where match_id = m and user_id = C) = 1, 'rk: round winner wins the 1-round match');
     perform pg_temp.check((select total_points from public.match_players where match_id = m and user_id = C) > 0, 'rk: scored the other hands');
+
+    -- =========================================================== 101 Okey
+    perform pg_temp.expect_error(format('select pg_temp.start(''okey'', array[%L,%L,%L]::uuid[], ''{}'')', A, B, C), 'NOT_ENOUGH_PLAYERS');
+    room := pg_temp.start('okey', array[A, B, C, D], '{"rounds": 1}');
+    s := pg_temp.st(room);
+    perform pg_temp.check(jsonb_array_length(s->'hands'->A::text) = 22 and jsonb_array_length(s->'hands'->B::text) = 21
+                          and jsonb_array_length(s->'deck') = 20, 'okey: 22/21/21/21 dealt, 20 left');
+    perform pg_temp.check((select count(*) from (select jsonb_array_elements_text(hv) from jsonb_each(s->'hands') x(hk, hv)) y) + 20 + 1 = 106, 'okey: 106 tiles');
+    perform pg_temp.act(B);
+    v := public.get_mode_state(room);
+    perform pg_temp.check(jsonb_array_length(v->'me'->'hand') = 21 and v->'round'->'public'->'hands' = 'null'::jsonb, 'okey: hands are private');
+    -- pinned: okey is blue 5 (indicator b4); A on turn (discard stage, 22 tiles)
+    s := s || jsonb_build_object('okey', '{"c":"b","n":5}'::jsonb, 'indicator', 'b4a', 'turn', A, 'stage', 'discard', 'took', null,
+        'hands', jsonb_set(s->'hands', array[A::text],
+            '["r10a","r11a","r12a","r13a", "k9a","y9a","b9a", "y10a","y11b","y12a", "r1a","r2a","r3a", "b5a", "k13a","k13b", "y2a","y3b", "k6a","r6b","r8a","k1a"]'::jsonb),
+        'deck', (select jsonb_agg('y' || (1 + i % 13) || 'b') from generate_series(1, 20) i));
+    perform pg_temp.setst(room, s);
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''lay'', ''{"melds":[["r1a","r2a","r3a"]]}'')', room, A), 'NOT_OPENED');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''open'', ''{"melds":[["r1a","r2a","r3a"],["k9a","y9a","b9a"]]}'')', room, A), 'OPENING_TOO_LOW');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''open'', ''{"melds":[["r1a","r2a","k6a"]]}'')', room, A), 'INVALID_MELD');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''open'', ''{"melds":[["r1a","r2a","r9z"]]}'')', room, A), 'INVALID_MELD');
+    -- 10+11+12+13 (46) + 9*3 (27) + 10+11+12 (33) = 106 >= 101
+    perform pg_temp.move(room, A, 'open', '{"melds":[["r10a","r11a","r12a","r13a"],["k9a","y9a","b9a"],["y10a","y11b","y12a"]]}');
+    s := pg_temp.st(room);
+    perform pg_temp.check(s->'opened'->>A::text = 'melds' and jsonb_array_length(s->'table') = 3 and jsonb_array_length(s->'hands'->A::text) = 12, 'okey: opened with 106');
+    perform pg_temp.move(room, A, 'lay', '{"melds":[["r1a","r2a","r3a"]]}');
+    -- adding the okey (b5) to the red run 1-2-3 makes it 1-2-3-4
+    perform pg_temp.move(room, A, 'add', '{"meld":3,"tile":"b5a"}');
+    perform pg_temp.check((pg_temp.st(room)->'table'->3->>'hi')::int = 4, 'okey: tile added to a meld (okey as 4)');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''add'', ''{"meld":0,"tile":"k1a"}'')', room, A), 'INVALID_MELD');
+    -- discarding a tile that fits the table (y9b? no: k13 does not fit; r6b fits nothing; y13b fits the yellow run 10-12)
+    s := pg_temp.st(room);
+    s := jsonb_set(s, array['hands', A::text], (s->'hands'->A::text) || '["y13b"]'::jsonb);
+    perform pg_temp.setst(room, s);
+    perform pg_temp.move(room, A, 'discard', '{"tile":"y13b"}');
+    s := pg_temp.st(room);
+    perform pg_temp.check((s->'penalty'->>A::text)::int = 101 and s->>'turn' = B::text and s->>'stage' = 'draw', 'okey: işler taş atma +101');
+    -- B takes A's discard and must use it (cannot discard while holding it)
+    perform pg_temp.move(room, B, 'draw', '{"from":"discard"}');
+    perform pg_temp.check(pg_temp.st(room)->>'took' = 'y13b', 'okey: took the discard');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''discard'', ''{"tile":"y13b"}'')', room, B), 'MUST_USE_TAKEN_TILE');
+    perform pg_temp.move(room, B, 'return_taken', '{}');
+    s := pg_temp.st(room);
+    perform pg_temp.check((s->'penalty'->>B::text)::int = 101 and s->>'took' is null and s->'discards'->A::text->>-1 = 'y13b', 'okey: returned, +101');
+    perform pg_temp.move(room, B, 'discard', jsonb_build_object('tile', s->'hands'->B::text->>0));
+    -- A finishes: last tiles laid, final discard
+    s := pg_temp.st(room) || jsonb_build_object('turn', A, 'stage', 'discard', 'took', null,
+        'hands', jsonb_set(pg_temp.st(room)->'hands', array[A::text], '["k13a","k13b","r13b","k6a"]'::jsonb));
+    perform pg_temp.setst(room, s);
+    s := s || jsonb_build_object('hands', jsonb_set(s->'hands', array[A::text], '["k6a"]'::jsonb));
+    perform pg_temp.setst(room, s);
+    perform pg_temp.move(room, A, 'discard', '{"tile":"k6a"}');
+    s := (select payload from public.mode_secrets where round_id = (select id from public.mode_rounds where room_id = room order by round_number limit 1) and kind = 'g');
+    perform pg_temp.check(s->>'winner' = A::text, 'okey: finished');
+    perform pg_temp.check((s->'round_scores'->>A::text)::int = 0, 'okey: finisher -101 plus own +101 penalty = 0');
+    perform pg_temp.check((s->'round_scores'->>C::text)::int = -202, 'okey: not opened +202');
+    m := (select id from public.matches where room_id = room order by started_at desc limit 1);
+    perform pg_temp.check((select final_rank from public.match_players where match_id = m and user_id = A) = 1, 'okey: lowest total wins');
 end $$;
 
 select 'CARD GAMES TESTS PASSED' as result;
