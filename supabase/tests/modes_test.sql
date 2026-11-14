@@ -376,14 +376,14 @@ begin
     perform pg_temp.expect_error(format($q$select pg_temp.do_act(%L, %L, 'word', %L)$q$, room, A, jsonb_build_object('text', (r.public->>'letter') || 'qxqxq')), 'LOOPA:CHAIN_UNKNOWN_WORD');
     perform pg_temp.expect_error(format($q$select pg_temp.do_act(%L, %L, 'word', '{"text":"iki kelime"}')$q$, room, A), 'LOOPA:CHAIN_SINGLE_WORD');
     perform pg_temp.expect_error(format($q$select pg_temp.do_act(%L, %L, 'word', '{"text":"12ab"}')$q$, room, A), 'LOOPA:CHAIN_SINGLE_WORD');
-    select word into w from public.chain_lexicon where left(match_key, 1) = r.public->>'letter' and match_key <> public.dict_key(r.public->>'word')
+    select word into w from public.chain_lexicon where left(match_key, 1) = r.public->>'letter' and match_key <> public.dict_key(r.public->>'word') and word !~ '\s' and word ~ '^[[:alpha:]çğıöşüâîûÇĞİÖŞÜÂÎÛ]+$'
      order by char_length(match_key) desc, match_key limit 1;
     v := pg_temp.do_act(room, A, 'word', jsonb_build_object('text', w));
     perform pg_temp.check((v->>'valid')::boolean and (v->>'points')::int = 10 + least(5, greatest(0, char_length(public.dict_key(w)) - 4)), 'wc: valid word points');
     r := pg_temp.rd(room);
     perform pg_temp.check(r.round_number = 2 and r.actor_id = B and r.public->>'word' = w and r.public->>'letter' = public._mz_last_letter(w), 'wc: B continues from A''s word');
     -- A word already used in this match is refused.
-    select word into cw from public.chain_lexicon where left(match_key, 1) = r.public->>'letter' order by match_key limit 1;
+    select word into cw from public.chain_lexicon where left(match_key, 1) = r.public->>'letter' and word !~ '\s' and word ~ '^[[:alpha:]çğıöşüâîûÇĞİÖŞÜÂÎÛ]+$' order by match_key limit 1;
     perform public._mz_set(m, 'chain_used', public._mz_state(m)->'chain_used' || to_jsonb(public.dict_key(cw)));
     perform pg_temp.open(room);
     perform pg_temp.expect_error(format($q$select pg_temp.do_act(%L, %L, 'word', %L)$q$, room, B, jsonb_build_object('text', cw)), 'LOOPA:CHAIN_USED');

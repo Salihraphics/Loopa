@@ -271,6 +271,8 @@ begin
     assert (v->'players'->0->>'final_rank')::int = 1, 'ranked';
 
     -- ================= HOST TRANSFER =================
+    -- everybody joined in this one transaction (same joined_at): make B the earliest remaining player, as in real use
+    update public.room_players set joined_at = joined_at - interval '1 second' where room_id = room and user_id = B;
     update public.room_players set last_seen_at = now() - interval '2 minutes' where room_id = room and user_id = A;
     perform pg_temp.act(B);
     perform public.room_heartbeat(room);

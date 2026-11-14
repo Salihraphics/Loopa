@@ -240,6 +240,8 @@ begin
     perform pg_temp.check((select (settings->>'configured')::boolean from public.rooms where id = (room->>'id')::uuid) = false, 'setup reopened');
     perform pg_temp.act(C);
     perform pg_temp.check(public.get_last_wheel_spin((room->>'id')::uuid)->>'result' = v->>'result', 'everybody sees the same result');
+    perform pg_temp.check((select (settings->>'max_players')::int between gm.min_players and gm.max_players from public.rooms, public.game_modes gm
+                            where rooms.id = (room->>'id')::uuid and gm.id = v->>'result'), 'the wheel keeps the player limit valid for the drawn game');
     perform pg_temp.expect_error(format('select public.spin_game_wheel(%L)', room->>'id'), 'NOT_HOST');
 
     -- ------------------------------------------------------------ setup flow
