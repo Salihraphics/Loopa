@@ -135,14 +135,23 @@ class SocialRepository(private val backend: LoopaBackend) {
      * Backend capabilities, for announcing features honestly: SOCIAL when the social RPCs exist.
      * Null when it cannot be told (offline).
      */
-    suspend fun serverFeatures(): Set<com.loopa.core.release.ServerFeature>? = try {
-        refreshBadges(); setOf(com.loopa.core.release.ServerFeature.SOCIAL)
-    } catch (e: LoopaException) {
-        when (e.error) {
-            LoopaError.SERVER_OUTDATED -> emptySet()
-            LoopaError.NETWORK, LoopaError.NOT_CONFIGURED -> null
-            else -> setOf(com.loopa.core.release.ServerFeature.SOCIAL)   // the function exists; it just failed now
+    suspend fun serverFeatures(): Set<com.loopa.core.release.ServerFeature>? {
+        val social = try {
+            refreshBadges(); setOf(com.loopa.core.release.ServerFeature.SOCIAL)
+        } catch (e: LoopaException) {
+            when (e.error) {
+                LoopaError.SERVER_OUTDATED -> emptySet()
+                LoopaError.NETWORK, LoopaError.NOT_CONFIGURED -> return null
+                else -> setOf(com.loopa.core.release.ServerFeature.SOCIAL)   // the function exists; it just failed now
+            }
         }
+        // 0.8.0 backend (economy, new games): get_wallet exists only after the 0.8 migrations
+        val platform = try {
+            backend.rpc("get_wallet"); setOf(com.loopa.core.release.ServerFeature.PLATFORM_080)
+        } catch (e: LoopaException) {
+            if (e.error == LoopaError.SERVER_OUTDATED) emptySet() else setOf(com.loopa.core.release.ServerFeature.PLATFORM_080)
+        }
+        return social + platform
     }
 
     // ------------------------------------------------------------------ loads

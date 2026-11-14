@@ -14,7 +14,7 @@ enum class FeatureArt { FRIENDS, SEARCH, INVITE, CHAT, BELL, PRIVACY, GAMES, SPA
 enum class Accent { LAVENDER, MINT, PEACH, BUTTER, SKY }
 
 /** Backend capabilities a feature depends on. Features whose backend is missing are not announced. */
-enum class ServerFeature { SOCIAL }
+enum class ServerFeature { SOCIAL, PLATFORM_080 }
 
 data class WhatsNewFeature(
     val title: String,
@@ -47,6 +47,26 @@ sealed interface WhatsNewDecision {
 
 object WhatsNew {
     val releases: List<ReleaseNotes> = listOf(
+        ReleaseNotes(
+            versionName = "0.8.0",
+            title = "9 yeni oyun ve LOOPA Coin!",
+            subtitle = "Tavla, 101 Okey, Kurt Adam, Krallıklar ve daha fazlası. Görevler, seriler, turnuvalar.",
+            hero = WhatsNewHero.GAMES,
+            features = listOf(
+                WhatsNewFeature("Masa ve kart oyunları", "Tavla, 101 Okey, Kızma Birader, Amiral Battı (1v1 / 2v2), 21 (bahis yok) ve Milyoner.",
+                    FeatureArt.GAMES, Accent.PEACH, ServerFeature.PLATFORM_080),
+                WhatsNewFeature("Renk Kartları", "TEMİZLE, AYNA, GAMBLE ve ELİNİ GÖRELİM kartlarıyla özgün bir renk eşleme oyunu.",
+                    FeatureArt.SPARK, Accent.BUTTER, ServerFeature.PLATFORM_080),
+                WhatsNewFeature("Kurt Adam ve Krallıklar", "6-20 kişilik moderatörsüz Kurt Adam; 4-20 kişilik altıgen haritada strateji ve diplomasi.",
+                    FeatureArt.GAMES, Accent.LAVENDER, ServerFeature.PLATFORM_080),
+                WhatsNewFeature("LOOPA Coin, görevler, seriler", "Maçlardan ve günlük / haftalık görevlerden coin kazan, kozmetik al. Galibiyet serisi çarpanı ve taç.",
+                    FeatureArt.SPARK, Accent.MINT, ServerFeature.PLATFORM_080),
+                WhatsNewFeature("Turnuvalar ve sıralamalar", "1v1, takım ve herkes tek turnuvalar; haftalık ve tüm zamanlar sıralaması, rozetler ve ünvanlar.",
+                    FeatureArt.FRIENDS, Accent.SKY, ServerFeature.PLATFORM_080),
+                WhatsNewFeature("Yeni oda akışı", "Oyunu seç, oda açılsın, oda sahibi ayarlasın, herkes hazır olsun. Oyun çarkı tercihlere göre sunucuda döner.",
+                    FeatureArt.INVITE, Accent.PEACH, ServerFeature.PLATFORM_080),
+            ),
+        ),
         ReleaseNotes(
             versionName = "0.7.0",
             title = "LOOPA artık daha sosyal!",

@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -91,6 +92,8 @@ data class ResultsUiState(
     val levelBefore: Int? = null,
     val levelAfter: Int? = null,
     val myXp: Int = 0,
+    /** 0.8.0: coins / streak bonus written by the server for this match (null: not processed or older server). */
+    val reward: com.loopa.core.model.MatchReward? = null,
 )
 
 class ResultsViewModel(private val c: DataContainer, private val matchId: String) : ViewModel() {
@@ -105,7 +108,8 @@ class ResultsViewModel(private val c: DataContainer, private val matchId: String
             try {
                 val r = c.rooms.matchResults(matchId)
                 val profile = runCatching { c.profiles.refresh() }.getOrNull()
-                _ui.update { it.copy(results = r, error = null, levelAfter = profile?.level, myXp = profile?.xp ?: 0) }
+                val reward = runCatching { c.platform.matchRewards(matchId) }.getOrNull()
+                _ui.update { it.copy(results = r, error = null, levelAfter = profile?.level, myXp = profile?.xp ?: 0, reward = reward) }
             } catch (e: LoopaException) {
                 _ui.update { it.copy(error = e.error.message) }
             }
@@ -172,6 +176,7 @@ fun ResultsScreen(
                 item { Podium(results.players) }
                 if (me != null) {
                     item { MyRewards(me, ui.myXp, leveledUp, ui.levelAfter, results.gameMode) }
+                    ui.reward?.let { rw -> item { CoinReward(rw) } }
                 }
                 item { Text("Sıralama", style = MaterialTheme.typography.titleLarge, color = Loopa.colors.text) }
                 items(results.players, key = { it.userId }) { p -> RankRow(p, isMe = p.userId == vm.myId, gameMode = results.gameMode) }
@@ -344,5 +349,28 @@ private fun TeamSummary(results: com.loopa.core.model.MatchResults) {
         it ?: kotlinx.serialization.json.JsonObject(emptyMap())) }
     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         pub.teamScores.forEachIndexed { t, sc -> Pill("${com.loopa.core.game.modes.AnlatBakalimLogic.teamName(t)}: $sc", if (t == 0) LoopaPalette.Sky else LoopaPalette.Peach) }
+    }
+}
+
+/** LOOPA Coins of this match, exactly as the server recorded them (anti-farming rules included). */
+@Composable
+private fun CoinReward(r: com.loopa.core.model.MatchReward) {
+    Column(Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(24.dp)).background(LoopaPalette.Butter.copy(alpha = 0.5f)).padding(16.dp)
+        .testTag("results_coins")) {
+        if (r.valid) {
+            Text("🪙 +${r.coins} LOOPA Coin" + (if (r.xpBonus > 0) " · seri bonusu +${r.xpBonus} XP" else ""), style = MaterialTheme.typography.titleMedium, color = LoopaPalette.Ink)
+            if (r.multiplier > 1.0) Text("Seri çarpanı ×${"%.2f".format(r.multiplier)}", style = MaterialTheme.typography.bodySmall, color = LoopaPalette.Ink)
+        } else {
+            Text("Bu maç coin ödülü vermedi", style = MaterialTheme.typography.titleSmall, color = LoopaPalette.Ink)
+            Text(when (r.reason) {
+                "solo" -> "Tek başına oynanan maçlar ödül vermez."
+                "too_short" -> "Maç çok kısa sürdü."
+                "left" -> "Maçtan erken ayrıldın."
+                "daily_cap" -> "Bugünkü maç ödülü sınırına ulaştın."
+                "same_opponents" -> "Aynı rakiplerle çok sık oynandı; ödül sınırına ulaşıldı."
+                "not_finished" -> "Maç tamamlanmadı."
+                else -> "Ödül koşulları oluşmadı."
+            }, style = MaterialTheme.typography.bodySmall, color = LoopaPalette.Ink)
+        }
     }
 }
