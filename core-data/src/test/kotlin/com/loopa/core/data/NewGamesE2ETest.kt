@@ -193,8 +193,9 @@ class NewGamesE2ETest {
             assertTrue(a.platform.tournaments().any { it.id == tid })
             a.platform.cancelTournament(tid)
             // a coin purchase can never make the balance negative
-            val priced = psql("select id from public.cosmetic_items where price_coins > 0 order by price_coins desc limit 1")
+            val priced = psql("select id from public.cosmetic_items where price_coins > 0 order by required_level, price_coins desc limit 1")
             psql("update public.wallets set coins = 0 where user_id = '${a.id}'")
+            psql("update public.profiles set level = greatest(level, 3) where id = '${a.id}'")   // the item's level requirement is met
             try { a.platform.purchaseCosmetic(priced); fail("purchase without coins") } catch (e: LoopaException) { assertEquals(LoopaError.INSUFFICIENT_COINS, e.error) }
             assertEquals(0, a.platform.wallet().coins)
         } finally {

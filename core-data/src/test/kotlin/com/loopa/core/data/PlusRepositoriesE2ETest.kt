@@ -69,9 +69,9 @@ class PlusRepositoriesE2ETest {
             assertEquals(PlanTier.FREE, m.data!!.tier)
             assertFalse(m.data!!.googleLinked)
 
-            // ---- catalogue: 10 games, only İsim Şehir startable, rotation not started ----
+            // ---- catalogue: 19 games (0.8.0), only İsim Şehir startable, rotation not started ----
             val c = catalog.refresh().data!!
-            assertEquals(10, c.modes.size)
+            assertEquals(19, c.modes.size)
             assertEquals(GameModes.all.map { it.id }, c.modes.map { it.id })
             assertFalse(c.rotation.active)
             GameModes.all.forEach { info ->

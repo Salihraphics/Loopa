@@ -71,6 +71,22 @@ Kurallar sunucuda (PL/pgSQL) uygulanır. Zar, karıştırma, gizli eller, hamle 
 - **Yeni oyunlar herkese açık değil.** Hepsi `always_free=false` olarak tanımlı; Plus ya da haftalık rotasyon gerekir. Bu bir iş kararı; isterseniz değiştirilebilir.
 - **Gerçek para kullanılmıyor.** Coin satın alma (gerçek para ile) yok, oyun avantajı satılmıyor.
 
+## Test durumu (yerel, 2026-11-14)
+- **SQL test paketi:** `supabase/tests/run_local_tests.sh`, Postgres 17, tümü geçti.
+  - Yeni testler: platform, turn_games, card_games, tournament, kurt_adam, kralliklar.
+  - Eşzamanlılık ve kilit sırası betikleri de bu pakette çalıştı ve geçti.
+- **Gradle:** 156 test geçti; atlanan, başarısız ya da hatalı test yok.
+  - Kapsam: core, core-network, core-data, feature-lobby ve app modüllerinin birim testleri.
+  - Yerel Docker Supabase'e karşı E2E testleri de dahil, yeni `NewGamesE2ETest` ile birlikte:
+    - kurulum akışı,
+    - 21'in sonuna kadar oynanması (bahis eylemi yok),
+    - Krallıklar'da gizli emirler ve sis,
+    - coin ödülü,
+    - platform okumaları,
+    - coin'siz satın almanın reddedilmesi.
+- **Derleme:** `app-debug.apk` ve `app-release-unsigned.apk` üretildi.
+- **Ölçülmedi:** cihaz ya da emülatör üzerinde elle test, performans ölçümü. 0.8 oyunları için Compose UI testi yazılmadı.
+
 ## Hosted veritabanı
 **Hosted Supabase'e hiçbir migration uygulanmadı.** Uygulama sırası ve her biri için ayrı onay gerekir:
 1. `20261116000001_social.sql` (0.7.0; inceleme belgesi `docs/MIGRATION_REVIEW_0.7.0.md`)
