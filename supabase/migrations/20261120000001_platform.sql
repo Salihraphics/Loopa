@@ -1109,6 +1109,7 @@ declare r public.rooms := public._lock_room(p_room_id); n int; clean jsonb; v_mo
 begin
     perform public._require_host(r);
     if r.status <> 'lobby' then raise exception 'LOOPA:GAME_IN_PROGRESS'; end if;
+    if r.settings ? 'tournament_match_id' then raise exception 'LOOPA:TOURNAMENT_ROOM'; end if;   -- set by the tournament
     v_mode := coalesce(nullif(p_settings->>'game_mode', ''), public._room_mode(r.settings));
     if v_mode <> public._room_mode(r.settings) then
         acc := public._mode_access(r.host_id, v_mode);
@@ -1174,7 +1175,7 @@ begin
 
     v_mode := public._room_mode(r.settings);
     acc := public._mode_access(r.host_id, v_mode);
-    if not (acc->>'allowed')::boolean then raise exception 'LOOPA:%', acc->>'reason'; end if;
+    if not (acc->>'allowed')::boolean and not (r.settings ? 'tournament_match_id') then raise exception 'LOOPA:%', acc->>'reason'; end if;
     select min_players, max_players into v_min, v_max from public.game_modes where id = v_mode;
 
     select count(*), count(*) filter (where not is_ready and user_id <> r.host_id)
@@ -1184,6 +1185,9 @@ begin
     if n > coalesce(v_max, 20) then raise exception 'LOOPA:TOO_MANY_PLAYERS'; end if;
     if not_ready > 0 then raise exception 'LOOPA:PLAYERS_NOT_READY'; end if;
     perform public._mode_check_start(v_mode, r.settings, n);
+    if r.settings ? 'tournament_match_id' then
+        execute 'select public._tm_check_start($1)' using p_room_id;      -- exactly the expected line-up
+    end if;
 
     begin
         insert into public.matches(room_id, settings, total_rounds, game_mode, entitlement_snapshot)

@@ -370,7 +370,8 @@ begin
     perform pg_temp.check(r.phase = 'turn' and r.actor_id = A and r.public->>'letter' = public._mz_last_letter(r.public->>'word'), 'wc: A starts, letter = last letter');
     perform pg_temp.open(room);
     perform pg_temp.expect_error(format($q$select pg_temp.do_act(%L, %L, 'word', '{"text":"elma"}')$q$, room, B), 'LOOPA:NOT_YOUR_TURN');
-    select word into w from public.chain_lexicon where left(match_key, 1) <> r.public->>'letter' limit 1;
+    select word into w from public.chain_lexicon where left(match_key, 1) <> r.public->>'letter' and word !~ '\s' and word ~ '^[[:alpha:]çğıöşüâîûÇĞİÖŞÜÂÎÛ]+$'
+     order by match_key limit 1;
     perform pg_temp.expect_error(format($q$select pg_temp.do_act(%L, %L, 'word', %L)$q$, room, A, jsonb_build_object('text', w)), 'LOOPA:CHAIN_WRONG_LETTER');
     perform pg_temp.expect_error(format($q$select pg_temp.do_act(%L, %L, 'word', %L)$q$, room, A, jsonb_build_object('text', (r.public->>'letter') || 'qxqxq')), 'LOOPA:CHAIN_UNKNOWN_WORD');
     perform pg_temp.expect_error(format($q$select pg_temp.do_act(%L, %L, 'word', '{"text":"iki kelime"}')$q$, room, A), 'LOOPA:CHAIN_SINGLE_WORD');
