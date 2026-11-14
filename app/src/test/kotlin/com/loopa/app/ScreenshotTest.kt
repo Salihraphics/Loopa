@@ -164,6 +164,9 @@ class ScreenshotTest {
     @Test fun avatarEditor() = shot("03e_avatar_editor") { AvatarEditorScreen(onOpenShop = {}, onBack = {}) }
 
     @Test fun lobby() = shot("05_lobby") { LobbyScreen("room1", state(null), onLeft = {}) }
+    @Test fun lobbyDark() = shot("05b_lobby_dark", dark = true) { LobbyScreen("room1", state(null), onLeft = {}) }
+    @Test fun gamesDark() = shot("04b_games_dark", dark = true) { GamesScreen(onBack = null, onRoomReady = {}, onOpenPlus = {}) }
+    @Test fun profileDark() = shot("03f_profile_dark", dark = true) { ProfileScreen(onEditAvatar = {}, onOpenShop = {}) }
 
     @Test fun letterReveal() = shot("06_letter_reveal") { LetterReveal(round(RoundPhase.ANSWERING, startedIn = 900), 900) }
 
