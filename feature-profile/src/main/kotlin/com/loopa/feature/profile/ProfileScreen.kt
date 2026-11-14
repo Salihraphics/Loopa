@@ -26,6 +26,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.MilitaryTech
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
@@ -48,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -95,6 +98,9 @@ class ProfileViewModel(private val c: DataContainer) : ViewModel() {
         runCatching { _catalogSize.value = c.profiles.catalog().size }
     }
 
+    /** 0.8.0 progression; an older server without it simply shows nothing extra. */
+    fun refreshProgression() = viewModelScope.launch { runCatching { c.platform.refreshProgression() } }
+
     fun rename(name: String, done: () -> Unit) = viewModelScope.launch {
         try { c.profiles.updateUsername(name); _error.value = null; done() } catch (e: LoopaException) { _error.value = e.error.message }
     }
@@ -108,7 +114,8 @@ private val reasonText = mapOf(
 )
 
 @Composable
-fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
+fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: () -> Unit = {}, onOpenSettings: () -> Unit = {},
+                  onOpenProgress: () -> Unit = {}, onOpenTournaments: () -> Unit = {}) {
     val vm = containerViewModel { ProfileViewModel(it) }
     val membership by vm.membership.collectAsStateWithLifecycle()
     val modeStats by vm.modeStats.collectAsStateWithLifecycle()
@@ -119,6 +126,10 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.refresh() }
     val p = profile
     val stats = p?.stats
+    // 0.8.0: streak (crown above the avatar, flame under the name), prestige, title, coins — all from the server
+    val platform = com.loopa.core.data.rememberDataContainer().platform
+    val prog by platform.progression.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.refreshProgression() }
 
     Box(Modifier.fillMaxSize().background(Loopa.colors.background)) {
         Column(
@@ -133,6 +144,7 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
             // Identity
             LoopaSurface(color = LoopaPalette.Lavender.copy(alpha = 0.45f), modifier = Modifier.testTag("profile_header")) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    if ((prog?.streak ?: 0) >= 3) Text("👑", fontSize = 26.sp, modifier = Modifier.testTag("profile_crown"))
                     Box(Modifier.clip(CircleShape).clickable(onClick = onEditAvatar)) {
                         AvatarView(p?.avatar, size = 132.dp)
                         LevelBadge(p?.level ?: 1, Modifier.align(Alignment.BottomEnd), size = 40.dp)
@@ -143,7 +155,12 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
                             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                         IconButton(onClick = { editing = true }) { Icon(Icons.Rounded.Edit, "Adı düzenle", tint = Loopa.colors.text) }
                     }
-                    Text("Seviye ${p?.level ?: 1} · ${p?.xp ?: 0} toplam XP", style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft)
+                    prog?.showcase?.get("title")?.let { t -> (t as? kotlinx.serialization.json.JsonObject)?.get("name") }
+                        ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                        ?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = LoopaPalette.LavenderDeep, modifier = Modifier.testTag("profile_title")) }
+                    prog?.takeIf { it.streak > 0 }?.let { Text("🔥 ${it.streak} galibiyet serisi", style = MaterialTheme.typography.labelLarge, color = LoopaPalette.PeachDeep, modifier = Modifier.testTag("profile_streak")) }
+                    Text("Seviye ${p?.level ?: 1} · ${p?.xp ?: 0} toplam XP" + (prog?.takeIf { it.prestige > 0 }?.let { " · Prestij ${it.prestige}" } ?: "") +
+                        (prog?.let { " · 🪙 ${it.coins ?: 0}" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft)
                     Spacer(Modifier.height(Spacing.sm))
                     MembershipLine(membership, onOpenPlus)
                     Spacer(Modifier.height(Spacing.md))
@@ -153,6 +170,10 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
             ErrorBanner(error, onDismiss = vm::dismissError)
             // Entry points
             LoopaSurface(padding = PaddingValues(Spacing.sm)) {
+                ListRow("İlerleme ve görevler", subtitle = "Coin, görevler, sıralama, rozetler, takım", icon = Icons.Rounded.EmojiEvents, iconTint = LoopaPalette.ButterDeep,
+                    onClick = onOpenProgress, modifier = Modifier.testTag("profile_progress"))
+                ListRow("Turnuvalar", subtitle = "1v1, takım ve herkes tek turnuvalar", icon = Icons.Rounded.MilitaryTech, iconTint = LoopaPalette.SkyDeep,
+                    onClick = onOpenTournaments, modifier = Modifier.testTag("profile_tournaments"))
                 ListRow("Avatarı düzenle", subtitle = "Yüz, saç, kıyafet ve aksesuarlar", icon = Icons.Rounded.Palette, iconTint = LoopaPalette.Lavender,
                     onClick = onEditAvatar, modifier = Modifier.testTag("profile_avatar"))
                 ListRow("Mağaza", subtitle = "Kozmetik: ${p?.ownedCosmetics?.size ?: 0}/${catalogSize.takeIf { it > 0 } ?: "?"}", icon = Icons.Rounded.Storefront,

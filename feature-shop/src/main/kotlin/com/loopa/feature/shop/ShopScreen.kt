@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,6 +95,16 @@ class ShopViewModel(private val c: DataContainer) : ViewModel() {
         _busy.value = null
     }
 
+    /** Coins of the signed-in player (server value). */
+    val progression = c.platform.progression
+    init { viewModelScope.launch { runCatching { c.platform.refreshProgression() } } }
+
+    fun buy(item: CosmeticItem) = viewModelScope.launch {
+        _busy.value = item.id
+        try { c.platform.purchaseCosmetic(item.id); c.profiles.refresh(); _error.value = null } catch (e: LoopaException) { _error.value = e.error.message }
+        _busy.value = null
+    }
+
     fun dismissError() { _error.value = null }
 }
 
@@ -119,7 +130,9 @@ fun ShopScreen(onBack: () -> Unit) {
     val level = profile?.level ?: 1
     val owned = profile?.ownedCosmetics.orEmpty().toSet()
     val avatar = AvatarConfig.fromJson(profile?.avatar)
-    val claimable = catalog.filter { it.id !in owned && it.requiredLevel <= level }
+    val claimable = catalog.filter { it.id !in owned && it.requiredLevel <= level && it.priceCoins == 0 }
+    val prog by vm.progression.collectAsStateWithLifecycle()
+    val coins = prog?.coins
     val nextUnlock = catalog.filter { it.requiredLevel > level }.minByOrNull { it.requiredLevel }
 
     Box(Modifier.fillMaxSize().background(Loopa.colors.background)) {
@@ -144,7 +157,8 @@ fun ShopScreen(onBack: () -> Unit) {
                 XpBar(profile?.xp ?: 0, showLabel = false)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Bir sonraki seviye için ${LevelCurve.progress(profile?.xp ?: 0).remaining} XP. Mağaza yalnızca görünüm satar — oyun avantajı yoktur.",
+                    "Bir sonraki seviye için ${LevelCurve.progress(profile?.xp ?: 0).remaining} XP. Mağaza yalnızca görünüm satar — oyun avantajı yoktur." +
+                        (coins?.let { " · Bakiyen: 🪙 $it" } ?: ""),
                     style = MaterialTheme.typography.labelSmall, color = LoopaPalette.Ink.copy(alpha = 0.7f),
                 )
                 if (claimable.isNotEmpty()) {
@@ -173,7 +187,7 @@ fun ShopScreen(onBack: () -> Unit) {
                 }
                 items(items, key = { it.id }) { item ->
                     val isOwned = item.id in owned
-                    val canUnlock = !isOwned && item.requiredLevel <= level
+                    val canUnlock = !isOwned && item.requiredLevel <= level && item.priceCoins == 0
                     val shape = RoundedCornerShape(24.dp)
                     Column(
                         Modifier.clip(shape).background(Loopa.colors.card).border(2.dp, if (isOwned) LoopaPalette.Mint else Loopa.colors.outline, shape).padding(12.dp),
@@ -189,6 +203,8 @@ fun ShopScreen(onBack: () -> Unit) {
                                 Text("Sende", style = MaterialTheme.typography.labelMedium, color = Loopa.colors.text)
                             }
                             canUnlock -> LoopaButton("Aç", { vm.unlock(item) }, color = LoopaPalette.Mint, compact = true, loading = busy == item.id, sfx = Sfx.LEVEL_UP)
+                            item.priceCoins > 0 && item.requiredLevel <= level -> LoopaButton("🪙 ${item.priceCoins}", { vm.buy(item) }, color = LoopaPalette.Butter,
+                                compact = true, loading = busy == item.id, enabled = (coins ?: 0) >= item.priceCoins, modifier = Modifier.testTag("shop_buy_${item.id}"))
                             else -> Pill("🔒 Seviye ${item.requiredLevel}", Loopa.colors.cardHigh, textColor = Loopa.colors.text)
                         }
                     }

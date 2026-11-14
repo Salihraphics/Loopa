@@ -23,6 +23,8 @@ class DataContainer(context: Context, val config: SupabaseConfig = SupabaseConfi
     val catalog = GameCatalogRepository(backend)
     val sessions = RoomSessionManager(backend, clock)
     val social = SocialRepository(backend)
+    /** 0.8.0: coins, progression, quests, leaderboards, badges, teams, tournaments. */
+    val platform = PlatformRepository(backend)
     /** Start-up decision for the "What's New" screen (set by the application). */
     val whatsNew = kotlinx.coroutines.flow.MutableStateFlow<com.loopa.core.release.WhatsNewDecision?>(null)
 }

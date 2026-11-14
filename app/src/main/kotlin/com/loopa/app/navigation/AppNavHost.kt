@@ -91,6 +91,8 @@ import kotlinx.serialization.Serializable
 @Serializable data object NotificationsRoute
 @Serializable data object BlockedRoute
 @Serializable data class WhatsNewRoute(val version: String)
+@Serializable data class ProgressRoute(val tab: Int = 0)
+@Serializable data object TournamentsRoute
 
 /**
  * The four primary destinations. Adding one is a new entry here plus a branch in [MainTabs];
@@ -164,6 +166,8 @@ fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Un
                 onPlus = { nav.navigate(PlusRoute) { launchSingleTop = true } },
                 onSettings = { nav.navigate(SettingsRoute) { launchSingleTop = true } },
                 onAvatar = { nav.navigate(AvatarRoute) { launchSingleTop = true } },
+                onProgress = { nav.navigate(ProgressRoute()) { launchSingleTop = true } },
+                onTournaments = { nav.navigate(TournamentsRoute) { launchSingleTop = true } },
                 social = SocialNav(
                     findFriends = { nav.navigate(FindFriendsRoute) { launchSingleTop = true } },
                     profile = { nav.navigate(UserProfileRoute(it)) { launchSingleTop = true } },
@@ -190,6 +194,16 @@ fun AppNavHost(versionName: String, resumeRoomId: String?, onLoggedOut: () -> Un
             Box(Modifier.fillMaxSize().systemBarsPadding()) {
                 // The promo code field lives in Settings → Üyelik.
                 PlusScreen(onBack = { nav.popBackStack() }, onOpenPromo = { nav.navigate(SettingsRoute) { launchSingleTop = true } })
+            }
+        }
+        composable<ProgressRoute> { entry ->
+            Box(Modifier.fillMaxSize().background(Loopa.colors.background).systemBarsPadding().imePadding()) {
+                com.loopa.feature.profile.ProgressHubScreen(onBack = { nav.popBackStack() }, initialTab = entry.toRoute<ProgressRoute>().tab)
+            }
+        }
+        composable<TournamentsRoute> {
+            Box(Modifier.fillMaxSize().background(Loopa.colors.background).systemBarsPadding().imePadding()) {
+                com.loopa.feature.lobby.TournamentsScreen(onBack = { nav.popBackStack() }, onRoomReady = ::openRoom)
             }
         }
         composable<ShopRoute> {
@@ -283,6 +297,8 @@ internal fun MainTabs(
     onPlus: () -> Unit = {},
     onSettings: () -> Unit = {},
     onAvatar: () -> Unit = {},
+    onProgress: () -> Unit = {},
+    onTournaments: () -> Unit = {},
     social: SocialNav = SocialNav(),
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
@@ -329,7 +345,8 @@ internal fun MainTabs(
                         onOpenProfile = social.profile, onOpenChat = social.chat, onOpenConversations = social.conversations,
                         onOpenNotifications = social.notifications, onRoomReady = onRoomReady,
                     )
-                    Tab.PROFILE -> ProfileScreen(onEditAvatar = onAvatar, onOpenShop = onShop, onOpenPlus = onPlus, onOpenSettings = onSettings)
+                    Tab.PROFILE -> ProfileScreen(onEditAvatar = onAvatar, onOpenShop = onShop, onOpenPlus = onPlus, onOpenSettings = onSettings,
+                        onOpenProgress = onProgress, onOpenTournaments = onTournaments)
                 }
             }
         }

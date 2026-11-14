@@ -60,6 +60,8 @@ data class CosmeticItem(
     @SerialName("name_tr") val name: String,
     @SerialName("required_level") val requiredLevel: Int,
     @SerialName("sort_order") val sortOrder: Int = 0,
+    /** 0.8.0: > 0 = bought with LOOPA Coins (cosmetic only, never a game advantage). */
+    @SerialName("price_coins") val priceCoins: Int = 0,
 )
 
 @Serializable
