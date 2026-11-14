@@ -20,6 +20,8 @@ class LoopaApplication : Application(), DataContainerProvider {
         super.onCreate()
         container = DataContainer(this)
         feedback = AndroidFeedback(this)
+        // Before onboarding can finish: a fresh install records the version and never sees an update screen.
+        appScope.launch { container.whatsNew.value = runCatching { container.settings.whatsNewDecision(BuildConfig.VERSION_NAME) }.getOrNull() }
         appScope.launch {
             container.settings.settings.collect { s ->
                 feedback.soundEnabled = s.soundEnabled

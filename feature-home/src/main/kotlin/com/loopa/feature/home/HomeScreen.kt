@@ -184,6 +184,8 @@ fun HomeScreen(
     onPublicRooms: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenPlus: () -> Unit = {},
+    onOpenNotifications: (() -> Unit)? = null,
+    notificationCount: Int = 0,
 ) {
     val vm = containerViewModel { HomeViewModel(it) }
     val profile by vm.profile.collectAsStateWithLifecycle()
@@ -199,7 +201,8 @@ fun HomeScreen(
         onRoomReady = onRoomReady, onOpenGames = onOpenGames, onPublicRooms = onPublicRooms, onOpenProfile = onOpenProfile,
         onOpenPlus = onOpenPlus, onCreate = { picker = true }, onCreateMode = { vm.createRoom(it, onRoomReady) },
         onCode = vm::setCode, onJoin = { vm.join(onRoomReady, it) }, onDismissError = vm::dismissError,
-        onNotifications = { notifications = true },
+        onNotifications = { onOpenNotifications?.invoke() ?: run { notifications = true } },
+        notificationCount = notificationCount,
     )
 
     if (picker) {
@@ -239,6 +242,7 @@ fun HomeContent(
     onJoin: (spectator: Boolean) -> Unit,
     onDismissError: () -> Unit,
     onNotifications: () -> Unit,
+    notificationCount: Int = 0,
 ) {
     val joinCard = remember { BringIntoViewRequester() }
     var codeFocused by remember { mutableStateOf(false) }
@@ -262,7 +266,11 @@ fun HomeContent(
                 LoopaLogo(size = 34.dp)
                 Spacer(Modifier.width(Spacing.sm))
                 Text("LOOPA", style = MaterialTheme.typography.headlineSmall, color = Loopa.colors.text, modifier = Modifier.weight(1f))
-                IconAction(Icons.Rounded.Notifications, "Bildirimler", onNotifications, Modifier.testTag("open_notifications"))
+                Box {
+                    IconAction(Icons.Rounded.Notifications, if (notificationCount > 0) "Bildirimler, $notificationCount yeni" else "Bildirimler",
+                        onNotifications, Modifier.testTag("open_notifications"))
+                    com.loopa.core.ui.components.CountBadge(notificationCount, Modifier.align(Alignment.TopEnd))
+                }
                 Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onOpenProfile).testTag("home_avatar"), contentAlignment = Alignment.Center) {
                     AvatarView(profile?.avatar, size = 40.dp, showFrame = false)
                 }

@@ -29,4 +29,16 @@ class CatalogLogicTest {
     @Test fun orientationDefaultsToFlexible() {
         assertTrue(GameModes.all.all { it.orientation == GameOrientation.FLEXIBLE })
     }
+
+    @Test fun roadmapIsPlanningOnly() {
+        assertEquals(23, GameRoadmap.targetCount)
+        assertEquals((11..23).toList(), GameRoadmap.planned.map { it.number })
+        val implemented = GameModes.all.map { it.id }.toSet()
+        assertTrue(GameRoadmap.planned.none { it.id in implemented })
+        assertEquals(GameRoadmap.planned.size, GameRoadmap.planned.map { it.id }.toSet().size)
+    }
+
+    @Test fun everyGameDeclaresHowItSyncs() {
+        assertTrue(GameModes.all.all { it.kind.sync == SyncModel.SNAPSHOT_ON_SIGNAL })
+    }
 }

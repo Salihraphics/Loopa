@@ -14,6 +14,36 @@ enum class GameCategory(val label: String) {
  */
 enum class GameOrientation { PORTRAIT, LANDSCAPE, FLEXIBLE }
 
+/**
+ * How a game advances and synchronises. Chosen per game, not one engine for everything; see
+ * docs/GAME_ARCHITECTURE.md. All kinds share rooms, players, matches, results, XP and history.
+ */
+enum class GameKind(val sync: SyncModel) {
+    /** Everyone acts in the same phase with a deadline (İsim Şehir, Bilgi Arenası). */
+    ROUND_BASED(SyncModel.SNAPSHOT_ON_SIGNAL),
+    /** One actor at a time, others wait or guess (Kelime Zinciri, Çiz ve Tahmin Et). */
+    TURN_BASED(SyncModel.SNAPSHOT_ON_SIGNAL),
+    /** Hidden roles and private information per player, night/day phases (Kurt Adam). */
+    HIDDEN_ROLE(SyncModel.SNAPSHOT_ON_SIGNAL),
+    /** Private hands, shared table, strict turn order (Okey, UNO-tarzı, 21). */
+    CARD(SyncModel.SNAPSHOT_ON_SIGNAL),
+    /** Shared board, dice / moves validated by the server (Kızma Birader, Amiral Battı, Satranç). */
+    BOARD(SyncModel.SNAPSHOT_ON_SIGNAL),
+    /** Simultaneous orders resolved together; long matches that can be resumed (Diplomasi, 4X). */
+    STRATEGY(SyncModel.SIMULTANEOUS_ORDERS),
+    /** Continuous movement / physics (Araba Yarışı, Bilardo). */
+    REALTIME(SyncModel.CLIENT_SIM_SERVER_VERIFY),
+}
+
+enum class SyncModel {
+    /** Server RPC changes state, bumps the room signal; clients re-fetch a per-player snapshot. */
+    SNAPSHOT_ON_SIGNAL,
+    /** Players submit hidden orders; one server step resolves all of them at the deadline. */
+    SIMULTANEOUS_ORDERS,
+    /** Clients simulate locally and exchange inputs over Realtime broadcast; the server checks results. */
+    CLIENT_SIM_SERVER_VERIFY,
+}
+
 /** Static, client-side description of the games. Access always comes from the server catalogue. */
 data class GameModeInfo(
     val id: String,
@@ -26,6 +56,7 @@ data class GameModeInfo(
     val orientation: GameOrientation = GameOrientation.FLEXIBLE,
     /** Played in the same room, out loud (no voice or camera in the app). */
     val sameRoom: Boolean = false,
+    val kind: GameKind = GameKind.ROUND_BASED,
 ) {
     /** Minimum players, read from [players] ("3-10 oyuncu"); the server enforces the real limit. */
     val minPlayers: Int get() = players.substringBefore('-').trim().toIntOrNull() ?: 2
@@ -42,15 +73,15 @@ object GameModes {
 
     val all: List<GameModeInfo> = listOf(
         GameModeInfo(ISIM_SEHIR, "İsim Şehir", "Harf gelsin, kategorileri en hızlı sen doldur.", "2-10 oyuncu", GameCategory.KELIME, addedIn = "0.1.0"),
-        GameModeInfo("gizli_kelime", "Gizli Kelime", "Kelimeyi sözlü anlat, takımın bilsin. Aynı ortamda oynanır.", "3-10 oyuncu", GameCategory.PARTI, sameRoom = true),
-        GameModeInfo("kelime_zinciri", "Kelime Zinciri", "Son harften yeni kelime türet, zinciri koparma.", "2-10 oyuncu", GameCategory.KELIME),
+        GameModeInfo("gizli_kelime", "Gizli Kelime", "Kelimeyi sözlü anlat, takımın bilsin. Aynı ortamda oynanır.", "3-10 oyuncu", GameCategory.PARTI, sameRoom = true, kind = GameKind.TURN_BASED),
+        GameModeInfo("kelime_zinciri", "Kelime Zinciri", "Son harften yeni kelime türet, zinciri koparma.", "2-10 oyuncu", GameCategory.KELIME, kind = GameKind.TURN_BASED),
         GameModeInfo("bilgi_arenasi", "Bilgi Arenası", "Soruları en hızlı ve doğru cevaplayan kazanır.", "2-10 oyuncu", GameCategory.BILGI),
         GameModeInfo("iki_dogru_bir_yalan", "İki Doğru Bir Yalan", "Üç cümleden hangisi yalan? Bul bakalım.", "3-10 oyuncu", GameCategory.PARTI),
-        GameModeInfo("ciz_tahmin", "Çiz ve Tahmin Et", "Sen çiz, diğerleri tahmin etsin.", "3-10 oyuncu", GameCategory.CIZIM),
+        GameModeInfo("ciz_tahmin", "Çiz ve Tahmin Et", "Sen çiz, diğerleri tahmin etsin.", "3-10 oyuncu", GameCategory.CIZIM, kind = GameKind.TURN_BASED),
         GameModeInfo("en_muhtemel_kim", "En Muhtemel Kim?", "Kim en çok yapar? Oyla, sonuçlara gül.", "3-10 oyuncu", GameCategory.PARTI),
-        GameModeInfo("anlat_bakalim", "Anlat Bakalım", "Yasaklı kelimeleri kullanmadan sözlü anlat. Aynı ortamda oynanır.", "4-10 oyuncu", GameCategory.KELIME, sameRoom = true),
+        GameModeInfo("anlat_bakalim", "Anlat Bakalım", "Yasaklı kelimeleri kullanmadan sözlü anlat. Aynı ortamda oynanır.", "4-10 oyuncu", GameCategory.KELIME, sameRoom = true, kind = GameKind.TURN_BASED),
         GameModeInfo("cizim_telefonu", "Çizim Telefonu", "Yaz, çiz, tahmin et: zincir nereye varacak?", "4-10 oyuncu", GameCategory.CIZIM),
-        GameModeInfo("sessiz_sinema", "Sessiz Sinema", "Konuşmadan anlat. Aynı ortamda oynanır, kamera yok.", "4-10 oyuncu", GameCategory.PARTI, sameRoom = true),
+        GameModeInfo("sessiz_sinema", "Sessiz Sinema", "Konuşmadan anlat. Aynı ortamda oynanır, kamera yok.", "4-10 oyuncu", GameCategory.PARTI, sameRoom = true, kind = GameKind.TURN_BASED),
     )
 
     /** Categories that at least one game uses, in catalogue order. */

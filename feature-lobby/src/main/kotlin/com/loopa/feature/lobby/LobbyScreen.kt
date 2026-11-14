@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.HourglassEmpty
@@ -162,6 +163,7 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
     var showSettings by remember { mutableStateOf(false) }
     var confirmLeave by remember { mutableStateOf(false) }
     var confirmClose by remember { mutableStateOf(false) }
+    var inviteFriends by remember { mutableStateOf(false) }
     val me = state.player(state.me.userId)
     val players = state.activePlayers
     val notReady = players.count { !it.isReady && !it.isHost }
@@ -205,6 +207,10 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item { RoomCodeCard(state.room.code, state.room.isPublic, context) }
+                if (state.me.role != "spectator") item {
+                    LoopaButton("Arkadaşlarını davet et", { inviteFriends = true }, icon = Icons.Rounded.PersonAdd, color = LoopaPalette.Butter,
+                        compact = true, modifier = Modifier.fillMaxWidth().testTag("lobby_invite_friends"))
+                }
                 item { ErrorBanner(error, onDismiss = vm::dismissError) }
                 item { SettingsSummary(state.room.settings, state.isHost) { showSettings = true } }
                 item {
@@ -281,6 +287,9 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
         }
     }
 
+    if (inviteFriends) {
+        InviteFriendsSheet(roomId, players.map { it.userId }.toSet()) { inviteFriends = false }
+    }
     if (showSettings && state.isHost) {
         RoomSettingsSheet(
             initial = state.room.settings,

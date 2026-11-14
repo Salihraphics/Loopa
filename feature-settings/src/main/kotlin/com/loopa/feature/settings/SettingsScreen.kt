@@ -17,6 +17,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Info
@@ -63,6 +69,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(private val c: DataContainer) : ViewModel() {
+    /** Server-side presence sharing (null until known, or when the server has no social features). */
+    private val _sharePresence = kotlinx.coroutines.flow.MutableStateFlow<Boolean?>(null)
+    val sharePresence: kotlinx.coroutines.flow.StateFlow<Boolean?> = _sharePresence
+    fun loadSocial() = viewModelScope.launch {
+        _sharePresence.value = runCatching { c.social.refreshOverview().data?.sharePresence }.getOrNull()
+    }
+    fun setSharePresence(v: Boolean) = viewModelScope.launch {
+        val before = _sharePresence.value
+        _sharePresence.value = v
+        try { c.social.setSharePresence(v) } catch (e: com.loopa.core.game.LoopaException) { _sharePresence.value = before }
+    }
+
     val settings: StateFlow<UserSettings> = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, UserSettings())
     val profile: StateFlow<ProfileOverview?> = c.profiles.profile
     val userId: String? get() = c.auth.userId
@@ -138,7 +156,8 @@ class SettingsViewModel(private val c: DataContainer) : ViewModel() {
 private val languages = listOf("tr" to "Türkçe", "en" to "English (yakında)")
 
 @Composable
-fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitched: () -> Unit = onLoggedOut, onOpenPlus: () -> Unit = {}, onBack: (() -> Unit)? = null) {
+fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitched: () -> Unit = onLoggedOut, onOpenPlus: () -> Unit = {}, onBack: (() -> Unit)? = null,
+                   onOpenWhatsNew: () -> Unit = {}, onOpenBlocked: () -> Unit = {}) {
     val vm = containerViewModel { SettingsViewModel(it) }
     val membershipVm = containerViewModel { MembershipViewModel(it) }
     val s by vm.settings.collectAsStateWithLifecycle()
@@ -233,9 +252,18 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitch
                     Icon(Icons.Rounded.Notifications, null, tint = Loopa.colors.text)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Anlık bildirimler", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
-                        Text("LOOPA şu an bildirim göndermiyor. Oda davetleri gelince buradan açıp kapatabileceksin.",
+                        Text("Uygulama içi bildirimler", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                        Text("İstekler, davetler ve mesajlar uygulama açıkken zil simgesinde ve Sosyal sekmesinde görünür.",
                             style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Notifications, null, tint = Loopa.colors.textSoft)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Telefon bildirimleri (push)", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                        Text("Uygulama kapalıyken bildirim henüz gönderilmiyor.", style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
                     }
                     Spacer(Modifier.width(8.dp))
                     com.loopa.core.ui.components.ComingSoonTag()
@@ -265,6 +293,23 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitch
             MembershipSettings(onOpenPlus, membershipVm)
 
             SectionTitle("Gizlilik")
+            val share by vm.sharePresence.collectAsStateWithLifecycle()
+            androidx.compose.runtime.LaunchedEffect(Unit) { vm.loadSocial() }
+            LoopaCard(modifier = Modifier.testTag("settings_privacy")) {
+                val sp = share
+                if (sp != null) {
+                    ToggleRow(Icons.Rounded.Visibility, "Çevrim içi durumumu göster",
+                        "Kapatırsan arkadaşların ne zaman çevrim içi olduğunu ve son görülmeni göremez; sen de onlarınkini göremezsin.",
+                        sp, vm::setSharePresence)
+                }
+                Row(Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).clickable(onClick = onOpenBlocked)
+                    .padding(vertical = 10.dp).testTag("settings_blocked"), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Block, null, tint = Loopa.colors.text)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Engellenen kullanıcılar", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text, modifier = Modifier.weight(1f))
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Loopa.colors.textSoft)
+                }
+            }
             LoopaCard {
                 Row(verticalAlignment = Alignment.Top) {
                     Icon(Icons.Rounded.PrivacyTip, null, tint = Loopa.colors.text)
@@ -272,13 +317,24 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitch
                     Text(
                         "LOOPA yalnızca oyun için gerekli verileri saklar: kullanıcı adın, avatarın, oyun istatistiklerin ve oynadığın maçlardaki cevapların. " +
                             "Google hesabını bağlarsan Google'dan gelen e-posta adresin ve adın yalnızca giriş için saklanır. Telefon veya konum toplanmaz. " +
-                            "Cevapların yalnızca aynı odadaki oyunculara gösterilir. Reklam ya da üçüncü taraf izleme yoktur.",
+                            "Cevapların yalnızca aynı odadaki oyunculara, mesajların yalnızca sohbet ettiğin arkadaşına gösterilir. Reklam ya da üçüncü taraf izleme yoktur.",
                         style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
                     )
                 }
             }
 
             SectionTitle("LOOPA hakkında")
+            LoopaCard(modifier = Modifier.clickable(onClick = onOpenWhatsNew).testTag("settings_whats_new")) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.AutoAwesome, null, tint = Loopa.colors.text)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Yenilikler", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                        Text("Bu sürümde neler var?", style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
+                    }
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Loopa.colors.textSoft)
+                }
+            }
             LoopaCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LoopaLogo(size = 56.dp)

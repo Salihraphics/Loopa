@@ -131,6 +131,20 @@ class SocialRepository(private val backend: LoopaBackend) {
         _overview.update { r -> r.copy(data = r.data?.copy(sharePresence = share)) }
     }
 
+    /**
+     * Backend capabilities, for announcing features honestly: SOCIAL when the social RPCs exist.
+     * Null when it cannot be told (offline).
+     */
+    suspend fun serverFeatures(): Set<com.loopa.core.release.ServerFeature>? = try {
+        refreshBadges(); setOf(com.loopa.core.release.ServerFeature.SOCIAL)
+    } catch (e: LoopaException) {
+        when (e.error) {
+            LoopaError.SERVER_OUTDATED -> emptySet()
+            LoopaError.NETWORK, LoopaError.NOT_CONFIGURED -> null
+            else -> setOf(com.loopa.core.release.ServerFeature.SOCIAL)   // the function exists; it just failed now
+        }
+    }
+
     // ------------------------------------------------------------------ loads
     suspend fun refreshOverview(): Remote<SocialOverview> = load(_overview) {
         backend.rpc("get_social_overview", SocialOverview.serializer())
