@@ -21,6 +21,24 @@ Last updated: 2026-11-15
 - Admin: the owner's verified Google account was added to `admin_allowlist` and bound to its user id
   (one active admin). LOPPAWEEK activated (7 days, Google-linked accounts only, once per account).
 
+## Version 0.7.0 — social platform and What's New (2026-11-14)
+
+Details: [SOCIAL.md](SOCIAL.md), [WHATS_NEW.md](WHATS_NEW.md), [GAME_ARCHITECTURE.md](GAME_ARCHITECTURE.md), [PROMO_LOOPAWEEK.md](PROMO_LOOPAWEEK.md).
+
+| Item | Status | Verified by |
+|---|---|---|
+| Migration `20261116000001_social.sql` (8 new tables, RLS, RPCs) | ✅ local only, **not applied to hosted** | `social_test.sql`, `social_concurrency.sh` (40 mutual pairs, 0 deadlocks), re-run of the migration |
+| Friends: search, requests, mutual requests, remove, block / unblock, presence with privacy | ✅ | `social_test.sql`, `SocialE2ETest` (3 real clients, realtime) |
+| Room invites (lobby sheet, accept → join_room; expired / closed / full handled) | ✅ | `social_test.sql`, `SocialE2ETest` |
+| 1:1 messages between friends (realtime, sent / read, retry without duplicates, paging) | ✅ | `social_test.sql`, `SocialE2ETest`, `SocialUiTest`, `ChatKeyboardTest` |
+| In-app notifications (list, unread, mark all, routing) | ✅ | `social_test.sql`, `SocialE2ETest` |
+| RLS: own rows only, no direct writes, helpers not executable | ✅ | `social_test.sql` (as role authenticated), `SocialE2ETest` (through PostgREST) |
+| What's New system (data-driven, once per version, version skip, fresh install, server filter) | ✅ | `WhatsNewTest`, `SocialUiTest` (paging, close, reduced motion, dark, tablet, landscape, 320 dp) |
+| Game roadmap 11–23 as data + architecture notes (no new game shipped) | ✅ | `CatalogLogicTest` |
+| Push notifications | ❌ not built (no FCM); Settings says so | — |
+| On a real phone / hosted backend | ❌ not tested | — |
+| LOOPAWEEK "Kod kullanılamıyor" | 📝 documented only: the server code is `LOPPAWEEK` | read-only hosted query |
+
 ## Version 0.6.0 — UI/UX overhaul (2026-11-14)
 
 Design system: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md). No schema, migration, scoring, rule or security changes.
