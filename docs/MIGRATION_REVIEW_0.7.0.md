@@ -39,7 +39,7 @@ the repository's migrations.
 | `notifications` | identity `id`, type (4 values), `payload` jsonb, `read_at`. One unread "message" notification per sender | → `profiles` (cascade) |
 | `social_signals` | PK `user_id`, `version` | → `profiles` (cascade) |
 
-**12 indexes**, besides the primary keys and unique constraints.
+**11 indexes** (3 of them unique partial indexes), besides the primary keys and unique constraints.
 
 **Row level security**, enabled on all 8 tables, with one SELECT policy each ("own rows"):
 - requests and invites: sender or recipient;
