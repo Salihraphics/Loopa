@@ -87,21 +87,24 @@ Kurallar sunucuda (PL/pgSQL) uygulanır. Zar, karıştırma, gizli eller, hamle 
 - **Derleme:** `app-debug.apk` ve `app-release-unsigned.apk` üretildi.
 - **Ölçülmedi:** cihaz ya da emülatör üzerinde elle test, performans ölçümü. 0.8 oyunları için Compose UI testi yazılmadı.
 
-## Hosted veritabanı
-**Hosted Supabase'e hiçbir migration uygulanmadı.** Uygulama sırası ve her biri için ayrı onay gerekir:
-1. `20261116000001_social.sql` (0.7.0; inceleme belgesi `docs/MIGRATION_REVIEW_0.7.0.md`)
-2. `20261120000001_platform.sql`
-3. `20261120000002_turn_games.sql`
-4. `20261120000003_card_games.sql`
-5. `20261120000004_okey.sql`
-6. `20261120000005_milyoner.sql`
-7. `20261120000006_tournaments.sql`
-8. `20261120000007_kurt_adam.sql`
-9. `20261120000008_kralliklar.sql`
+## Hosted veritabanı — UYGULANDI (2026-11-14, kullanıcı onayıyla: "önce yedek, sonra hepsi")
+1. **Yedek:** Mantıksal yedek yönetim API'si üzerinden, salt okuma sorgularıyla alındı ve kullanıcıya teslim edildi.
+   - Kapsam: 44 tablonun tüm satırları, 165 fonksiyon tanımı, 25 RLS politikası, yetkiler, kısıtlar, indeksler ve trigger'lar.
+   - Satır sayıları kaynakla tek tek karşılaştırıldı.
+   - Dosya: `hosted_backup_pre_070_080_2026-11-14.tar.gz`, sha256 `c0804c34…f266`. Repoda değil, çünkü kullanıcı verisi içeriyor.
+2. **Prova:** Hosted ile aynı şema durumundaki yerel kopyaya hosted'ın verisi yüklendi; 9 migration hatasız uygulandı.
+3. **Uygulama:** Her migration ayrı bir transaction'da çalıştı ve `supabase_migrations.schema_migrations` kaydı aynı transaction'da yazıldı. Uygulananlar:
+   - `20261116000001_social`
+   - `20261120000001` … `20261120000008`
+4. **Doğrulama:**
+   - 24 migration kayıtlı; 424 fonksiyon ve 19 oyun var.
+   - Mevcut veri değişmedi: XP toplamı 2070, 6 profil, 9 maç, 219 kozmetik.
+   - Hiçbir iç (`_`) fonksiyon istemci rollerine açık değil.
+   - Tüm tablolarda RLS açık.
+   - `supabase/review/social_post_apply_checks.sql` kontrollerinin hepsi beklenen değerde.
+   - PostgREST yeni RPC'leri görüyor.
 
-Eski sunucuyla çalışma:
-- 0.8.0 uygulaması eski sunucuya bağlanınca yeni özellikleri "sunucu desteklemiyor" diye gizler.
-- Yenilikler ekranı, 0.8 özellikleri yalnızca `get_wallet` varsa duyurur.
+Geri dönüş: 0.7 için `supabase/rollback/20261116000001_social_down.sql`. 0.8 için ayrı bir rollback betiği yok; gerekirse yedekten yeniden kurulur.
 
 ## Yayın
 - Release APK **imzasız** üretildi, çünkü `keystore.properties` yok. Uydurma bir imza kullanılmadı.
