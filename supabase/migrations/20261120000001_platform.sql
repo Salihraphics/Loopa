@@ -1117,8 +1117,9 @@ begin
     select * into gm from public.game_modes where id = v_mode;
     select count(*) into n from public.room_players where room_id = p_room_id and status = 'active' and role = 'player';
     maxp := coalesce((p_settings->>'max_players')::int, 10);
-    if gm.max_players > 10 or gm.max_players < 4 then
-        -- new games: any size inside the game's own limits
+    if v_mode not in ('isim_sehir','gizli_kelime','kelime_zinciri','bilgi_arenasi','iki_dogru_bir_yalan','ciz_tahmin',
+                      'en_muhtemel_kim','anlat_bakalim','cizim_telefonu','sessiz_sinema') then
+        -- new games (0.8+): any size inside the game's own limits
         if maxp < gm.min_players or maxp > gm.max_players then raise exception 'LOOPA:INVALID_SETTINGS'; end if;
         if maxp < n then raise exception 'LOOPA:MAX_BELOW_PLAYERS'; end if;
         base := public._validate_settings(p_settings || jsonb_build_object('max_players', 10), least(n, 10));
