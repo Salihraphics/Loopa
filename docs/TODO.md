@@ -27,7 +27,7 @@ Details: [SOCIAL.md](SOCIAL.md), [WHATS_NEW.md](WHATS_NEW.md), [GAME_ARCHITECTUR
 
 | Item | Status | Verified by |
 |---|---|---|
-| Migration `20261116000001_social.sql` (8 new tables, RLS, RPCs) | ✅ local only, **not applied to hosted** | `social_test.sql`, `social_concurrency.sh` (40 mutual pairs, 0 deadlocks), re-run of the migration |
+| Migration `20261116000001_social.sql` (8 new tables, RLS, RPCs) | ✅ staging-rehearsed, **not applied to hosted (awaiting approval)** | `social_test.sql`, `social_concurrency.sh` (40 mutual pairs, 0 deadlocks), staging apply / rollback / re-apply, see MIGRATION_REVIEW_0.7.0.md |
 | Friends: search, requests, mutual requests, remove, block / unblock, presence with privacy | ✅ | `social_test.sql`, `SocialE2ETest` (3 real clients, realtime) |
 | Room invites (lobby sheet, accept → join_room; expired / closed / full handled) | ✅ | `social_test.sql`, `SocialE2ETest` |
 | 1:1 messages between friends (realtime, sent / read, retry without duplicates, paging) | ✅ | `social_test.sql`, `SocialE2ETest`, `SocialUiTest`, `ChatKeyboardTest` |
@@ -64,10 +64,10 @@ Details: [GAMES.md](GAMES.md).
 
 | Item | Status | Verified by |
 |---|---|---|
-| Common mode engine + 9 games (server rules, scoring, timers, secrecy, disconnect / host change) | ✅ local only, **not applied to hosted** | `modes_test.sql`, `ModesE2ETest` (4 clients, local Supabase) |
+| Common mode engine + 9 games (server rules, scoring, timers, secrecy, disconnect / host change) | ✅ applied to hosted (verified 2026-11-14: hosted functions and tables byte-identical to the repo through `20261115000003`) | `modes_test.sql`, `ModesE2ETest` (4 clients, local Supabase) |
 | 9 game screens, lobby game picker, results and profile per game | ✅ | `ModeScreensTest`, `PlusUiTest`, screenshots |
 | İsim Şehir unchanged | ✅ | `game_flow_test.sql`, `ten_players_test.sql`, dictionary suites, `MultiplayerE2ETest` |
-| Deadlock between heartbeat and room actions (bug since 0.1) fixed: `20261115000003_room_lock_order.sql` | ✅ local; **hosted still has the bug** | `lock_order_stress.sh`: 476 deadlocks before, 0 after |
+| Deadlock between heartbeat and room actions (bug since 0.1) fixed: `20261115000003_room_lock_order.sql` | ✅ applied to hosted (verified 2026-11-14, see MIGRATION_REVIEW_0.7.0.md; the earlier note "hosted still has the bug" was wrong) | `lock_order_stress.sh`: 476 deadlocks before, 0 after |
 | On a phone / hosted backend | ❌ not tested | — |
 | Report / block for user-written text (İki Doğru Bir Yalan) | ❌ missing | — |
 
@@ -89,7 +89,7 @@ Design and decisions: [PLUS.md](PLUS.md).
 
 | Item | Status | Verified by |
 |---|---|---|
-| Migrations `20261110000001..3` (plans/entitlements/admin, promo codes, modes/rotation/gating) | ✅ prepared, **local only, not applied to hosted** | SQL suites on plain PG, local Supabase (Docker) HTTP E2E 26/26, unchanged 0.3.0 Multiplayer E2E |
+| Migrations `20261110000001..3` (plans/entitlements/admin, promo codes, modes/rotation/gating) | ✅ applied to hosted (verified 2026-11-14) | SQL suites on plain PG, local Supabase (Docker) HTTP E2E 26/26, unchanged 0.3.0 Multiplayer E2E |
 | App UI (Plus status, promo field, mode picker, rotation screen) | ✅ in 0.4.0 (see above) | — |
 | Common engine and the 9 new modes | ✅ in 0.5.0 (see above) | — |
 | Payment | ❌ out of scope; `entitlements.source = 'store'` reserved | — |

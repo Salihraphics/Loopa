@@ -157,6 +157,15 @@ revoke all on public.friend_requests, public.friendships, public.user_blocks, pu
 grant select on public.friend_requests, public.friendships, public.user_blocks, public.user_presence,
                 public.room_invites, public.direct_messages, public.notifications, public.social_signals
   to authenticated;
+-- Identity sequences: hosted default privileges grant USAGE/UPDATE on new sequences to the API roles.
+do $$
+declare s text;
+begin
+    foreach s in array array[pg_get_serial_sequence('public.direct_messages', 'id'),
+                             pg_get_serial_sequence('public.notifications', 'id')] loop
+        execute format('revoke all on sequence %s from anon, authenticated', s);
+    end loop;
+end $$;
 
 do $$
 begin

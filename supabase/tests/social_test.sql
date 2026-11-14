@@ -286,5 +286,23 @@ begin
     reset role;
 end $$;
 
+-- No API role holds rights on the new tables (beyond SELECT for authenticated), their sequences or the helpers.
+do $$
+declare r record;
+begin
+    for r in select c.oid::regclass as t from pg_class c where c.relnamespace = 'public'::regnamespace
+              and c.relname in ('friend_requests','friendships','user_blocks','user_presence','room_invites','direct_messages','notifications','social_signals') loop
+        perform pg_temp.check(not has_table_privilege('anon', r.t, 'SELECT'), format('anon cannot read %s', r.t));
+        perform pg_temp.check(not has_table_privilege('authenticated', r.t, 'INSERT,UPDATE,DELETE,TRUNCATE'), format('no client writes on %s', r.t));
+        perform pg_temp.check(has_table_privilege('authenticated', r.t, 'SELECT'), format('authenticated reads own rows of %s (RLS)', r.t));
+    end loop;
+    for r in select pg_get_serial_sequence(x, 'id') as s from unnest(array['public.direct_messages','public.notifications']) x loop
+        perform pg_temp.check(not has_sequence_privilege('authenticated', r.s, 'USAGE') and not has_sequence_privilege('anon', r.s, 'USAGE'),
+                              format('no API rights on sequence %s', r.s));
+    end loop;
+    perform pg_temp.check(not has_function_privilege('anon', 'public.send_message(uuid,text,uuid)', 'EXECUTE'), 'anon cannot call RPCs');
+    perform pg_temp.check(not has_function_privilege('authenticated', 'public._notify(uuid,text,uuid,text,jsonb)', 'EXECUTE'), 'helpers not callable');
+end $$;
+
 select 'SOCIAL TESTS PASSED' as result;
 rollback;
