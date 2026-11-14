@@ -78,13 +78,15 @@ class BuckshotScreenTest {
     private val sent = mutableListOf<Pair<String, JsonObject>>()
     private fun ui() = ModeUi(act = { k, p, _ -> sent += k to p })
 
-    private fun show(name: String, room: RoomState, m: ModeState) {
+    /** [settle] false keeps the clock still, so short-lived notices can be checked before they go. */
+    private fun show(name: String, room: RoomState, m: ModeState, settle: Boolean = true) {
+        if (!settle) compose.mainClock.autoAdvance = false
         compose.setContent {
             LoopaTheme(darkTheme = true) {
                 Box(Modifier.fillMaxSize().background(Loopa.colors.background)) { ModeGameContent(room, m, now, ui()) }
             }
         }
-        compose.waitForIdle()
+        if (settle) { compose.mainClock.advanceTimeBy(5_000); compose.waitForIdle() } else compose.mainClock.advanceTimeBy(300)
         val view = compose.activity.window.decorView
         val bmp = Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
         view.draw(android.graphics.Canvas(bmp))
@@ -101,10 +103,14 @@ class BuckshotScreenTest {
         compose.onNodeWithTag("bs_item_saw").assertExists()
         compose.onNodeWithTag("bs_item_handcuffs").assertExists()
         listOf("Telsiz", "Çevirici", "Kumanda").forEach { assertEquals(it, 0, compose.onAllNodesWithText(it, substring = true).fetchSemanticsNodes().size) }
-        // facts only: loaded counts, shells left, what this player learnt — and no computed odds
-        compose.onNodeWithText("Yüklenen: 5 dolu · 3 boş").assertExists()
+        // after the load notice is gone: only the shells left, plus this player's own private reminder
+        assertEquals(0, compose.onAllNodesWithTag("bs_load_banner").fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithText("5 dolu", substring = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithText("Yüklenen", substring = true).fetchSemanticsNodes().size)
         compose.onNodeWithText("Kalan mermi: 6").assertExists()
-        compose.onNodeWithText("Bildiğin: 3. mermi DOLU").assertExists()
+        compose.onNodeWithTag("bs_known", useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("3. DOLU", substring = true, useUnmergedTree = true).assertExists()
+        assertEquals("no shell icons on the table", 0, compose.onAllNodesWithTag("bs_shell_1").fetchSemanticsNodes().size)
         assertEquals("no percentages anywhere", 0, compose.onAllNodesWithText("%", substring = true).fetchSemanticsNodes()
             .count { n -> n.config.toString().let { !it.contains("can") } })
         assertEquals(0, compose.onAllNodesWithText("tahmin", substring = true).fetchSemanticsNodes().size)
@@ -144,13 +150,34 @@ class BuckshotScreenTest {
     }
 
     @Test fun waitingPlayerCannotActAndSeesNoForeignKnowledge() {
-        show("82_buckshot_waiting", room(1), state("u0", "u1"))
-        assertEquals(0, compose.onAllNodesWithTag("bs_known").fetchSemanticsNodes().size)   // Ayşe's magnifier result is not here
+        show("82_buckshot_waiting", room(1), state("u0", "u1"), settle = false)
+        // Ayşe's magnifier result appears nowhere on Barış's screen, not even for a moment
+        assertEquals(0, compose.onAllNodesWithTag("bs_known", useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithTag("bs_private_notice", useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithText("3. DOLU", substring = true, useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithText("Yalnızca sen görüyorsun").fetchSemanticsNodes().size)
+        compose.mainClock.autoAdvance = true
         compose.onNodeWithTag("bs_seat_u0").performClick()
         compose.onAllNodesWithTag("bs_item_beer")[0].performClick()      // two cans lie on the table: two objects
         assertEquals(0, compose.onAllNodesWithTag("bs_fire").fetchSemanticsNodes().size)
         assertEquals(0, compose.onAllNodesWithTag("bs_use").fetchSemanticsNodes().size)
         assertTrue("no action when it is not your turn", sent.isEmpty())
+    }
+
+    @Test fun loadCountsAreAnnouncedOnceThenDisappear() {
+        show("85_buckshot_load_notice", room(0), state("u0", "u0"), settle = false)
+        compose.onNodeWithTag("bs_load_banner").assertExists()
+        compose.onNodeWithText("5 dolu, 3 boş").assertExists()
+        // the private learnt-shell notice is there for its owner only
+        compose.onNodeWithTag("bs_private_notice").assertExists()
+        compose.onNodeWithText("Yalnızca sen görüyorsun").assertExists()
+        compose.mainClock.advanceTimeBy(5_000)
+        compose.waitForIdle()
+        assertEquals(0, compose.onAllNodesWithTag("bs_load_banner").fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithText("5 dolu", substring = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithTag("bs_private_notice").fetchSemanticsNodes().size)
+        compose.onNodeWithText("Kalan mermi: 6").assertExists()
+        compose.mainClock.autoAdvance = true
     }
 
     @Test fun roundOverShowsTheMoneyBag() {

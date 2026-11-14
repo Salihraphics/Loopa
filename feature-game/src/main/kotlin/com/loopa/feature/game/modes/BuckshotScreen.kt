@@ -57,7 +57,6 @@ import com.loopa.core.ui.avatar.AvatarView
 import com.loopa.core.ui.theme.LocalReducedMotion
 import com.loopa.feature.game.modes.BsArt.crate
 import com.loopa.feature.game.modes.BsArt.item
-import com.loopa.feature.game.modes.BsArt.shell
 import com.loopa.feature.game.modes.BsArt.shotgun
 import com.loopa.feature.game.modes.BsArt.table
 import kotlinx.serialization.json.JsonElement
@@ -137,20 +136,12 @@ fun BuckshotScreen(ctx: ModeContext, mode: ModeState, ui: ModeUi) {
                 val lamp = if (reduced) null else rememberInfiniteTransition(label = "lamp").animateFloat(0.85f, 1f, infiniteRepeatable(tween(2400), RepeatMode.Reverse), label = "l")
                 val mag = p / "mag"
                 val remaining = (mag / "remaining").i() ?: 0
-                val fired = 8 - remaining
-                val knownShells = known.associate { ((it / "shell").i() ?: 0) to (it / "live").b() }
 
                 Canvas(Modifier.fillMaxSize().testTag("bs_table")) {
                     table(lamp?.value ?: 1f)
                     val c = Offset(size.width / 2, size.height * 0.42f)
                     shotgun(c, size.width * 0.46f, gunAngle, flash.value)
-                    // the magazine: 8 shells standing in a row; spent ones knocked over and grey
-                    val sw = size.width * 0.03f; val sh = sw * 2.6f
-                    val x0 = c.x - 4 * sw * 1.5f
-                    for (k in 1..8) {
-                        val band = knownShells[k]?.let { if (it) BsArt.Rust else BsArt.BlankBlue }
-                        shell(Offset(x0 + (k - 1) * sw * 1.5f, size.height * 0.6f), sw, sh, band, spent = k <= fired)
-                    }
+                    // no shell icons: the order and the types stay hidden (only the count left is shown)
                     // rivals' items: covered crates in front of their seats (how many, never which)
                     rivals.forEachIndexed { i, u ->
                         val (fx, fy) = spots[i]
@@ -160,17 +151,17 @@ fun BuckshotScreen(ctx: ModeContext, mode: ModeState, ui: ModeUi) {
                         for (k in 0 until minOf(n, 8)) crate(base + Offset((k % 4) * cs * 1.15f, (k / 4) * cs * 0.95f), cs)
                     }
                 }
-                // facts about the magazine (no odds)
-                Column(Modifier.align(Alignment.Center).offset(y = h * 0.24f).clip(RoundedCornerShape(8.dp))
+                // the only lasting magazine fact on the table: how many shells are left
+                Box(Modifier.align(Alignment.Center).offset(y = h * 0.2f).clip(RoundedCornerShape(8.dp))
                     .background(Color.Black.copy(alpha = 0.55f)).border(1.dp, BsArt.Edge, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp).testTag("bs_mag"), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Yüklenen: ${(mag / "loaded_live").i() ?: 0} dolu · ${(mag / "loaded_blank").i() ?: 0} boş", color = BsArt.Bone, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("Kalan mermi: $remaining", color = BsArt.Lamp, fontSize = 11.sp, modifier = Modifier.testTag("bs_remaining"))
-                    known.minByOrNull { (it / "shell").i() ?: 99 }?.let { k ->
-                        Text("Bildiğin: ${(k / "shell").i()}. mermi ${if ((k / "live").b()) "DOLU" else "BOŞ"}",
-                            color = if ((k / "live").b()) BsArt.Rust else BsArt.BlankBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("bs_known"))
-                    }
+                    .padding(horizontal = 12.dp, vertical = 5.dp).testTag("bs_mag")) {
+                    Text("Kalan mermi: $remaining", color = BsArt.Lamp, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("bs_remaining"))
                 }
+                // the loaded counts are announced once per magazine, then disappear
+                LoadAnnouncement("${mode.round?.id}:${(mag / "no").i()}", (mag / "loaded_live").i() ?: 0, (mag / "loaded_blank").i() ?: 0,
+                    Modifier.align(Alignment.Center).offset(y = (-h * 0.18f)))
+                // what this player learnt with an item: a private, temporary notice (never on the shared table)
+                if (me != null) PrivateKnowledgeNotice("${mode.round?.id}:${(mag / "no").i()}", known, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
                 rivals.forEachIndexed { i, u ->
                     val (fx, fy) = spots[i]
                     Seat(ctx, u, players / u, (p / "max_hp").i() ?: 3, (p / "wins" / u).i() ?: 0, isTurn = u == turn && !over, aimed = aim == u,
@@ -184,7 +175,7 @@ fun BuckshotScreen(ctx: ModeContext, mode: ModeState, ui: ModeUi) {
             }
             // ------------------------------------------------------------------ the player's edge of the table
             if (bottom != null) MyPlace(ctx, bottom, players / bottom, (p / "max_hp").i() ?: 3, (p / "wins" / bottom).i() ?: 0,
-                isTurn = bottom == turn && !over, aimed = aim == bottom, myTurn = myTurn, isMe = me != null, inv = inv, picked = picked,
+                isTurn = bottom == turn && !over, aimed = aim == bottom, myTurn = myTurn, isMe = me != null, inv = inv, picked = picked, known = known,
                 onPick = { idx -> picked = if (picked == idx) null else idx; aim = null }, onAimSelf = { if (!targeting) aim = bottom })
             ActionBar(ctx, myTurn, aim, pickedItem, targeting, ui,
                 onFire = { t -> ui.act("fire", payload("target" to t, "nonce" to nonce())) {}; aim = null },
@@ -263,7 +254,7 @@ private fun StatusLine(pl: JsonElement?, wins: Int, alive: Boolean) {
 /** The player's own edge of the table: avatar, HP and the items lying in front of them. */
 @Composable
 private fun MyPlace(ctx: ModeContext, u: String, pl: JsonElement?, maxHp: Int, wins: Int, isTurn: Boolean, aimed: Boolean, myTurn: Boolean, isMe: Boolean,
-                    inv: List<String>, picked: Int?, onPick: (Int) -> Unit, onAimSelf: () -> Unit) {
+                    inv: List<String>, picked: Int?, known: List<JsonElement>, onPick: (Int) -> Unit, onAimSelf: () -> Unit) {
     val alive = (pl / "alive").b()
     Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BsArt.Steel, Color(0xFF17181C)))).padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically) {
@@ -273,6 +264,12 @@ private fun MyPlace(ctx: ModeContext, u: String, pl: JsonElement?, maxHp: Int, w
             Text(if (isMe) "Sen" else ctx.name(u).take(10), color = BsArt.Bone, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             HpLamps((pl / "hp").i() ?: 0, maxHp, 8.dp)
             StatusLine(pl, wins, alive)
+            // a private reminder of what only this player knows (their own screen, their own data)
+            if (isMe) known.minByOrNull { (it / "shell").i() ?: 99 }?.let { k ->
+                val live = (k / "live").b()
+                Text("🔍 ${(k / "shell").i()}. ${if (live) "DOLU" else "BOŞ"}", color = if (live) BsArt.Rust else BsArt.BlankBlue, fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp).testTag("bs_known"))
+            }
         }
         Spacer(Modifier.width(8.dp))
         Row(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Brush.verticalGradient(listOf(BsArt.Felt, Color(0xFF1E2621))))
@@ -351,7 +348,7 @@ private fun logLine(ctx: ModeContext, e: JsonElement): String? {
             (e / "t").s() != null -> " → ${ctx.name((e / "t").s())}"
             else -> ""
         }
-        "reload" -> "Yeni şarjör: ${(e / "live").i()} dolu, ${(e / "blank").i()} boş"
+        "reload" -> "Yeni şarjör yüklendi"
         "skipped" -> "$who kelepçeli: sırası atlandı"
         "out" -> "$who elendi"
         "timeout" -> "$who süreyi aştı"
@@ -380,6 +377,51 @@ private fun MoneyBag(ctx: ModeContext, winner: String?, bag: Int, round: Int) {
                 textAlign = TextAlign.Center)
             if (bag > 0) Text("Para çantası: +$bag coin", color = BsArt.Lamp, fontWeight = FontWeight.Bold)
             Text(if (round < 3) "Sonraki raund hazırlanıyor…" else "Maç bitti", color = BsArt.Bone.copy(alpha = 0.6f), fontSize = 12.sp)
+        }
+    }
+}
+
+/** "Şarjör yüklendi: X dolu, Y boş" — shown once for each magazine, for a few seconds. */
+@Composable
+private fun LoadAnnouncement(key: String, live: Int, blank: Int, modifier: Modifier) {
+    var seen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(key) {
+        if (seen != key) {
+            seen = key; visible = true
+            kotlinx.coroutines.delay(3_500)
+            visible = false
+        }
+    }
+    androidx.compose.animation.AnimatedVisibility(visible, modifier, enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+        Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = 0.8f)).border(1.5.dp, BsArt.Lamp, RoundedCornerShape(14.dp))
+            .padding(horizontal = 18.dp, vertical = 10.dp).testTag("bs_load_banner"), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("ŞARJÖR YÜKLENDİ", color = BsArt.Lamp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, fontSize = 13.sp)
+            Text("$live dolu, $blank boş", color = BsArt.Bone, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        }
+    }
+}
+
+/** A short private notice when this player learns a shell (magnifier / radio). */
+@Composable
+private fun PrivateKnowledgeNotice(magKey: String, known: List<JsonElement>, modifier: Modifier) {
+    val keys = known.map { "$magKey:${(it / "shell").i()}" }
+    var shown by remember { mutableStateOf(setOf<String>()) }
+    var current by remember { mutableStateOf<JsonElement?>(null) }
+    LaunchedEffect(keys) {
+        val fresh = known.firstOrNull { "$magKey:${(it / "shell").i()}" !in shown } ?: return@LaunchedEffect
+        shown = shown + keys
+        current = fresh
+        kotlinx.coroutines.delay(4_000)
+        current = null
+    }
+    androidx.compose.animation.AnimatedVisibility(current != null, modifier, enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+        val k = current ?: return@AnimatedVisibility
+        val live = (k / "live").b()
+        Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = 0.85f)).border(1.5.dp, if (live) BsArt.Rust else BsArt.BlankBlue, RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 8.dp).testTag("bs_private_notice"), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Yalnızca sen görüyorsun", color = BsArt.Bone.copy(alpha = 0.7f), fontSize = 10.sp)
+            Text("${(k / "shell").i()}. mermi ${if (live) "DOLU" else "BOŞ"}", color = if (live) BsArt.Rust else BsArt.BlankBlue, fontWeight = FontWeight.Black, fontSize = 16.sp)
         }
     }
 }

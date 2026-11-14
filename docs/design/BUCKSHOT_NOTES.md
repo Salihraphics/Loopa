@@ -73,10 +73,16 @@ Görseller, item adları ve arayüz LOOPA'ya özgüdür; kaynak oyunun görsel �
   - Oyuncunun eşyaları ekranın altında, keçe şerit üzerinde çizilmiş nesnelerdir.
   - Seçilen eşya kalkar ve ışıklanır; "KULLAN" ile kullanılır. Hedef gereken eşyalarda masadan bir rakip seçilir.
   - Rakiplerin eşyaları, önlerinde kapalı kasalar olarak durur; yalnızca sayısı belli olur.
-- **Mermiler:**
-  - Şarjörün 8 mermisi masada dizili durur. Atılanlar devrik ve gri çizilir.
-  - Bilinmeyen mermiler nötr renktedir. Yalnızca oyuncunun bildiği mermiler kırmızı (dolu) ya da mavi (boş) olur.
-  - **Olasılık hesabı gösterilmez.** Görünen bilgiler: yüklenen dolu/boş sayısı, kalan mermi ve kendi öğrendiğin bilgiler.
+- **Mermiler (gizlilik düzeltmesi):**
+  - Her yeni şarjörde "Şarjör yüklendi: X dolu, Y boş" duyurusu bir kez yaklaşık 3,5 saniye görünür ve kaybolur.
+  - Sonrasında masada yalnızca "Kalan mermi" sayısı kalır. Dolu/boş toplamları, mermi simgeleri, sıra ve tür gösterilmez.
+  - Olay satırında da şarjör sayıları yazmaz, yalnızca "Yeni şarjör yüklendi" görünür.
+  - Atış sonucu (dolu ya da boş, verilen hasar) ve Gazoz ile çıkarılan merminin türü olay olarak görünür, çünkü herkes masada olanı görür.
+  - **Olasılık hesabı yapılmaz.**
+- **Büyüteç ve Telsiz sonucu:**
+  - Yalnızca kullanan oyuncunun ekranında görünür: 4 saniyelik "Yalnızca sen görüyorsun" bildirimi ve kendi avatarının altında küçük bir hatırlatma ("🔍 3. DOLU").
+  - Bu bilgi oyuncuya özel veriden (`me.known`) gelir ve ortak durumda hiç yer almaz.
+  - Sunucu mermilerin gerçek durumunu saklamaya devam eder; kurallar değişmedi.
 - **Animasyonlar:** Azaltılmış hareket açıkken tüfeğin dönüşü, lamba nabzı, sıra ışığı, eşya kalkışı, atış parlaması ve para çantası animasyonu kapalıdır.
 
 ## Bilinen sınırlamalar
