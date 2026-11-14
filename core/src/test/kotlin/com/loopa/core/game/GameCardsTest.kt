@@ -25,11 +25,12 @@ class GameCardsTest {
     private fun catalog(vararg modes: CatalogMode, rotation: Rotation = Rotation()) = GameCatalog(rotation = rotation, modes = modes.toList())
     private fun info(id: String) = GameModes.info(id)
 
-    @Test fun tenGamesInTheAgreedOrder() {
-        assertEquals(10, GameModes.all.size)
+    @Test fun nineteenGamesInTheAgreedOrder() {
+        assertEquals(19, GameModes.all.size)
         assertEquals(
             listOf("İsim Şehir", "Gizli Kelime", "Kelime Zinciri", "Bilgi Arenası", "İki Doğru Bir Yalan", "Çiz ve Tahmin Et",
-                "En Muhtemel Kim?", "Anlat Bakalım", "Çizim Telefonu", "Sessiz Sinema"),
+                "En Muhtemel Kim?", "Anlat Bakalım", "Çizim Telefonu", "Sessiz Sinema",
+                "Tavla", "21", "Kızma Birader", "Amiral Battı", "Renk Kartları", "101 Okey", "Milyoner", "Kurt Adam", "Krallıklar"),
             GameModes.all.map { it.name },
         )
         assertEquals(GameModes.all.map { it.id }.toSet(), GameModes.implemented)

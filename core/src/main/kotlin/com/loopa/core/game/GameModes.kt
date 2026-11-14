@@ -5,7 +5,7 @@ import com.loopa.core.model.GameCatalog
 
 /** Catalogue category of a game. Only categories used by at least one game are shown. */
 enum class GameCategory(val label: String) {
-    KELIME("Kelime"), PARTI("Parti"), BILGI("Bilgi"), CIZIM("Çizim");
+    KELIME("Kelime"), PARTI("Parti"), BILGI("Bilgi"), CIZIM("Çizim"), MASA("Masa"), KART("Kart"), STRATEJI("Strateji");
 }
 
 /**
@@ -58,8 +58,8 @@ data class GameModeInfo(
     val sameRoom: Boolean = false,
     val kind: GameKind = GameKind.ROUND_BASED,
 ) {
-    /** Minimum players, read from [players] ("3-10 oyuncu"); the server enforces the real limit. */
-    val minPlayers: Int get() = players.substringBefore('-').trim().toIntOrNull() ?: 2
+    /** Minimum players, read from [players] ("3-10 oyuncu", "4 oyuncu"); the server enforces the real limit. */
+    val minPlayers: Int get() = players.takeWhile { it.isDigit() }.toIntOrNull() ?: 2
 }
 
 object GameModes {
@@ -82,6 +82,16 @@ object GameModes {
         GameModeInfo("anlat_bakalim", "Anlat Bakalım", "Yasaklı kelimeleri kullanmadan sözlü anlat. Aynı ortamda oynanır.", "4-10 oyuncu", GameCategory.KELIME, sameRoom = true, kind = GameKind.TURN_BASED),
         GameModeInfo("cizim_telefonu", "Çizim Telefonu", "Yaz, çiz, tahmin et: zincir nereye varacak?", "4-10 oyuncu", GameCategory.CIZIM),
         GameModeInfo("sessiz_sinema", "Sessiz Sinema", "Konuşmadan anlat. Aynı ortamda oynanır, kamera yok.", "4-10 oyuncu", GameCategory.PARTI, sameRoom = true, kind = GameKind.TURN_BASED),
+        // 0.8.0
+        GameModeInfo("tavla", "Tavla", "Klasik Türk tavlası: pulları topla, ilk sen çıkar.", "2 oyuncu", GameCategory.MASA, addedIn = "0.8.0", kind = GameKind.BOARD),
+        GameModeInfo("yirmi_bir", "21", "21'e en yakın sen ol, geçme. Bahis yok, sadece kart.", "2 oyuncu", GameCategory.KART, addedIn = "0.8.0", kind = GameKind.CARD),
+        GameModeInfo("kizma_birader", "Kızma Birader", "Zar at, dört piyonunu eve ilk sen ulaştır.", "2-4 oyuncu", GameCategory.MASA, addedIn = "0.8.0", kind = GameKind.BOARD),
+        GameModeInfo("amiral_batti", "Amiral Battı", "Gemilerini gizle, rakip filoyu batır. 1v1 ya da 2v2.", "2-4 oyuncu", GameCategory.MASA, addedIn = "0.8.0", kind = GameKind.BOARD),
+        GameModeInfo("renk_kartlari", "Renk Kartları", "Rengi ya da sayıyı eşle; TEMİZLE, AYNA, GAMBLE kartlarıyla.", "2-8 oyuncu", GameCategory.KART, addedIn = "0.8.0", kind = GameKind.CARD),
+        GameModeInfo("okey", "101 Okey", "101 puanla aç, taşlarını işle, elini ilk sen bitir.", "4 oyuncu", GameCategory.MASA, addedIn = "0.8.0", kind = GameKind.CARD),
+        GameModeInfo("milyoner", "Milyoner", "Zar at, mülk al, kira topla. Son ayakta kalan kazanır.", "2-6 oyuncu", GameCategory.STRATEJI, addedIn = "0.8.0", kind = GameKind.BOARD),
+        GameModeInfo("kurt_adam", "Kurt Adam", "Gizli roller, gece yetenekleri, gündüz oylaması. Moderatör LOOPA.", "6-20 oyuncu", GameCategory.PARTI, addedIn = "0.8.0", kind = GameKind.HIDDEN_ROLE),
+        GameModeInfo("kralliklar", "Krallıklar", "Kaynak topla, ordu kur, diplomasi yap; başkentini koru.", "4-20 oyuncu", GameCategory.STRATEJI, addedIn = "0.8.0", kind = GameKind.STRATEGY),
     )
 
     /** Categories that at least one game uses, in catalogue order. */

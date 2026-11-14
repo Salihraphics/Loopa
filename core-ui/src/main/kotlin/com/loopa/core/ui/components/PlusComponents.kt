@@ -22,6 +22,15 @@ import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.TheaterComedy
 import androidx.compose.material.icons.rounded.VpnKey
+import androidx.compose.material.icons.rounded.Adjust
+import androidx.compose.material.icons.rounded.Apartment
+import androidx.compose.material.icons.rounded.Casino
+import androidx.compose.material.icons.rounded.DirectionsBoat
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.NightsStay
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Style
+import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -79,6 +88,15 @@ fun gameVisual(modeId: String): GameVisual = when (modeId) {
     "anlat_bakalim" -> GameVisual(Icons.Rounded.RecordVoiceOver, LoopaPalette.Sky)
     "cizim_telefonu" -> GameVisual(Icons.Rounded.Gesture, LoopaPalette.Butter)
     "sessiz_sinema" -> GameVisual(Icons.Rounded.TheaterComedy, LoopaPalette.Peach)
+    "tavla" -> GameVisual(Icons.Rounded.Casino, LoopaPalette.Peach)
+    "yirmi_bir" -> GameVisual(Icons.Rounded.Style, LoopaPalette.Mint)
+    "kizma_birader" -> GameVisual(Icons.Rounded.Adjust, LoopaPalette.Butter)
+    "amiral_batti" -> GameVisual(Icons.Rounded.DirectionsBoat, LoopaPalette.Sky)
+    "renk_kartlari" -> GameVisual(Icons.Rounded.Palette, LoopaPalette.Peach)
+    "okey" -> GameVisual(Icons.Rounded.ViewModule, LoopaPalette.Mint)
+    "milyoner" -> GameVisual(Icons.Rounded.Apartment, LoopaPalette.Butter)
+    "kurt_adam" -> GameVisual(Icons.Rounded.NightsStay, LoopaPalette.Lavender)
+    "kralliklar" -> GameVisual(Icons.Rounded.Flag, LoopaPalette.Sky)
     else -> GameVisual(Icons.Rounded.TextFields, LoopaPalette.Lavender)
 }
 

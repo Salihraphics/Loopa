@@ -31,14 +31,18 @@ class CatalogLogicTest {
     }
 
     @Test fun roadmapIsPlanningOnly() {
-        assertEquals(23, GameRoadmap.targetCount)
-        assertEquals((11..23).toList(), GameRoadmap.planned.map { it.number })
+        assertEquals(24, GameRoadmap.targetCount)
+        assertEquals((20..24).toList(), GameRoadmap.planned.map { it.number })
         val implemented = GameModes.all.map { it.id }.toSet()
         assertTrue(GameRoadmap.planned.none { it.id in implemented })
         assertEquals(GameRoadmap.planned.size, GameRoadmap.planned.map { it.id }.toSet().size)
     }
 
     @Test fun everyGameDeclaresHowItSyncs() {
-        assertTrue(GameModes.all.all { it.kind.sync == SyncModel.SNAPSHOT_ON_SIGNAL })
+        // Krallıklar stores hidden orders and resolves them at the deadline; the rest re-fetch on a signal.
+        assertTrue(GameModes.all.all { it.kind.sync == SyncModel.SNAPSHOT_ON_SIGNAL || it.kind == GameKind.STRATEGY })
+        assertEquals(19, GameModes.all.size)
+        assertEquals(4, GameModes.info("okey").minPlayers)
+        assertEquals(6, GameModes.info("kurt_adam").minPlayers)
     }
 }

@@ -124,6 +124,11 @@ fun ModeGameContent(
                 "en_muhtemel_kim" -> EnMuhtemelKimScreen(ctx, mode, ui)
                 "kelime_zinciri" -> KelimeZinciriScreen(ctx, mode, ui)
                 "cizim_telefonu" -> CizimTelefonuScreen(ctx, mode, ui)
+                "yirmi_bir" -> YirmiBirScreen(ctx, mode, ui)
+                "tavla" -> TavlaScreen(ctx, mode, ui)
+                "kizma_birader" -> KizmaBiraderScreen(ctx, mode, ui)
+                "amiral_batti" -> AmiralBattiScreen(ctx, mode, ui)
+                "renk_kartlari" -> RenkKartlariScreen(ctx, mode, ui)
                 else -> WaitingNote("Bu oyun bu sürümde desteklenmiyor.")
             }
         }
@@ -135,5 +140,15 @@ private fun progressFor(m: ModeState): String = when (m.mode) {
     "kelime_zinciri" -> m.progressLabel("Hamle")
     "cizim_telefonu" -> if (m.round?.phase == "showcase") "Sonuçlar" else m.progressLabel("Adım")
     "iki_dogru_bir_yalan" -> if (m.round?.number == 1) "Yazma turu" else m.progressLabel("Tur")
+    "yirmi_bir" -> "El ${m.round?.number ?: 1}"
+    "tavla" -> "Oyun ${m.round?.number ?: 1}"
+    "renk_kartlari", "okey" -> "Tur ${m.round?.number ?: 1}"
+    "kizma_birader", "amiral_batti" -> ""
+    "milyoner" -> "Tur ${(m.round?.public?.get("round") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "1"}"
+    "kurt_adam" -> (m.round?.public?.get("phase") as? kotlinx.serialization.json.JsonPrimitive)?.content.let { ph ->
+        val night = (m.round?.public?.get("night") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "1"
+        val day = (m.round?.public?.get("day") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "1"
+        when (ph) { "night", "cub" -> "Gece $night"; else -> "Gün $day" } }
+    "kralliklar" -> "Tur ${(m.round?.public?.get("turn_no") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "1"}"
     else -> m.progressLabel("Tur")
 }
