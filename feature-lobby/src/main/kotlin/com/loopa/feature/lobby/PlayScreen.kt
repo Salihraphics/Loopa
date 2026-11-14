@@ -87,15 +87,14 @@ data class PlayUiState(
 )
 
 /** Room-code alphabet used by the server (no 0/O/1/I to avoid confusion). */
-const val ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+const val ROOM_CODE_ALPHABET = com.loopa.core.game.RoomCodes.ALPHABET
 
 /**
  * Normalises whatever the keyboard or clipboard delivers into a room code:
  * upper-case (Turkish keyboards may send "ı"/"i" variants), no spaces or separators,
  * only valid characters, at most 6.  " lop-7x 2 " -> "LOP7X2".
  */
-fun normalizeRoomCode(input: String): String =
-    input.uppercase(java.util.Locale.ROOT).replace('İ', 'I').filter { it in ROOM_CODE_ALPHABET }.take(6)
+fun normalizeRoomCode(input: String): String = com.loopa.core.game.RoomCodes.normalize(input)
 
 class PlayViewModel(private val c: DataContainer) : ViewModel() {
     private val _ui = MutableStateFlow(PlayUiState())

@@ -3,12 +3,29 @@ package com.loopa.core.game
 import com.loopa.core.model.CatalogMode
 import com.loopa.core.model.GameCatalog
 
-/** Static, client-side description of the 10 games. Access always comes from the server catalogue. */
+/** Catalogue category of a game. Only categories used by at least one game are shown. */
+enum class GameCategory(val label: String) {
+    KELIME("Kelime"), PARTI("Parti"), BILGI("Bilgi"), CIZIM("Çizim");
+}
+
+/**
+ * Preferred screen orientation of a game. All current games are verified in portrait and adapt
+ * to landscape, so they are FLEXIBLE; a future game can declare PORTRAIT or LANDSCAPE here.
+ */
+enum class GameOrientation { PORTRAIT, LANDSCAPE, FLEXIBLE }
+
+/** Static, client-side description of the games. Access always comes from the server catalogue. */
 data class GameModeInfo(
     val id: String,
     val name: String,
     val tagline: String,
     val players: String,
+    val category: GameCategory = GameCategory.PARTI,
+    /** App version that added the game; drives the "Yeni" section. */
+    val addedIn: String = "0.5.0",
+    val orientation: GameOrientation = GameOrientation.FLEXIBLE,
+    /** Played in the same room, out loud (no voice or camera in the app). */
+    val sameRoom: Boolean = false,
 ) {
     /** Minimum players, read from [players] ("3-10 oyuncu"); the server enforces the real limit. */
     val minPlayers: Int get() = players.substringBefore('-').trim().toIntOrNull() ?: 2
@@ -24,17 +41,35 @@ object GameModes {
     val implemented: Set<String> by lazy { all.map { it.id }.toSet() }
 
     val all: List<GameModeInfo> = listOf(
-        GameModeInfo(ISIM_SEHIR, "İsim Şehir", "Harf gelsin, kategorileri en hızlı sen doldur.", "2-10 oyuncu"),
-        GameModeInfo("gizli_kelime", "Gizli Kelime", "Kelimeyi sözlü anlat, takımın bilsin. Aynı ortamda oynanır.", "3-10 oyuncu"),
-        GameModeInfo("kelime_zinciri", "Kelime Zinciri", "Son harften yeni kelime türet, zinciri koparma.", "2-10 oyuncu"),
-        GameModeInfo("bilgi_arenasi", "Bilgi Arenası", "Soruları en hızlı ve doğru cevaplayan kazanır.", "2-10 oyuncu"),
-        GameModeInfo("iki_dogru_bir_yalan", "İki Doğru Bir Yalan", "Üç cümleden hangisi yalan? Bul bakalım.", "3-10 oyuncu"),
-        GameModeInfo("ciz_tahmin", "Çiz ve Tahmin Et", "Sen çiz, diğerleri tahmin etsin.", "3-10 oyuncu"),
-        GameModeInfo("en_muhtemel_kim", "En Muhtemel Kim?", "Kim en çok yapar? Oyla, sonuçlara gül.", "3-10 oyuncu"),
-        GameModeInfo("anlat_bakalim", "Anlat Bakalım", "Yasaklı kelimeleri kullanmadan sözlü anlat. Aynı ortamda oynanır.", "4-10 oyuncu"),
-        GameModeInfo("cizim_telefonu", "Çizim Telefonu", "Yaz, çiz, tahmin et: zincir nereye varacak?", "4-10 oyuncu"),
-        GameModeInfo("sessiz_sinema", "Sessiz Sinema", "Konuşmadan anlat. Aynı ortamda oynanır, kamera yok.", "4-10 oyuncu"),
+        GameModeInfo(ISIM_SEHIR, "İsim Şehir", "Harf gelsin, kategorileri en hızlı sen doldur.", "2-10 oyuncu", GameCategory.KELIME, addedIn = "0.1.0"),
+        GameModeInfo("gizli_kelime", "Gizli Kelime", "Kelimeyi sözlü anlat, takımın bilsin. Aynı ortamda oynanır.", "3-10 oyuncu", GameCategory.PARTI, sameRoom = true),
+        GameModeInfo("kelime_zinciri", "Kelime Zinciri", "Son harften yeni kelime türet, zinciri koparma.", "2-10 oyuncu", GameCategory.KELIME),
+        GameModeInfo("bilgi_arenasi", "Bilgi Arenası", "Soruları en hızlı ve doğru cevaplayan kazanır.", "2-10 oyuncu", GameCategory.BILGI),
+        GameModeInfo("iki_dogru_bir_yalan", "İki Doğru Bir Yalan", "Üç cümleden hangisi yalan? Bul bakalım.", "3-10 oyuncu", GameCategory.PARTI),
+        GameModeInfo("ciz_tahmin", "Çiz ve Tahmin Et", "Sen çiz, diğerleri tahmin etsin.", "3-10 oyuncu", GameCategory.CIZIM),
+        GameModeInfo("en_muhtemel_kim", "En Muhtemel Kim?", "Kim en çok yapar? Oyla, sonuçlara gül.", "3-10 oyuncu", GameCategory.PARTI),
+        GameModeInfo("anlat_bakalim", "Anlat Bakalım", "Yasaklı kelimeleri kullanmadan sözlü anlat. Aynı ortamda oynanır.", "4-10 oyuncu", GameCategory.KELIME, sameRoom = true),
+        GameModeInfo("cizim_telefonu", "Çizim Telefonu", "Yaz, çiz, tahmin et: zincir nereye varacak?", "4-10 oyuncu", GameCategory.CIZIM),
+        GameModeInfo("sessiz_sinema", "Sessiz Sinema", "Konuşmadan anlat. Aynı ortamda oynanır, kamera yok.", "4-10 oyuncu", GameCategory.PARTI, sameRoom = true),
     )
+
+    /** Categories that at least one game uses, in catalogue order. */
+    val categories: List<GameCategory> get() = GameCategory.entries.filter { c -> all.any { it.category == c } }
+
+    /** Search by name or tagline, Turkish case- and accent-insensitive. */
+    fun search(query: String, category: GameCategory? = null, games: List<GameModeInfo> = all): List<GameModeInfo> {
+        val q = TurkishText.key(query)
+        return games.filter { g ->
+            (category == null || g.category == category) &&
+                (q.isEmpty() || TurkishText.key(g.name).contains(q) || TurkishText.key(g.tagline).contains(q))
+        }
+    }
+
+    /** Games added in the newest release (empty when every game is old). */
+    fun newest(): List<GameModeInfo> {
+        val latest = all.maxOf { it.addedIn }
+        return all.filter { it.addedIn == latest && latest != all.minOf { m -> m.addedIn } }
+    }
 
     fun info(id: String?): GameModeInfo = all.firstOrNull { it.id == id } ?: all.first()
     fun name(id: String?): String = info(id).name

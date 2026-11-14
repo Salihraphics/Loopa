@@ -2,6 +2,13 @@ package com.loopa.feature.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.text.style.TextOverflow
+import com.loopa.core.ui.components.IconAction
+import com.loopa.core.ui.components.ListRow
+import com.loopa.core.ui.components.LoopaSurface
+import com.loopa.core.ui.components.SectionHeader
+import com.loopa.core.ui.theme.Spacing
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.AlertDialog
@@ -100,7 +108,7 @@ private val reasonText = mapOf(
 )
 
 @Composable
-fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: () -> Unit = {}) {
+fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
     val vm = containerViewModel { ProfileViewModel(it) }
     val membership by vm.membership.collectAsStateWithLifecycle()
     val modeStats by vm.modeStats.collectAsStateWithLifecycle()
@@ -114,39 +122,48 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
 
     Box(Modifier.fillMaxSize().background(Loopa.colors.background)) {
         Column(
-            Modifier.align(Alignment.TopCenter).loopaContentWidth().fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            Modifier.align(Alignment.TopCenter).loopaContentWidth().fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.gutter).testTag("profile_scroll"),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
-            LoopaCard(color = LoopaPalette.Lavender.copy(alpha = 0.55f)) {
+            Row(Modifier.fillMaxWidth().padding(top = Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                Text("Profil", style = MaterialTheme.typography.displaySmall, color = Loopa.colors.text, modifier = Modifier.weight(1f))
+                IconAction(Icons.Rounded.Settings, "Ayarlar", onOpenSettings, Modifier.testTag("open_settings"))
+            }
+            // Identity
+            LoopaSurface(color = LoopaPalette.Lavender.copy(alpha = 0.45f), modifier = Modifier.testTag("profile_header")) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box {
-                        AvatarView(p?.avatar, size = 128.dp)
+                    Box(Modifier.clip(CircleShape).clickable(onClick = onEditAvatar)) {
+                        AvatarView(p?.avatar, size = 132.dp)
                         LevelBadge(p?.level ?: 1, Modifier.align(Alignment.BottomEnd), size = 40.dp)
                     }
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(p?.username ?: "…", style = MaterialTheme.typography.headlineMedium, color = LoopaPalette.Ink)
+                        Text(p?.username ?: "…", style = MaterialTheme.typography.headlineMedium, color = LoopaPalette.Ink,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                         IconButton(onClick = { editing = true }) { Icon(Icons.Rounded.Edit, "Adı düzenle", tint = LoopaPalette.Ink) }
                     }
                     Text("Seviye ${p?.level ?: 1} · ${p?.xp ?: 0} toplam XP", style = MaterialTheme.typography.bodyMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     MembershipLine(membership, onOpenPlus)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(Spacing.md))
                     XpBar(p?.xp ?: 0)
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        LoopaButton("Avatar", onEditAvatar, icon = Icons.Rounded.Palette, color = androidx.compose.ui.graphics.Color.White, compact = true)
-                        LoopaButton("Mağaza", onOpenShop, icon = Icons.Rounded.Storefront, color = LoopaPalette.Butter, compact = true)
-                    }
                 }
             }
             ErrorBanner(error, onDismiss = vm::dismissError)
-
-            if (modeStats.isNotEmpty()) {
-                SectionTitle("Oyunlara göre")
-                ModeStatsCard(modeStats)
+            // Entry points
+            LoopaSurface(padding = PaddingValues(Spacing.sm)) {
+                ListRow("Avatarı düzenle", subtitle = "Yüz, saç, kıyafet ve aksesuarlar", icon = Icons.Rounded.Palette, iconTint = LoopaPalette.Lavender,
+                    onClick = onEditAvatar, modifier = Modifier.testTag("profile_avatar"))
+                ListRow("Mağaza", subtitle = "Kozmetik: ${p?.ownedCosmetics?.size ?: 0}/${catalogSize.takeIf { it > 0 } ?: "?"}", icon = Icons.Rounded.Storefront,
+                    iconTint = LoopaPalette.Butter, onClick = onOpenShop, modifier = Modifier.testTag("profile_shop"))
+                ListRow("LOOPA Plus", subtitle = "Plan ve avantajlar", icon = Icons.Rounded.Verified, iconTint = LoopaPalette.Mint,
+                    onClick = onOpenPlus, modifier = Modifier.testTag("profile_plus"))
+                ListRow("Ayarlar", subtitle = "Hesap, görünüm, ses, dil", icon = Icons.Rounded.Settings, iconTint = LoopaPalette.Sky,
+                    onClick = onOpenSettings, modifier = Modifier.testTag("profile_settings"))
             }
-            SectionTitle("İstatistikler")
+
+            SectionHeader("İstatistikler")
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("Toplam maç", "${stats?.matchesPlayed ?: 0}", LoopaPalette.Lavender, Modifier.weight(1f))
                 StatTile("Maç galibiyeti", "${stats?.matchWins ?: 0}", LoopaPalette.Mint, Modifier.weight(1f))
@@ -163,15 +180,24 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
                 StatTile("Kozmetik", "${p?.ownedCosmetics?.size ?: 0}/${catalogSize.takeIf { it > 0 } ?: "?"}", LoopaPalette.Peach, Modifier.weight(1f))
             }
 
-            SectionTitle("Başarımlar")
-            Achievements.evaluate(stats, p?.level ?: 1).forEach { a ->
-                LoopaCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
+            if (modeStats.isNotEmpty()) {
+                SectionHeader("Oyunlara göre")
+                ModeStatsCard(modeStats)
+            }
+
+            SectionHeader("Başarımlar")
+            val achievements = Achievements.evaluate(stats, p?.level ?: 1)
+            Text("${achievements.count { it.unlocked }}/${achievements.size} açıldı", style = MaterialTheme.typography.labelMedium, color = Loopa.colors.textSoft)
+            LoopaSurface(padding = PaddingValues(Spacing.md), modifier = Modifier.testTag("achievements")) {
+                achievements.forEachIndexed { idx, a ->
+                    if (idx > 0) Spacer(Modifier.height(Spacing.md))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier.size(42.dp).clip(CircleShape).background(if (a.unlocked) LoopaPalette.Butter else Loopa.colors.cardHigh),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(if (a.unlocked) Icons.Rounded.Verified else Icons.Rounded.Lock, null, tint = if (a.unlocked) LoopaPalette.Ink else Loopa.colors.textSoft)
+                            Icon(if (a.unlocked) Icons.Rounded.Verified else Icons.Rounded.Lock, if (a.unlocked) "Açıldı" else "Kilitli",
+                                tint = if (a.unlocked) LoopaPalette.Ink else Loopa.colors.textSoft)
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
@@ -190,11 +216,11 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
                 }
             }
 
-            SectionTitle("Son XP kazanımları")
+            SectionHeader("Son XP kazanımları")
             if (p?.recentXp.isNullOrEmpty()) {
                 Text("Henüz XP kazanmadın.", style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft)
             } else {
-                LoopaCard {
+                LoopaSurface(padding = PaddingValues(Spacing.md)) {
                     p!!.recentXp.forEach { x ->
                         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(reasonText[x.reason] ?: x.reason, style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.text, modifier = Modifier.weight(1f))
@@ -204,12 +230,12 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
                 }
             }
 
-            SectionTitle("Maç geçmişi")
+            SectionHeader("Maç geçmişi")
             if (p?.history.isNullOrEmpty()) {
                 Text("Henüz tamamlanmış maç yok.", style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft)
             } else {
                 p!!.history.forEach { h ->
-                    LoopaCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
+                    LoopaSurface(padding = PaddingValues(Spacing.md)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Pill("${h.finalRank}.", if (h.finalRank == 1) LoopaPalette.Butter else LoopaPalette.Lavender)
                             Spacer(Modifier.width(10.dp))
@@ -225,7 +251,7 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
                     }
                 }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Spacing.lg))
         }
     }
 
@@ -270,10 +296,10 @@ private fun MembershipLine(state: com.loopa.core.data.Remote<com.loopa.core.mode
 /** Matches, wins and best score per game (from get_my_mode_stats). */
 @Composable
 private fun ModeStatsCard(stats: List<com.loopa.core.model.ModeStat>) {
-    LoopaCard(modifier = Modifier.testTag("mode_stats")) {
+    LoopaSurface(padding = PaddingValues(Spacing.md), modifier = Modifier.testTag("mode_stats")) {
         stats.forEach { st ->
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                com.loopa.core.ui.components.GameIcon(st.gameMode, size = 34.dp)
+                com.loopa.core.ui.components.GameArtwork(st.gameMode, Modifier.size(38.dp).clip(com.loopa.core.ui.theme.Radii.sm))
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(com.loopa.core.game.GameModes.name(st.gameMode), style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)

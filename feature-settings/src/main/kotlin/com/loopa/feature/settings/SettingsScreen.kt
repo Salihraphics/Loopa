@@ -15,6 +15,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
@@ -135,7 +138,7 @@ class SettingsViewModel(private val c: DataContainer) : ViewModel() {
 private val languages = listOf("tr" to "Türkçe", "en" to "English (yakında)")
 
 @Composable
-fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitched: () -> Unit = onLoggedOut, onOpenPlus: () -> Unit = {}) {
+fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitched: () -> Unit = onLoggedOut, onOpenPlus: () -> Unit = {}, onBack: (() -> Unit)? = null) {
     val vm = containerViewModel { SettingsViewModel(it) }
     val membershipVm = containerViewModel { MembershipViewModel(it) }
     val s by vm.settings.collectAsStateWithLifecycle()
@@ -156,47 +159,12 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitch
             Modifier.align(Alignment.TopCenter).loopaContentWidth().fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Ayarlar", style = MaterialTheme.typography.displaySmall, color = Loopa.colors.text)
-
-            SectionTitle("Ses ve titreşim")
-            LoopaCard {
-                ToggleRow(Icons.Rounded.VolumeUp, "Ses efektleri", "Butonlar, sayaç ve kutlamalar", s.soundEnabled, vm::setSound)
-                ToggleRow(Icons.Rounded.MusicNote, "Müzik", "Menülerde hafif arka plan müziği", s.musicEnabled, vm::setMusic)
-                ToggleRow(Icons.Rounded.Vibration, "Titreşim", "Sayaç uyarıları ve jokerler", s.vibrationEnabled, vm::setVibration)
-            }
-
-            SectionTitle("Görünüm")
-            LoopaCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.DarkMode, null, tint = Loopa.colors.text)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Tema", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onBack != null) {
+                    com.loopa.core.ui.components.IconAction(Icons.AutoMirrored.Rounded.ArrowBack, "Geri", onBack, Modifier.testTag("settings_back"))
+                    Spacer(Modifier.width(8.dp))
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LoopaChip("Sistem", s.theme == ThemeMode.SYSTEM, { vm.setTheme(ThemeMode.SYSTEM) })
-                    LoopaChip("Açık", s.theme == ThemeMode.LIGHT, { vm.setTheme(ThemeMode.LIGHT) }, color = LoopaPalette.Butter)
-                    LoopaChip("Koyu", s.theme == ThemeMode.DARK, { vm.setTheme(ThemeMode.DARK) }, color = LoopaPalette.Sky)
-                }
-            }
-
-            SectionTitle("Dil")
-            LoopaCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Language, null, tint = Loopa.colors.text)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Uygulama dili", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
-                }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    languages.forEach { (code, name) ->
-                        LoopaChip(name, s.language == code, { vm.setLanguage(code) }, color = LoopaPalette.Mint, enabled = code == "tr")
-                    }
-                }
-                Text(
-                    "Şu an yalnızca Türkçe mevcut. Diğer diller eklendiğinde buradan seçilebilecek.",
-                    style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.padding(top = 8.dp),
-                )
+                Text("Ayarlar", style = MaterialTheme.typography.displaySmall, color = Loopa.colors.text)
             }
 
             SectionTitle("Hesap")
@@ -237,6 +205,62 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitch
                 LoopaButton("Çıkış yap", { confirmLogout = true }, icon = Icons.AutoMirrored.Rounded.Logout, color = LoopaPalette.Peach, compact = true)
             }
 
+            SectionTitle("Görünüm")
+            LoopaCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.DarkMode, null, tint = Loopa.colors.text)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Tema", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LoopaChip("Sistem", s.theme == ThemeMode.SYSTEM, { vm.setTheme(ThemeMode.SYSTEM) })
+                    LoopaChip("Açık", s.theme == ThemeMode.LIGHT, { vm.setTheme(ThemeMode.LIGHT) }, color = LoopaPalette.Butter)
+                    LoopaChip("Koyu", s.theme == ThemeMode.DARK, { vm.setTheme(ThemeMode.DARK) }, color = LoopaPalette.Sky)
+                }
+            }
+
+            SectionTitle("Ses ve titreşim")
+            LoopaCard {
+                ToggleRow(Icons.Rounded.VolumeUp, "Ses efektleri", "Butonlar, sayaç ve kutlamalar", s.soundEnabled, vm::setSound)
+                ToggleRow(Icons.Rounded.MusicNote, "Müzik", "Menülerde hafif arka plan müziği", s.musicEnabled, vm::setMusic)
+                ToggleRow(Icons.Rounded.Vibration, "Titreşim", "Sayaç uyarıları ve jokerler", s.vibrationEnabled, vm::setVibration)
+            }
+
+            SectionTitle("Bildirimler")
+            LoopaCard(modifier = Modifier.testTag("settings_notifications")) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Notifications, null, tint = Loopa.colors.text)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Anlık bildirimler", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                        Text("LOOPA şu an bildirim göndermiyor. Oda davetleri gelince buradan açıp kapatabileceksin.",
+                            style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    com.loopa.core.ui.components.ComingSoonTag()
+                }
+            }
+
+            SectionTitle("Dil")
+            LoopaCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Language, null, tint = Loopa.colors.text)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Uygulama dili", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    languages.forEach { (code, name) ->
+                        LoopaChip(name, s.language == code, { vm.setLanguage(code) }, color = LoopaPalette.Mint, enabled = code == "tr")
+                    }
+                }
+                Text(
+                    "Şu an yalnızca Türkçe mevcut. Diğer diller eklendiğinde buradan seçilebilecek.",
+                    style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
             SectionTitle("Üyelik")
             MembershipSettings(onOpenPlus, membershipVm)
 
@@ -267,7 +291,7 @@ fun SettingsScreen(versionName: String, onLoggedOut: () -> Unit, onAccountSwitch
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Arkadaşlarınla oynayabileceğin çok oyunculu parti oyunu. Şu an oynanabilen oyun: İsim Şehir; diğer 9 oyun yolda. Yazı tipleri: Baloo 2 ve Nunito (SIL Open Font License).",
+                    "Arkadaşlarınla oynayabileceğin çok oyunculu parti oyunu. ${com.loopa.core.game.GameModes.all.size} oyun, tek uygulamada. Yazı tipleri: Baloo 2 ve Nunito (SIL Open Font License).",
                     style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
                 )
             }

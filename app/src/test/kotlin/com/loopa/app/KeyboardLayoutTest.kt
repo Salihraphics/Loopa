@@ -28,7 +28,7 @@ import java.io.File
 
 /**
  * The room-code field must stay above the soft keyboard (edge-to-edge window, IME insets
- * dispatched like Android does). Runs the real Play tab inside the real MainTabs scaffold
+ * dispatched like Android does). Runs the real Home tab (join card) inside the real MainTabs scaffold
  * on several screen sizes. This is an emulation: no real keyboard app is involved.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -41,7 +41,7 @@ class KeyboardLayoutTest {
         compose.runOnUiThread { WindowCompat.setDecorFitsSystemWindows(compose.activity.window, false) }
         compose.setContent {
             LoopaTheme(darkTheme = false) {
-                MainTabs("test", onRoomReady = {}, onPublicRooms = {}, onShop = {}, onLoggedOut = {}, onAccountSwitched = {}, initialTab = Tab.PLAY)
+                MainTabs(onRoomReady = {}, onPublicRooms = {}, onShop = {}, initialTab = Tab.HOME)
             }
         }
         val decor = compose.activity.window.decorView

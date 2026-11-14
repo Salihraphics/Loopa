@@ -4,14 +4,18 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,15 +23,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AddCircle
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,11 +46,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,26 +66,34 @@ import com.loopa.core.data.containerViewModel
 import com.loopa.core.game.GameCardKind
 import com.loopa.core.game.GameCardStatus
 import com.loopa.core.game.GameCards
+import com.loopa.core.game.GameCategory
 import com.loopa.core.game.GameModeInfo
 import com.loopa.core.game.GameModes
 import com.loopa.core.game.LoopaException
 import com.loopa.core.game.PlusFormat
 import com.loopa.core.model.GameCatalog
 import com.loopa.core.model.Membership
+import com.loopa.core.model.ModeStat
+import com.loopa.core.ui.components.EmptyState
+import com.loopa.core.ui.components.FeaturedGame
+import com.loopa.core.ui.components.GameCard
+import com.loopa.core.ui.components.featuredGame
 import com.loopa.core.ui.components.ErrorBanner
-import com.loopa.core.ui.components.GameIcon
+import com.loopa.core.ui.components.GameArtwork
 import com.loopa.core.ui.components.LoopaButton
-import com.loopa.core.ui.components.LoopaCard
-import com.loopa.core.ui.components.LoopaTopBar
+import com.loopa.core.ui.components.LoopaChip
+import com.loopa.core.ui.components.LoopaSurface
+import com.loopa.core.ui.components.LoopaTextField
 import com.loopa.core.ui.components.Pill
 import com.loopa.core.ui.components.PlanBadge
 import com.loopa.core.ui.components.PlusGradient
-import com.loopa.core.ui.components.darken
+import com.loopa.core.ui.components.SectionHeader
 import com.loopa.core.ui.components.gameVisual
-import com.loopa.core.ui.components.loopaContentWidth
 import com.loopa.core.ui.feedback.Sfx
 import com.loopa.core.ui.theme.Loopa
 import com.loopa.core.ui.theme.LoopaPalette
+import com.loopa.core.ui.theme.Radii
+import com.loopa.core.ui.theme.Spacing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -83,10 +106,14 @@ class GamesViewModel(private val c: DataContainer) : ViewModel() {
     val creating: StateFlow<String?> = _creating.asStateFlow()
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+    private val _modeStats = MutableStateFlow<List<ModeStat>>(emptyList())
+    /** Per-game statistics of the player: drives "Son oynananlar". */
+    val modeStats: StateFlow<List<ModeStat>> = _modeStats.asStateFlow()
 
     fun refresh() = viewModelScope.launch {
         launch { c.catalog.refresh() }
         launch { c.membership.refresh() }
+        launch { _modeStats.value = c.profiles.modeStats() }
     }
 
     fun dismissError() { _error.value = null }
@@ -104,15 +131,18 @@ class GamesViewModel(private val c: DataContainer) : ViewModel() {
     }
 }
 
+/** Oyunlar: the catalogue, as a tab (no back button) or as a pushed screen ([onBack] set). */
 @Composable
-fun GamesScreen(onBack: () -> Unit, onRoomReady: (String) -> Unit, onOpenPlus: () -> Unit) {
+fun GamesScreen(onBack: (() -> Unit)?, onRoomReady: (String) -> Unit, onOpenPlus: () -> Unit) {
     val vm = containerViewModel { GamesViewModel(it) }
     val catalog by vm.catalog.collectAsStateWithLifecycle()
     val membership by vm.membership.collectAsStateWithLifecycle()
     val creating by vm.creating.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
+    val stats by vm.modeStats.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.refresh() }
-    GamesContent(catalog, membership, creating, error, onBack, vm::refresh, { vm.create(it, onRoomReady) }, onOpenPlus, vm::dismissError)
+    GamesContent(catalog, membership, creating, error, onBack ?: {}, vm::refresh, { vm.create(it, onRoomReady) }, onOpenPlus, vm::dismissError,
+        modeStats = stats, showBack = onBack != null)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -127,25 +157,88 @@ fun GamesContent(
     onCreate: (GameModeInfo) -> Unit,
     onOpenPlus: () -> Unit,
     onDismissError: () -> Unit,
+    modeStats: List<ModeStat> = emptyList(),
+    showBack: Boolean = true,
 ) {
     val data = catalog.data
+    var query by rememberSaveable { mutableStateOf("") }
+    var category by rememberSaveable { mutableStateOf<GameCategory?>(null) }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val filtering = query.isNotBlank() || category != null
+    val games = GameModes.search(query, category)
+    val showPlusAction = membership.data?.hasPlusAccess != true
+    val recent = modeStats.filter { it.matchesPlayed > 0 }.sortedByDescending { it.lastPlayedAt.orEmpty() }
+        .mapNotNull { s -> GameModes.all.firstOrNull { it.id == s.gameMode } }.take(6)
+
     Column(Modifier.fillMaxSize().background(Loopa.colors.background)) {
-        LoopaTopBar("Oyunlar", onBack = onBack) {
-            if (catalog.loading) CircularProgressIndicator(Modifier.size(22.dp).padding(end = 4.dp), strokeWidth = 2.5.dp, color = Loopa.colors.text)
+        // Header
+        Row(Modifier.fillMaxWidth().padding(start = if (showBack) Spacing.xs else Spacing.gutter, end = Spacing.sm, top = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically) {
+            if (showBack) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Geri", tint = Loopa.colors.text) }
+            Text("Oyunlar", style = MaterialTheme.typography.displaySmall, color = Loopa.colors.text, modifier = Modifier.weight(1f))
+            IconButton(onClick = { searching = !searching; if (!searching) query = "" }, modifier = Modifier.testTag("games_search_toggle")) {
+                Icon(if (searching) Icons.Rounded.Close else Icons.Rounded.Search, if (searching) "Aramayı kapat" else "Ara", tint = Loopa.colors.text)
+            }
+            if (catalog.loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp, color = Loopa.colors.text)
             else IconButton(onClick = onRefresh) { Icon(Icons.Rounded.Refresh, "Yenile", tint = Loopa.colors.text) }
         }
-        Box(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val columns = if (maxWidth >= 720.dp) 2 else 1
             LazyColumn(
-                Modifier.align(Alignment.TopCenter).loopaContentWidth().fillMaxSize().testTag("games_list"),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                Modifier.align(Alignment.TopCenter).fillMaxSize().testTag("games_list"),
+                contentPadding = PaddingValues(start = Spacing.gutter, end = Spacing.gutter, bottom = Spacing.section),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
-                item { ErrorBanner(error, onDismiss = onDismissError) }
-                item { PlanStrip(membership, onOpenPlus) }
-                item { RotationCard(catalog) }
-                items(GameModes.all, key = { it.id }) { info ->
-                    GameCard(info, GameCards.status(info, data), creating == info.id, { onCreate(info) }, onOpenPlus,
-                        showPlusAction = membership.data?.hasPlusAccess != true)
+                if (searching || query.isNotBlank()) item(key = "search") {
+                    LoopaTextField(query, { query = it.take(30) }, Modifier.fillMaxWidth().testTag("games_search"), placeholder = "Oyun ara",
+                        leading = { Icon(Icons.Rounded.Search, null, tint = Loopa.colors.textSoft) },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search))
+                }
+                item(key = "categories") {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).testTag("games_categories"), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        LoopaChip("Tümü", category == null, { category = null }, modifier = Modifier.testTag("category_all"))
+                        GameModes.categories.forEach { c ->
+                            LoopaChip(c.label, category == c, { category = if (category == c) null else c },
+                                color = LoopaPalette.accent(c.ordinal + 1), modifier = Modifier.testTag("category_${c.name}"))
+                        }
+                    }
+                }
+                item(key = "error") { ErrorBanner(error, onDismiss = onDismissError) }
+                if (!filtering) {
+                    item(key = "plan") { PlanStrip(membership, onOpenPlus) }
+                    item(key = "featured") {
+                        val f = featuredGame(data)
+                        FeaturedGame(f, GameCards.status(f, data), creating == f.id, { onCreate(f) }, onOpenPlus, showPlusAction,
+                            weekly = data?.rotation?.active == true && f.id in data.rotation.freeModes)
+                    }
+                    if (recent.isNotEmpty()) item(key = "recent") {
+                        Column {
+                            SectionHeader("Son oynananlar")
+                            LazyRow(Modifier.testTag("recent_games"), horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                                items(recent, key = { it.id }) { g ->
+                                    MiniGameTile(g, GameCards.status(g, data)) { if (GameCards.status(g, data).canStart) onCreate(g) else onOpenPlus() }
+                                }
+                            }
+                        }
+                    }
+                    item(key = "rotation") { RotationCard(catalog) }
+                }
+                item(key = "all_header") {
+                    SectionHeader(if (filtering) "${games.size} oyun bulundu" else "Tüm oyunlar")
+                }
+                if (games.isEmpty()) item(key = "empty") {
+                    EmptyState("Sonuç yok", "Başka bir ad dene ya da filtreyi kaldır.")
+                }
+                games.chunked(columns).forEach { row ->
+                    item(key = "row_" + row.joinToString("_") { it.id }) {
+                        Row(Modifier.fillMaxWidth().animateItem(), horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                            row.forEach { info ->
+                                GameCard(info, GameCards.status(info, data), creating == info.id, { onCreate(info) }, onOpenPlus,
+                                    showPlusAction = showPlusAction, modifier = Modifier.weight(1f))
+                            }
+                            if (row.size < columns) Spacer(Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }
@@ -169,9 +262,22 @@ private fun PlanStrip(membership: Remote<Membership>, onOpenPlus: () -> Unit) {
             style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.weight(1f),
         )
         if (m != null && !m.hasPlusAccess) {
-            Text("Plus nedir?", style = MaterialTheme.typography.labelMedium, color = LoopaPalette.LavenderDeep,
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onOpenPlus).padding(6.dp).testTag("games_plus_link"))
+            Text("Plus nedir?", style = MaterialTheme.typography.labelMedium, color = Loopa.colors.accentText,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onOpenPlus).padding(10.dp).testTag("games_plus_link"))
         }
+    }
+}
+
+@Composable
+private fun MiniGameTile(info: GameModeInfo, status: GameCardStatus, onClick: () -> Unit) {
+    Column(Modifier.width(112.dp).clip(Radii.md).clickable(onClick = onClick).testTag("recent_${info.id}")) {
+        Box {
+            GameArtwork(info.id, Modifier.fillMaxWidth().aspectRatio(1f).clip(Radii.md), label = info.name)
+            if (!status.canStart) Icon(Icons.Rounded.Lock, "Kilitli", tint = LoopaPalette.Ink,
+                modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(18.dp))
+        }
+        Text(info.name, style = MaterialTheme.typography.labelMedium, color = Loopa.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp))
     }
 }
 
@@ -179,14 +285,14 @@ private fun PlanStrip(membership: Remote<Membership>, onOpenPlus: () -> Unit) {
 @Composable
 private fun RotationCard(catalog: Remote<GameCatalog>) {
     val data = catalog.data
-    LoopaCard(color = LoopaPalette.Butter.copy(alpha = 0.55f), modifier = Modifier.testTag("rotation_card").animateContentSize()) {
+    LoopaSurface(Modifier.testTag("rotation_card").animateContentSize(), color = LoopaPalette.Butter.copy(alpha = 0.35f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.CalendarMonth, null, tint = LoopaPalette.Ink)
+            Icon(Icons.Rounded.CalendarMonth, null, tint = Loopa.colors.text)
             Spacer(Modifier.width(10.dp))
-            Text("Haftalık ücretsiz oyunlar", style = MaterialTheme.typography.titleMedium, color = LoopaPalette.Ink)
+            Text("Haftalık ücretsiz oyunlar", style = MaterialTheme.typography.titleMedium, color = Loopa.colors.text)
         }
         Spacer(Modifier.height(8.dp))
-        val ink = LoopaPalette.Ink.copy(alpha = 0.78f)
+        val ink = Loopa.colors.textSoft
         when {
             data == null && catalog.unsupported -> Text(
                 "Haftalık rotasyon bu sunucuda henüz etkin değil. Şimdilik İsim Şehir oynanabilir.",
@@ -213,81 +319,12 @@ private fun RotationCard(catalog: Remote<GameCatalog>) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WeekRow(title: String, modes: List<String>, note: String?) {
-    Text(title, style = MaterialTheme.typography.labelLarge, color = LoopaPalette.Ink)
+    Text(title, style = MaterialTheme.typography.labelLarge, color = Loopa.colors.text)
     Spacer(Modifier.height(4.dp))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Pill("İsim Şehir", LoopaPalette.Mint)
         modes.forEach { Pill(GameModes.name(it), gameVisual(it).color) }
     }
-    if (note != null) Text(note, style = MaterialTheme.typography.bodySmall, color = LoopaPalette.Ink.copy(alpha = 0.7f), modifier = Modifier.padding(top = 4.dp))
+    if (note != null) Text(note, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft, modifier = Modifier.padding(top = 4.dp))
 }
 
-@Composable
-fun GameCard(
-    info: GameModeInfo,
-    status: GameCardStatus,
-    creating: Boolean,
-    onCreate: () -> Unit,
-    onOpenPlus: () -> Unit,
-    showPlusAction: Boolean,
-) {
-    val visual = gameVisual(info.id)
-    val dim = status.kind != GameCardKind.PLAYABLE
-    val shape = RoundedCornerShape(26.dp)
-    Column(
-        Modifier.fillMaxWidth().clip(shape)
-            .background(if (dim) Loopa.colors.card else visual.color.copy(alpha = 0.35f))
-            .border(2.dp, if (dim) Loopa.colors.outline else darken(visual.color).copy(alpha = 0.45f), shape)
-            .padding(16.dp).testTag("game_card_${info.id}"),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GameIcon(info.id, dimmed = dim)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(info.name, style = MaterialTheme.typography.titleMedium, color = Loopa.colors.text)
-                Text(info.players, style = MaterialTheme.typography.labelSmall, color = Loopa.colors.textSoft)
-            }
-            StatusBadge(status)
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(info.tagline, style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.text)
-        Spacer(Modifier.height(4.dp))
-        Text(status.explanation, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
-            modifier = Modifier.testTag("game_status_${info.id}"))
-        if (status.freeThisWeek || status.freeNextWeek) {
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (status.freeThisWeek) Pill("Bu hafta ücretsiz", LoopaPalette.Butter)
-                if (status.freeNextWeek) Pill("Gelecek hafta ücretsiz", LoopaPalette.Sky)
-            }
-        }
-        when {
-            status.canStart -> {
-                Spacer(Modifier.height(12.dp))
-                LoopaButton("Oda kur", onCreate, icon = Icons.Rounded.AddCircle, color = Color.White, loading = creating,
-                    modifier = Modifier.fillMaxWidth().testTag("game_create_${info.id}"), sfx = Sfx.JOIN)
-            }
-            status.kind == GameCardKind.LOCKED_PLUS && showPlusAction -> {
-                Spacer(Modifier.height(12.dp))
-                LoopaButton("LOOPA Plus'ı incele", onOpenPlus, icon = Icons.Rounded.AutoAwesome, color = LoopaPalette.Lavender, compact = true,
-                    modifier = Modifier.testTag("game_plus_${info.id}"))
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusBadge(status: GameCardStatus) {
-    val shape = RoundedCornerShape(50)
-    val (bg, icon) = when (status.kind) {
-        GameCardKind.PLAYABLE -> Modifier.background(LoopaPalette.Mint) to null
-        GameCardKind.LOCKED_PLUS -> Modifier.background(PlusGradient) to Icons.Rounded.Lock
-        GameCardKind.COMING_SOON -> Modifier.background(Loopa.colors.cardHigh) to Icons.Rounded.Schedule
-        GameCardKind.UNAVAILABLE -> Modifier.background(Loopa.colors.cardHigh) to null
-    }
-    Row(Modifier.clip(shape).then(bg).padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (icon != null) { Icon(icon, null, tint = LoopaPalette.Ink, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)) }
-        Text(status.badge, style = MaterialTheme.typography.labelSmall,
-            color = if (status.kind == GameCardKind.PLAYABLE || status.kind == GameCardKind.LOCKED_PLUS) LoopaPalette.Ink else Loopa.colors.text)
-    }
-}

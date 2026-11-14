@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -165,24 +166,38 @@ fun AvatarEditorScreen(onOpenShop: () -> Unit, onBack: (() -> Unit)? = null) {
                 LoopaButton("Mağaza", onOpenShop, icon = Icons.Rounded.Storefront, color = LoopaPalette.Butter, compact = true)
                 Spacer(Modifier.width(8.dp))
             }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                AvatarView(st.draft, size = 150.dp, modifier = Modifier.scale(bounce))
-                Spacer(Modifier.width(16.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
-                    LoopaButton("Rastgele", { vm.randomize(); bounceKey++ }, icon = Icons.Rounded.Casino, color = LoopaPalette.Sky, compact = true, sfx = Sfx.JOKER, modifier = Modifier.fillMaxWidth())
-                    LoopaButton(
-                        if (st.saved && st.draft == st.original) "Kaydedildi ✓" else "Kaydet", vm::save, icon = Icons.Rounded.Save,
-                        color = LoopaPalette.Mint, loading = st.saving, enabled = st.draft != st.original, compact = true, modifier = Modifier.fillMaxWidth(),
-                    )
+            // Preview scales with the window: large on phones, capped on tablets, smaller in short landscape windows.
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                val preview = minOf(maxWidth * 0.5f, 220.dp)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(preview + 16.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(LoopaPalette.Lavender.copy(alpha = 0.35f)).testTag("avatar_preview"),
+                        contentAlignment = Alignment.Center,
+                    ) { AvatarView(st.draft, size = preview, modifier = Modifier.scale(bounce)) }
+                    Spacer(Modifier.width(16.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
+                        LoopaButton("Rastgele", { vm.randomize(); bounceKey++ }, icon = Icons.Rounded.Casino, color = LoopaPalette.Sky, compact = true, sfx = Sfx.JOKER, modifier = Modifier.fillMaxWidth())
+                        LoopaButton(
+                            if (st.saved && st.draft == st.original) "Kaydedildi ✓" else "Kaydet", vm::save, icon = Icons.Rounded.Save,
+                            color = LoopaPalette.Mint, loading = st.saving, enabled = st.draft != st.original, compact = true, modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
             ErrorBanner(st.error, Modifier.padding(horizontal = 20.dp, vertical = 6.dp), onDismiss = vm::dismissError)
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 10.dp),
+            // Category tabs: a lazy row that keeps the selected tab in view on narrow screens.
+            val tabs = androidx.compose.foundation.lazy.rememberLazyListState()
+            LaunchedEffect(slot) { tabs.animateScrollToItem(maxOf(0, slot.ordinal - 1)) }
+            androidx.compose.foundation.lazy.LazyRow(
+                state = tabs,
+                modifier = Modifier.fillMaxWidth().testTag("avatar_tabs"),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                AvatarSlot.entries.forEachIndexed { i, s ->
-                    LoopaChip(s.title, slot == s, { slot = s }, color = LoopaPalette.accent(i))
+                items(AvatarSlot.entries.size) { i ->
+                    val s = AvatarSlot.entries[i]
+                    LoopaChip(s.title, slot == s, { slot = s }, color = LoopaPalette.accent(i), modifier = Modifier.testTag("avatar_tab_${s.name}"))
                 }
             }
             val items = st.catalog.filter { it.slot == slot.key }

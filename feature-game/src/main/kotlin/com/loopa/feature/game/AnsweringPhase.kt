@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -151,9 +153,13 @@ fun AnsweringView(
     }
     LaunchedEffect(remainingMs < 700) { if (remainingMs < 700) onFinalSave() }
 
-    Column(Modifier.fillMaxSize().imePadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LetterBadge(round.letter, size = 72.dp)
+    // While typing on a small screen the keyboard can take half the window: the header shrinks and
+    // the player strip / joker bar step aside so the answer fields keep the space (layout only).
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    val typing = androidx.compose.foundation.layout.WindowInsets.isImeVisible
+    Column(Modifier.fillMaxSize().imePadding().testTag("answering_root")) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (typing) 4.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            LetterBadge(round.letter, size = if (typing) 44.dp else 72.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("${round.letter} harfiyle başlayan", style = MaterialTheme.typography.titleMedium, color = Loopa.colors.text)
@@ -165,12 +171,12 @@ fun AnsweringView(
                     Text("$who bonusu kaptı!", style = MaterialTheme.typography.labelSmall, color = Loopa.colors.textSoft)
                 }
             }
-            TimerRing(remainingMs, totalMs, size = 74.dp)
+            TimerRing(remainingMs, totalMs, size = if (typing) 48.dp else 74.dp)
         }
-        PlayerStrip(state, nowMs)
-        JokerBar(myJokers, enabled = me != null && !me.jokerUsed && remainingMs > 0 && !busyJoker, used = me?.jokerUsed == true) { jokerDialog = it }
+        if (!typing) PlayerStrip(state, nowMs)
+        if (!typing) JokerBar(myJokers, enabled = me != null && !me.jokerUsed && remainingMs > 0 && !busyJoker, used = me?.jokerUsed == true) { jokerDialog = it }
         LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(),
+            Modifier.weight(1f).fillMaxWidth().testTag("answer_list"),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -188,7 +194,7 @@ fun AnsweringView(
                         onValueChange = { onAnswer(cat.key, it) },
                         label = cat.name + if (doubled) "  ·  2X" else "",
                         placeholder = "${round.letter}…",
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).testTag("answer_${cat.key}"),
                         isError = wrongLetter,
                         accent = if (doubled) LoopaPalette.ButterDeep else LoopaPalette.accent(i),
                         enabled = remainingMs > 0,
@@ -210,13 +216,13 @@ fun AnsweringView(
             }
             item { Spacer(Modifier.height(8.dp)) }
         }
-        Box(Modifier.fillMaxWidth().background(Loopa.colors.card).padding(16.dp)) {
+        Box(Modifier.fillMaxWidth().background(Loopa.colors.card).padding(horizontal = 16.dp, vertical = if (typing) 6.dp else 16.dp)) {
             LoopaButton(
                 if (filled == round.categories.size) "Gönder ve Kilitle" else "Gönder ($filled/${round.categories.size})",
                 onClick = { if (filled < round.categories.size) confirmSubmit = true else onSubmit() },
                 loading = submitting, enabled = remainingMs > 0, icon = Icons.Rounded.Send,
                 color = if (filled == round.categories.size) LoopaPalette.Mint else LoopaPalette.Butter,
-                modifier = Modifier.fillMaxWidth(), sfx = Sfx.SUBMIT,
+                modifier = Modifier.fillMaxWidth().testTag("submit_answers"), sfx = Sfx.SUBMIT, compact = typing,
             )
         }
     }

@@ -51,4 +51,5 @@ data class ModeStat(
     val wins: Int = 0,
     @SerialName("total_points") val totalPoints: Long = 0,
     @SerialName("best_points") val bestPoints: Int = 0,
+    @SerialName("last_played_at") val lastPlayedAt: String? = null,
 )

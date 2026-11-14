@@ -1,5 +1,7 @@
 package com.loopa.core.ui.components
 
+import androidx.compose.foundation.selection.selectable
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -215,7 +217,8 @@ fun LoopaChip(
             .clip(shape)
             .background(if (selected) color else Loopa.colors.cardHigh)
             .border(2.dp, if (selected) darken(color) else Loopa.colors.outline, shape)
-            .clickable(enabled = enabled) { feedback.play(Sfx.TAP); onClick() }
+            .selectable(selected, enabled = enabled, role = androidx.compose.ui.semantics.Role.Tab) { feedback.play(Sfx.TAP); onClick() }
+            .heightIn(min = 40.dp)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -223,6 +226,7 @@ fun LoopaChip(
         Text(
             text, style = MaterialTheme.typography.labelMedium,
             color = if (selected) LoopaPalette.Ink else Loopa.colors.text.copy(alpha = if (enabled) 1f else 0.4f),
+            maxLines = 1, softWrap = false,
         )
     }
 }

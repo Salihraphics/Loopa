@@ -48,7 +48,10 @@ import com.loopa.feature.game.RoundResultsView
 import com.loopa.feature.game.VotingView
 import com.loopa.feature.home.HomeScreen
 import com.loopa.feature.lobby.LobbyScreen
-import com.loopa.feature.lobby.PlayScreen
+import com.loopa.feature.lobby.GamesScreen
+import com.loopa.feature.home.SocialScreen
+import com.loopa.feature.profile.ProfileScreen
+import com.loopa.feature.avatar.AvatarEditorScreen
 import com.loopa.feature.settings.SettingsScreen
 import kotlinx.serialization.json.JsonObject
 import org.junit.Rule
@@ -132,7 +135,7 @@ class ScreenshotTest {
         },
     )
 
-    private fun state(phase: RoundPhase?, me: Int = 0) = RoomState(
+    internal fun state(phase: RoundPhase?, me: Int = 0) = RoomState(
         serverTime = iso(0), me = Me(ids[me], if (me == 4) "spectator" else "player", "active"),
         room = Room("room1", "LOP7X2", ids[0], if (phase == null) "lobby" else "in_game", isPublic = false, settings = settings),
         players = players,
@@ -154,7 +157,11 @@ class ScreenshotTest {
 
     @Test fun home() = shot("03_home") { HomeScreen({}, {}, {}, {}, {}) }
 
-    @Test fun play() = shot("04_play") { PlayScreen(onRoomReady = {}, onPublicRooms = {}) }
+    @Test fun games() = shot("04_games") { GamesScreen(onBack = null, onRoomReady = {}, onOpenPlus = {}) }
+    @Test fun homeDark() = shot("03b_home_dark", dark = true) { HomeScreen({}, {}, {}, {}, {}) }
+    @Test fun social() = shot("03c_social") { SocialScreen(onPublicRooms = {}, onOpenGames = {}) }
+    @Test fun profile() = shot("03d_profile") { ProfileScreen(onEditAvatar = {}, onOpenShop = {}) }
+    @Test fun avatarEditor() = shot("03e_avatar_editor") { AvatarEditorScreen(onOpenShop = {}, onBack = {}) }
 
     @Test fun lobby() = shot("05_lobby") { LobbyScreen("room1", state(null), onLeft = {}) }
 

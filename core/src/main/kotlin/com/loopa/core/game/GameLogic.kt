@@ -177,6 +177,14 @@ object AnswerGrouping {
         .sortedWith(compareByDescending<Group> { it.answers.any { a -> a.accepted } }.thenByDescending { it.answers.size })
 }
 
+/** Room codes as the server makes them: 6 characters, no 0/O/1/I. */
+object RoomCodes {
+    const val ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    /** " lop-7x 2 " -> "LOP7X2": upper-case (Turkish keyboards may send ı/i variants), only valid characters, at most 6. */
+    fun normalize(input: String): String =
+        input.uppercase(java.util.Locale.ROOT).replace('İ', 'I').filter { it in ALPHABET }.take(6)
+}
+
 /** Error codes raised by the backend as `LOOPA:<CODE>`. */
 enum class LoopaError(val message: String) {
     NOT_AUTHENTICATED("Oturum bulunamadı. Lütfen tekrar dene."),

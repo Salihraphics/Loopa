@@ -21,6 +21,25 @@ Last updated: 2026-11-15
 - Admin: the owner's verified Google account was added to `admin_allowlist` and bound to its user id
   (one active admin). LOPPAWEEK activated (7 days, Google-linked accounts only, once per account).
 
+## Version 0.6.0 — UI/UX overhaul (2026-11-14)
+
+Design system: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md). No schema, migration, scoring, rule or security changes.
+
+| Item | Status | Verified by |
+|---|---|---|
+| Design tokens (spacing, radii, borders, motion, reduced motion) and shared components; palette, logo and icon unchanged | ✅ | compile, screenshots |
+| 4-tab navigation (Ana Sayfa, Oyunlar, Sosyal, Profil); Settings opened from Profile; side rail at ≥ 720 dp | ✅ | `NavigationTest` |
+| Home: header, player overview, create (game picker) / join / spectate, back-to-room, recently played, featured game, recent matches | ✅ | `KeyboardLayoutTest` (join card above keyboard on 4 sizes), screenshots |
+| Oyunlar: search (Turkish-aware), data-driven categories, featured, recently played, illustrated cards | ✅ | `PlusUiTest`, `CatalogLogicTest` |
+| Game artwork (Canvas, palette only) for all 10 games | ✅ | screenshots |
+| Sosyal: public rooms and invite-by-code are real; friends, requests, messages and invites are marked "Yakında" (no backend) | ✅ honest | `NavigationTest` |
+| Profile redesign, Settings regrouped (Hesap, Görünüm, Ses, Bildirimler [Yakında], Dil, Üyelik, Gizlilik, Hakkında) | ✅ | screenshots |
+| Avatar editor: larger responsive preview, lazy category tabs kept in view | ✅ | screenshots |
+| İsim Şehir keyboard: compact header, player strip and joker bar hidden while typing | ✅ emulated insets | `AnsweringKeyboardTest` (360×640 first/last field, landscape) |
+| Game orientation config (`GameOrientation`, all FLEXIBLE, nothing forced) | ✅ | `CatalogLogicTest` |
+| On a real phone (keyboard apps, TalkBack, tablets) | ❌ not tested | — |
+| Friends / messaging / notifications backend | ❌ not built (shown as Yakında) | — |
+
 ## Version 0.5.0 — all 10 games playable (2026-11-15)
 
 Details: [GAMES.md](GAMES.md).

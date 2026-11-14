@@ -64,6 +64,8 @@ data class LoopaColors(
     val onAccent: Color,
     val outline: Color,
     val isDark: Boolean,
+    /** Readable accent for links and small emphasised text (same pastel family, darker for contrast). */
+    val accentText: Color = LoopaPalette.LavenderDeep,
 )
 
 private val LightLoopa = LoopaColors(
@@ -86,6 +88,7 @@ private val DarkLoopa = LoopaColors(
     onAccent = LoopaPalette.Ink,
     outline = Color(0xFF433D59),
     isDark = true,
+    accentText = LoopaPalette.Lavender,
 )
 
 val LocalLoopaColors = staticCompositionLocalOf { LightLoopa }
@@ -172,7 +175,7 @@ fun LoopaTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable 
             outline = loopa.outline, outlineVariant = loopa.outline,
         )
     }
-    CompositionLocalProvider(LocalLoopaColors provides loopa) {
+    CompositionLocalProvider(LocalLoopaColors provides loopa, LocalReducedMotion provides rememberSystemReducedMotion()) {
         MaterialTheme(colorScheme = scheme, typography = LoopaTypography, shapes = LoopaShapes, content = content)
     }
 }
