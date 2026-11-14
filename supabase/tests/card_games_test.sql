@@ -219,6 +219,62 @@ begin
     perform pg_temp.check((s->'round_scores'->>C::text)::int = -202, 'okey: not opened +202');
     m := (select id from public.matches where room_id = room order by started_at desc limit 1);
     perform pg_temp.check((select final_rank from public.match_players where match_id = m and user_id = A) = 1, 'okey: lowest total wins');
+
+    -- =========================================================== Milyoner
+    room := pg_temp.start('milyoner', array[A, B, C], '{"max_rounds": 20}', 6);
+    s := pg_temp.st(room);
+    perform pg_temp.check((s->'players'->A::text->>'cash')::int = 1500 and s->>'stage' = 'roll', 'my: start money, roll first');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''end_turn'', ''{}'')', room, A), 'INVALID_ACTION');
+    -- land A on Kasaba Yolu (1) and buy it
+    s := public._my_land(s, A::text, 1, 3, false);
+    perform pg_temp.check(s->>'stage' = 'buy' and (s->>'offer')::int = 1, 'my: free property offered');
+    perform pg_temp.setst(room, s);
+    perform pg_temp.move(room, A, 'buy', '{}');
+    s := pg_temp.st(room);
+    perform pg_temp.check(s->'owner'->>'1' = A::text and (s->'players'->A::text->>'cash')::int = 1440, 'my: bought for 60');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''build'', ''{"sq":1}'')', room, A), 'NEED_FULL_SET');
+    -- the full set doubles the base rent; B lands on it
+    s := jsonb_set(s, '{owner,3}', to_jsonb(A::text));
+    s := public._my_land(s, B::text, 1, 4, false);
+    perform pg_temp.check((s->'players'->B::text->>'cash')::int = 1500 - 12 and (s->'players'->A::text->>'cash')::int = 1440 + 12, 'my: rent x2 with the full set');
+    -- even building
+    s := s || jsonb_build_object('turn', A, 'stage', 'act');
+    perform pg_temp.setst(room, s);
+    perform pg_temp.move(room, A, 'build', '{"sq":1}');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''build'', ''{"sq":1}'')', room, A), 'BUILD_EVENLY');
+    perform pg_temp.move(room, A, 'build', '{"sq":3}');
+    s := pg_temp.st(room);
+    perform pg_temp.check((s->'houses'->>'1')::int = 1 and (s->'houses'->>'3')::int = 1 and (s->'players'->A::text->>'cash')::int = 1452 - 100, 'my: houses');
+    perform pg_temp.check(public._my_rent_at(s, 1, 7) = public._my_rent(60, 1, true), 'my: rent with a house');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''mortgage'', ''{"sq":1}'')', room, A), 'SELL_BUILDINGS_FIRST');
+    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''build'', ''{"sq":6}'')', room, A), 'NOT_OWNER');
+    -- mortgaged square: no rent
+    s := jsonb_set(s, '{owner,5}', to_jsonb(C::text)) || jsonb_build_object('mortgaged', '["5"]'::jsonb);
+    perform pg_temp.check(public._my_rent_at(s, 5, 7) = 0, 'my: no rent on mortgaged squares');
+    -- go to jail and pay out
+    s := public._my_land(s, B::text, 30, 6, false);
+    perform pg_temp.check((s->'players'->B::text->>'pos')::int = 10 and (s->'players'->B::text->>'jail')::int = 1, 'my: Nezarete Git');
+    -- bankruptcy: C owes more than everything -> assets to the creditor, C is out
+    s := public._my_set_cash(s, C::text, 10);
+    s := public._my_pay(s, C::text, 5000, A::text);
+    perform pg_temp.check((s->'players'->C::text->>'out')::boolean and s->'owner'->>'5' = A::text, 'my: bankrupt, assets to the creditor');
+    -- B goes bankrupt to the bank: last one standing (A) wins
+    s := s || jsonb_build_object('turn', B, 'stage', 'act');
+    s := public._my_set_cash(s, B::text, 0);
+    s := public._my_pay(s, B::text, 99999, null);
+    s := s || jsonb_build_object('turn', A, 'stage', 'act');
+    perform pg_temp.setst(room, s);
+    perform pg_temp.move(room, A, 'end_turn', '{}');
+    m := (select id from public.matches where room_id = room order by started_at desc limit 1);
+    perform pg_temp.check((select final_rank from public.match_players where match_id = m and user_id = A) = 1
+                          and (select final_rank from public.match_players where match_id = m and user_id = C) = 3, 'my: last one standing wins');
+    -- timeouts play passively and never buy
+    room := pg_temp.start('milyoner', array[A, B], '{}', 6);
+    update public.mode_rounds set deadline_at = now() - interval '1 second' where id = (pg_temp.rd(room)).id;
+    perform public._mode_advance(room);
+    s := pg_temp.st(room);
+    perform pg_temp.check(s->>'turn' = B::text or (s->>'doubles')::int > 0, 'my: timeout ends the turn');
+    perform pg_temp.check(not (s->'owner' ? ((s->'players'->A::text->>'pos'))), 'my: nothing bought automatically');
 end $$;
 
 select 'CARD GAMES TESTS PASSED' as result;
