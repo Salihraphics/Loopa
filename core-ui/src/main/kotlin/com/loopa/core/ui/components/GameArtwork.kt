@@ -58,6 +58,15 @@ private fun artFor(id: String): DrawScope.() -> Unit = when (id) {
     "anlat_bakalim" -> { -> anlatBakalim() }
     "cizim_telefonu" -> { -> cizimTelefonu() }
     "sessiz_sinema" -> { -> sessizSinema() }
+    "tavla" -> { -> tavla() }
+    "yirmi_bir" -> { -> yirmiBir() }
+    "kizma_birader" -> { -> kizmaBirader() }
+    "amiral_batti" -> { -> amiralBatti() }
+    "renk_kartlari" -> { -> renkKartlari() }
+    "okey" -> { -> okey() }
+    "milyoner" -> { -> milyoner() }
+    "kurt_adam" -> { -> kurtAdam() }
+    "kralliklar" -> { -> kralliklar() }
     else -> { -> isimSehir() }
 }
 
@@ -216,4 +225,140 @@ private fun DrawScope.sessizSinema() = square { s, ox, oy ->
     drawCircle(Ink, s * 0.025f, Offset(c.x - s * 0.06f, c.y - s * 0.04f)); drawCircle(Ink, s * 0.025f, Offset(c.x + s * 0.06f, c.y - s * 0.04f))
     drawLine(Ink, Offset(c.x - s * 0.06f, c.y + s * 0.07f), Offset(c.x + s * 0.06f, c.y + s * 0.07f), s * 0.025f, StrokeCap.Round)
     drawLine(Ink, Offset(c.x - s * 0.02f, c.y + s * 0.04f), Offset(c.x + s * 0.02f, c.y + s * 0.1f), s * 0.018f, StrokeCap.Round)
+}
+
+// ------------------------------------------------------------------ 0.8.0 games
+
+private fun DrawScope.outlined(color: Color, topLeft: Offset, size: Size, s: Float, r: Float = 0.05f) {
+    drawRoundRect(color, topLeft, size, CornerRadius(s * r))
+    drawRoundRect(Ink, topLeft, size, CornerRadius(s * r), style = Stroke(s * 0.022f))
+}
+
+private fun DrawScope.die(x: Float, y: Float, d: Float, s: Float, pips: Int) {
+    outlined(White, Offset(x, y), Size(d, d), s, 0.04f)
+    val c = listOf(0.25f, 0.5f, 0.75f)
+    val spots = when (pips) { 1 -> listOf(1 to 1); 2 -> listOf(0 to 0, 2 to 2); 3 -> listOf(0 to 0, 1 to 1, 2 to 2); 4 -> listOf(0 to 0, 2 to 0, 0 to 2, 2 to 2)
+        5 -> listOf(0 to 0, 2 to 0, 1 to 1, 0 to 2, 2 to 2); else -> listOf(0 to 0, 2 to 0, 0 to 1, 2 to 1, 0 to 2, 2 to 2) }
+    spots.forEach { (i, j) -> drawCircle(Ink, d * 0.08f, Offset(x + d * c[i], y + d * c[j])) }
+}
+
+/** Board triangles and two dice. */
+private fun DrawScope.tavla() = square { s, ox, oy ->
+    outlined(Color(0xFFFFF3E0), Offset(ox + s * 0.12f, oy + s * 0.16f), Size(s * 0.76f, s * 0.5f), s)
+    for (i in 0..5) {
+        val x = ox + s * (0.15f + i * 0.12f)
+        val tri = Path().apply { moveTo(x, oy + s * 0.18f); lineTo(x + s * 0.11f, oy + s * 0.18f); lineTo(x + s * 0.055f, oy + s * 0.42f); close() }
+        drawPath(tri, if (i % 2 == 0) LoopaPalette.PeachDeep else Ink.copy(alpha = 0.7f))
+    }
+    die(ox + s * 0.22f, oy + s * 0.6f, s * 0.2f, s, 6)
+    die(ox + s * 0.5f, oy + s * 0.64f, s * 0.2f, s, 3)
+}
+
+/** Two cards: an ace and a king. */
+private fun DrawScope.yirmiBir() = square { s, ox, oy ->
+    rotate(-10f, Offset(ox + s * 0.4f, oy + s * 0.5f)) { outlined(White, Offset(ox + s * 0.18f, oy + s * 0.2f), Size(s * 0.36f, s * 0.52f), s) }
+    rotate(8f, Offset(ox + s * 0.6f, oy + s * 0.5f)) {
+        outlined(White, Offset(ox + s * 0.44f, oy + s * 0.22f), Size(s * 0.36f, s * 0.52f), s)
+        val h = Path().apply {
+            val cx = ox + s * 0.62f; val cy = oy + s * 0.46f; val r = s * 0.07f
+            moveTo(cx, cy + r * 1.4f); lineTo(cx - r * 1.3f, cy); lineTo(cx - r * 0.6f, cy - r * 0.8f); lineTo(cx, cy - r * 0.2f)
+            lineTo(cx + r * 0.6f, cy - r * 0.8f); lineTo(cx + r * 1.3f, cy); close()
+        }
+        drawPath(h, Color(0xFFD32F2F))
+    }
+    drawCircle(LoopaPalette.Butter, s * 0.07f, Offset(ox + s * 0.2f, oy + s * 0.82f))
+}
+
+/** Four coloured homes around a ring and a die. */
+private fun DrawScope.kizmaBirader() = square { s, ox, oy ->
+    val c = Offset(ox + s * 0.5f, oy + s * 0.48f)
+    drawCircle(White, s * 0.3f, c); drawCircle(Ink, s * 0.3f, c, style = Stroke(s * 0.022f))
+    listOf(Color(0xFFE57373), Color(0xFF64B5F6), Color(0xFF81C784), Color(0xFFFFD54F)).forEachIndexed { i, col ->
+        val a = Math.toRadians(-90.0 + i * 90.0)
+        val p = Offset(c.x + s * 0.3f * kotlin.math.cos(a).toFloat(), c.y + s * 0.3f * kotlin.math.sin(a).toFloat())
+        drawCircle(col, s * 0.075f, p); drawCircle(Ink, s * 0.075f, p, style = Stroke(s * 0.018f))
+    }
+    die(c.x - s * 0.09f, c.y - s * 0.09f, s * 0.18f, s, 5)
+}
+
+/** A grid with a ship and a hit marker. */
+private fun DrawScope.amiralBatti() = square { s, ox, oy ->
+    outlined(Color(0xFFE1F5FE), Offset(ox + s * 0.16f, oy + s * 0.16f), Size(s * 0.68f, s * 0.68f), s)
+    for (i in 1..4) {
+        val d = s * (0.16f + i * 0.136f)
+        drawLine(Ink.copy(alpha = 0.3f), Offset(ox + d, oy + s * 0.16f), Offset(ox + d, oy + s * 0.84f), s * 0.01f)
+        drawLine(Ink.copy(alpha = 0.3f), Offset(ox + s * 0.16f, oy + d), Offset(ox + s * 0.84f, oy + d), s * 0.01f)
+    }
+    outlined(Color(0xFF78909C), Offset(ox + s * 0.2f, oy + s * 0.48f), Size(s * 0.4f, s * 0.12f), s, 0.06f)
+    val x = ox + s * 0.66f; val y = oy + s * 0.3f; val r = s * 0.06f
+    drawLine(Color(0xFFD32F2F), Offset(x - r, y - r), Offset(x + r, y + r), s * 0.04f, StrokeCap.Round)
+    drawLine(Color(0xFFD32F2F), Offset(x + r, y - r), Offset(x - r, y + r), s * 0.04f, StrokeCap.Round)
+}
+
+/** A fan of four coloured cards. */
+private fun DrawScope.renkKartlari() = square { s, ox, oy ->
+    listOf(Color(0xFFEF5350), Color(0xFFFFCA28), Color(0xFF66BB6A), Color(0xFF42A5F5)).forEachIndexed { i, col ->
+        rotate(-24f + i * 16f, Offset(ox + s * 0.5f, oy + s * 0.86f)) {
+            outlined(col, Offset(ox + s * 0.36f, oy + s * 0.2f), Size(s * 0.28f, s * 0.42f), s)
+        }
+    }
+    drawCircle(White, s * 0.06f, Offset(ox + s * 0.5f, oy + s * 0.4f))
+}
+
+/** A rack of numbered tiles. */
+private fun DrawScope.okey() = square { s, ox, oy ->
+    outlined(Color(0xFF8D6E63), Offset(ox + s * 0.1f, oy + s * 0.58f), Size(s * 0.8f, s * 0.14f), s)
+    val cols = listOf(Color(0xFFD32F2F), Color(0xFF1565C0), Color(0xFFF9A825), Ink)
+    for (i in 0..3) {
+        val x = ox + s * (0.14f + i * 0.19f)
+        outlined(LoopaPalette.Cream, Offset(x, oy + s * 0.28f), Size(s * 0.16f, s * 0.3f), s, 0.03f)
+        drawCircle(cols[i], s * 0.035f, Offset(x + s * 0.08f, oy + s * 0.4f))
+    }
+}
+
+/** Little houses on a street with a coin. */
+private fun DrawScope.milyoner() = square { s, ox, oy ->
+    drawRect(White, Offset(ox + s * 0.1f, oy + s * 0.66f), Size(s * 0.8f, s * 0.08f))
+    listOf(0.16f to Color(0xFF81C784), 0.42f to Color(0xFFE57373)).forEach { (x, col) ->
+        val bx = ox + s * x
+        outlined(col, Offset(bx, oy + s * 0.44f), Size(s * 0.2f, s * 0.22f), s, 0.02f)
+        val roof = Path().apply { moveTo(bx - s * 0.02f, oy + s * 0.45f); lineTo(bx + s * 0.1f, oy + s * 0.32f); lineTo(bx + s * 0.22f, oy + s * 0.45f); close() }
+        drawPath(roof, Ink)
+    }
+    drawCircle(LoopaPalette.ButterDeep, s * 0.11f, Offset(ox + s * 0.74f, oy + s * 0.36f))
+    drawCircle(Ink, s * 0.11f, Offset(ox + s * 0.74f, oy + s * 0.36f), style = Stroke(s * 0.022f))
+}
+
+/** A full moon over a dark hill with a wolf's ears. */
+private fun DrawScope.kurtAdam() = square { s, ox, oy ->
+    drawCircle(LoopaPalette.Cream, s * 0.2f, Offset(ox + s * 0.62f, oy + s * 0.34f))
+    drawCircle(Ink, s * 0.2f, Offset(ox + s * 0.62f, oy + s * 0.34f), style = Stroke(s * 0.022f))
+    val wolf = Path().apply {
+        moveTo(ox + s * 0.12f, oy + s * 0.86f); lineTo(ox + s * 0.26f, oy + s * 0.5f); lineTo(ox + s * 0.32f, oy + s * 0.6f)
+        lineTo(ox + s * 0.4f, oy + s * 0.48f); lineTo(ox + s * 0.48f, oy + s * 0.62f); lineTo(ox + s * 0.6f, oy + s * 0.86f); close()
+    }
+    drawPath(wolf, Ink)
+    drawCircle(LoopaPalette.Butter, s * 0.025f, Offset(ox + s * 0.34f, oy + s * 0.68f))
+}
+
+/** Hex tiles with a castle flag. */
+private fun DrawScope.kralliklar() = square { s, ox, oy ->
+    fun hex(cx: Float, cy: Float, r: Float, col: Color) {
+        val p = Path().apply {
+            for (k in 0 until 6) {
+                val a = Math.toRadians(60.0 * k - 30.0)
+                val x = cx + r * kotlin.math.cos(a).toFloat(); val y = cy + r * kotlin.math.sin(a).toFloat()
+                if (k == 0) moveTo(x, y) else lineTo(x, y)
+            }
+            close()
+        }
+        drawPath(p, col); drawPath(p, Ink, style = Stroke(s * 0.018f))
+    }
+    val r = s * 0.14f
+    hex(ox + s * 0.36f, oy + s * 0.56f, r, Color(0xFF66BB6A))
+    hex(ox + s * 0.6f, oy + s * 0.56f, r, Color(0xFFDCE775))
+    hex(ox + s * 0.48f, oy + s * 0.77f, r, Color(0xFF90A4AE))
+    drawLine(Ink, Offset(ox + s * 0.36f, oy + s * 0.56f), Offset(ox + s * 0.36f, oy + s * 0.24f), s * 0.025f, StrokeCap.Round)
+    val flag = Path().apply { moveTo(ox + s * 0.37f, oy + s * 0.24f); lineTo(ox + s * 0.58f, oy + s * 0.3f); lineTo(ox + s * 0.37f, oy + s * 0.36f); close() }
+    drawPath(flag, Color(0xFFE53935))
 }

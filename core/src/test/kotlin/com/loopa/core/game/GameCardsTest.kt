@@ -44,13 +44,57 @@ class GameCardsTest {
     }
 
     @Test fun withoutCatalogueOtherGamesClaimNothingAndCannotStart() {
-        // Offline / older server: no access information, so nothing but İsim Şehir can be started.
+        // Not loaded yet / offline: no access is claimed, nothing but İsim Şehir can be started,
+        // and the card says why instead of a vague "no information".
         GameModes.all.drop(1).forEach {
-            val s = GameCards.status(it, null)
-            assertEquals(it.id, GameCardKind.UNAVAILABLE, s.kind)
-            assertFalse(s.canStart)
-            assertFalse(s.freeThisWeek); assertFalse(s.freeNextWeek)
+            val loading = GameCards.status(it, null, loading = true)
+            assertEquals(it.id, GameCardKind.LOADING, loading.kind); assertFalse(loading.canStart); assertFalse(loading.retryable)
+            assertEquals("Yükleniyor", loading.badge)
+            val offline = GameCards.status(it, null, error = LoopaError.NETWORK)
+            assertEquals(it.id, GameCardKind.ERROR, offline.kind); assertFalse(offline.canStart); assertTrue(offline.retryable)
+            assertFalse(offline.freeThisWeek); assertFalse(offline.freeNextWeek)
+            val other = GameCards.status(it, null, error = LoopaError.UNKNOWN)
+            assertEquals(GameCardKind.ERROR, other.kind); assertTrue(other.retryable); assertFalse(other.canStart)
+            assertTrue(GameCards.status(it, null, error = LoopaError.SERVER_OUTDATED).let { s -> s.kind == GameCardKind.ERROR && !s.canStart })
         }
+        // nobody shows the misleading old text any more
+        GameModes.all.forEach { g -> listOf(GameCards.status(g, null), GameCards.status(g, null, error = LoopaError.NETWORK)).forEach {
+            assertFalse(it.badge == "Bilgi yok")
+        } }
+        assertTrue(GameCards.status(info("isim_sehir"), null, error = LoopaError.NETWORK).canStart)
+    }
+
+    /** The real answer of a server without the 0.8 migrations (captured from the hosted schema state). */
+    @Test fun pre080ServerCatalogueKeepsOldRulesAndMarksNewGames() {
+        val raw = javaClass.getResource("/catalog_pre_080_server.json")!!.readText()
+        val c = json.decodeFromString(GameCatalog.serializer(), raw)
+        assertEquals(10, c.modes.size)
+        val old = GameModes.all.filter { it.addedIn != "0.8.0" }
+        val new = GameModes.all.filter { it.addedIn == "0.8.0" }
+        assertEquals(10, old.size); assertEquals(9, new.size)
+        old.forEach { g ->
+            val s = GameCards.status(g, c)
+            if (g.id == GameModes.ISIM_SEHIR) assertEquals(GameCardKind.PLAYABLE, s.kind)
+            else assertEquals(g.id, GameCardKind.LOCKED_PLUS, s.kind)          // Plus / rotation rules unchanged
+        }
+        new.forEach { g ->
+            val s = GameCards.status(g, c)
+            assertEquals(g.id, GameCardKind.NOT_ON_SERVER, s.kind)
+            assertFalse(s.canStart); assertFalse(s.retryable)
+            assertEquals("Sunucuda yok", s.badge)
+            assertFalse(s.explanation.contains("Bağlantını"))
+        }
+    }
+
+    /** A 0.8 server lists all 19 games: none of them is "missing", access follows the server. */
+    @Test fun fullCatalogueResolvesAll19() {
+        val c = catalog(*GameModes.all.map { mode(it.id, allowed = it.id == GameModes.ISIM_SEHIR, reason = if (it.id == GameModes.ISIM_SEHIR) null else "PLUS_REQUIRED") }.toTypedArray())
+        GameModes.all.forEach { g ->
+            val s = GameCards.status(g, c)
+            assertTrue(g.id, s.kind == GameCardKind.PLAYABLE || s.kind == GameCardKind.LOCKED_PLUS)
+        }
+        val plus = catalog(*GameModes.all.map { mode(it.id, allowed = true, by = "plus") }.toTypedArray())
+        GameModes.all.forEach { assertTrue(it.id, GameCards.status(it, plus).canStart) }
     }
 
     @Test fun comingSoonNeverStartsEvenForPlusOrAdmin() {
@@ -112,11 +156,14 @@ class GameCardsTest {
             catalog(mode("gizli_kelime", status = "early_access", allowed = true, by = "plus")), future).badge)
     }
 
-    @Test fun implementedButCatalogueMissingIsUnavailableNotFree() {
+    @Test fun implementedButCatalogueMissingIsNotOnServerNotFree() {
+        // catalogue answered without this game: the server does not have it (not a connection problem)
         val s = GameCards.status(info("gizli_kelime"), catalog(), future)
-        assertEquals(GameCardKind.UNAVAILABLE, GameCards.status(info("gizli_kelime"), null, future).kind)
-        assertEquals(GameCardKind.UNAVAILABLE, s.kind)
+        assertEquals(GameCardKind.NOT_ON_SERVER, s.kind)
         assertFalse(s.canStart)
+        // no catalogue answer yet: loading, never free
+        assertEquals(GameCardKind.LOADING, GameCards.status(info("gizli_kelime"), null, future).kind)
+        assertFalse(GameCards.status(info("gizli_kelime"), null, future).canStart)
     }
 
     @Test fun disabledModeIsUnavailable() {

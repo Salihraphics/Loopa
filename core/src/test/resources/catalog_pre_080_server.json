@@ -1,0 +1,188 @@
+{
+    "plan": "free",
+    "modes": [
+        {
+            "id": "isim_sehir",
+            "name": "İsim Şehir",
+            "access": {
+                "plan": "free",
+                "reason": null,
+                "allowed": true,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": "always_free"
+            },
+            "status": "available",
+            "always_free": true,
+            "description": "Harfi gör, kategorileri doldur.",
+            "max_players": 10,
+            "min_players": 2
+        },
+        {
+            "id": "gizli_kelime",
+            "name": "Gizli Kelime",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Kelimeyi sözlü anlat, takımın tahmin etsin.",
+            "max_players": 10,
+            "min_players": 3
+        },
+        {
+            "id": "kelime_zinciri",
+            "name": "Kelime Zinciri",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Son harften yeni kelime türet.",
+            "max_players": 10,
+            "min_players": 2
+        },
+        {
+            "id": "bilgi_arenasi",
+            "name": "Bilgi Arenası",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Soruları en hızlı ve doğru cevapla.",
+            "max_players": 10,
+            "min_players": 2
+        },
+        {
+            "id": "iki_dogru_bir_yalan",
+            "name": "İki Doğru Bir Yalan",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Yalanı bul.",
+            "max_players": 10,
+            "min_players": 3
+        },
+        {
+            "id": "ciz_tahmin",
+            "name": "Çiz ve Tahmin Et",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Çiz, diğerleri tahmin etsin.",
+            "max_players": 10,
+            "min_players": 3
+        },
+        {
+            "id": "en_muhtemel_kim",
+            "name": "En Muhtemel Kim?",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Kim en çok yapar? Oyla.",
+            "max_players": 10,
+            "min_players": 3
+        },
+        {
+            "id": "anlat_bakalim",
+            "name": "Anlat Bakalım",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Yasaklı kelimeleri kullanmadan sözlü anlat.",
+            "max_players": 10,
+            "min_players": 4
+        },
+        {
+            "id": "cizim_telefonu",
+            "name": "Çizim Telefonu",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Yaz, çiz, tahmin et; zincir nereye varacak?",
+            "max_players": 10,
+            "min_players": 3
+        },
+        {
+            "id": "sessiz_sinema",
+            "name": "Sessiz Sinema",
+            "access": {
+                "plan": "free",
+                "reason": "PLUS_REQUIRED",
+                "allowed": false,
+                "week_slot": null,
+                "in_rotation": false,
+                "unlocked_by": null
+            },
+            "status": "available",
+            "always_free": false,
+            "description": "Konuşmadan anlat (kamera yok, aynı ortamda oynanır).",
+            "max_players": 10,
+            "min_players": 3
+        }
+    ],
+    "rotation": {
+        "active": false,
+        "starts_on": null,
+        "week_slot": null,
+        "free_modes": [
+        ],
+        "week_ends_at": "2026-11-15T21:00:00+00:00",
+        "next_week_slot": null,
+        "week_starts_at": "2026-11-08T21:00:00+00:00",
+        "next_free_modes": [
+        ]
+    },
+    "server_time": "2026-11-14T21:45:41.729847+00:00"
+}

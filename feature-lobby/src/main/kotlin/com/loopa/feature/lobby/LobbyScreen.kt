@@ -136,8 +136,8 @@ class LobbyViewModel(private val c: DataContainer, roomId: String) : ViewModel()
     val modeStatus: StateFlow<com.loopa.core.game.GameCardStatus?> = _modeStatus.asStateFlow()
     fun checkMode(modeId: String) = viewModelScope.launch {
         if (modeId == com.loopa.core.game.GameModes.ISIM_SEHIR) { _modeStatus.value = null; return@launch }
-        val catalog = c.catalog.refresh().data
-        _modeStatus.value = com.loopa.core.game.GameCards.status(com.loopa.core.game.GameModes.info(modeId), catalog)
+        val r = c.catalog.refresh()
+        _modeStatus.value = com.loopa.core.game.GameCards.status(com.loopa.core.game.GameModes.info(modeId), r.data, loading = r.loading, error = r.error)
     }
 
     val catalog = c.catalog.state
@@ -328,7 +328,7 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
             saving = busy == "settings",
             onDismiss = { showSettings = false },
             onSave = { s, pub -> vm.saveSettings(s, pub) { showSettings = false } },
-            gameStatus = { id -> com.loopa.core.game.GameCards.status(com.loopa.core.game.GameModes.info(id), catalog.data) },
+            gameStatus = { id -> com.loopa.core.game.GameCards.status(com.loopa.core.game.GameModes.info(id), catalog.data, loading = catalog.loading, error = catalog.error) },
         )
         LaunchedEffect(Unit) { vm.refreshCatalog() }
     }

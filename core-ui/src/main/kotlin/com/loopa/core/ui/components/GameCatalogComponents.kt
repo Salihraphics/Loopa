@@ -53,7 +53,7 @@ fun featuredGame(catalog: GameCatalog?): GameModeInfo {
 /** Large card: artwork banner, name, description, players and the main action. */
 @Composable
 fun FeaturedGame(info: GameModeInfo, status: GameCardStatus, creating: Boolean, onCreate: () -> Unit, onOpenPlus: () -> Unit,
-                 showPlusAction: Boolean, weekly: Boolean, modifier: Modifier = Modifier) {
+                 showPlusAction: Boolean, weekly: Boolean, modifier: Modifier = Modifier, onRetry: (() -> Unit)? = null) {
     LoopaSurface(modifier.fillMaxWidth().testTag("featured_game"), padding = PaddingValues(0.dp)) {
         Box {
             GameArtwork(info.id, Modifier.fillMaxWidth().height(150.dp), label = "${info.name} görseli")
@@ -74,6 +74,11 @@ fun FeaturedGame(info: GameModeInfo, status: GameCardStatus, creating: Boolean, 
                     modifier = Modifier.fillMaxWidth().testTag("featured_create"), sfx = Sfx.JOIN)
                 status.kind == GameCardKind.LOCKED_PLUS && showPlusAction -> LoopaButton("LOOPA Plus ile aç", onOpenPlus, icon = Icons.Rounded.AutoAwesome,
                     color = LoopaPalette.Lavender, modifier = Modifier.fillMaxWidth())
+                status.retryable && onRetry != null -> Column {
+                    Text(status.explanation, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
+                    Spacer(Modifier.height(Spacing.sm))
+                    LoopaButton("Tekrar dene", onRetry, color = LoopaPalette.Sky, compact = true, modifier = Modifier.fillMaxWidth().testTag("featured_retry"))
+                }
                 else -> Text(status.explanation, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
             }
         }
@@ -99,6 +104,7 @@ fun GameCard(
     onOpenPlus: () -> Unit,
     showPlusAction: Boolean,
     modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
 ) {
     val dim = status.kind != GameCardKind.PLAYABLE
     LoopaSurface(modifier.fillMaxWidth().testTag("game_card_${info.id}"), padding = PaddingValues(Spacing.md)) {
@@ -139,6 +145,10 @@ fun GameCard(
                 LoopaButton("LOOPA Plus'ı incele", onOpenPlus, icon = Icons.Rounded.AutoAwesome, color = LoopaPalette.Lavender, compact = true,
                     modifier = Modifier.fillMaxWidth().testTag("game_plus_${info.id}"))
             }
+            status.retryable && onRetry != null -> {
+                Spacer(Modifier.height(Spacing.md))
+                LoopaButton("Tekrar dene", onRetry, color = LoopaPalette.Sky, compact = true, modifier = Modifier.fillMaxWidth().testTag("game_retry_${info.id}"))
+            }
         }
     }
 }
@@ -150,8 +160,11 @@ fun StatusBadge(status: GameCardStatus) {
         GameCardKind.LOCKED_PLUS -> Modifier.background(PlusGradient) to Icons.Rounded.Lock
         GameCardKind.COMING_SOON -> Modifier.background(Loopa.colors.cardHigh) to Icons.Rounded.Schedule
         GameCardKind.UNAVAILABLE -> Modifier.background(Loopa.colors.cardHigh) to null
+        GameCardKind.LOADING -> Modifier.background(Loopa.colors.cardHigh) to Icons.Rounded.Schedule
+        GameCardKind.ERROR -> Modifier.background(LoopaPalette.Error.copy(alpha = 0.35f)) to null
+        GameCardKind.NOT_ON_SERVER -> Modifier.background(Loopa.colors.cardHigh) to Icons.Rounded.Schedule
     }
-    Row(Modifier.clip(Radii.pill).then(bg).border(1.dp, Loopa.colors.outline.copy(alpha = 0.5f), Radii.pill).padding(horizontal = 8.dp, vertical = 3.dp),
+    Row(Modifier.testTag("status_badge_${status.kind.name.lowercase()}").clip(Radii.pill).then(bg).border(1.dp, Loopa.colors.outline.copy(alpha = 0.5f), Radii.pill).padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Icon(icon, null, tint = LoopaPalette.Ink, modifier = Modifier.size(12.dp)); Spacer(Modifier.width(3.dp)) }
         Text(status.badge, style = MaterialTheme.typography.labelSmall, maxLines = 1,

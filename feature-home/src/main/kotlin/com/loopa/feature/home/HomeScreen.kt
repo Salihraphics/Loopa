@@ -135,6 +135,8 @@ class HomeViewModel(private val c: DataContainer) : ViewModel() {
         viewModelScope.launch { _ui.update { it.copy(modeStats = c.profiles.modeStats()) } }
     }
 
+    fun refreshCatalog() { viewModelScope.launch { c.catalog.refresh() } }
+
     fun setCode(v: String) = _ui.update { it.copy(code = RoomCodes.normalize(v), error = null) }
     fun setPublic(v: Boolean) = _ui.update { it.copy(isPublic = v) }
     fun dismissError() = _ui.update { it.copy(error = null) }
@@ -203,11 +205,12 @@ fun HomeScreen(
         onCode = vm::setCode, onJoin = { vm.join(onRoomReady, it) }, onDismissError = vm::dismissError,
         onNotifications = { onOpenNotifications?.invoke() ?: run { notifications = true } },
         notificationCount = notificationCount,
+        catalogLoading = catalog.loading, catalogError = catalog.error, onRetryCatalog = vm::refreshCatalog,
     )
 
     if (picker) {
         ModalBottomSheet(onDismissRequest = { picker = false }, containerColor = Loopa.colors.background) {
-            GamePicker(catalog.data, ui.isPublic, vm::setPublic, ui.creating) { id -> vm.createRoom(id) { picker = false; onRoomReady(it) } }
+            GamePicker(catalog.data, ui.isPublic, vm::setPublic, ui.creating, catalog.loading, catalog.error) { id -> vm.createRoom(id) { picker = false; onRoomReady(it) } }
         }
     }
     if (notifications) {
@@ -241,6 +244,10 @@ fun HomeContent(
     onCode: (String) -> Unit,
     onJoin: (spectator: Boolean) -> Unit,
     onDismissError: () -> Unit,
+    /** State of the catalogue request (loading / why it failed) and how to retry it. */
+    catalogLoading: Boolean = false,
+    catalogError: com.loopa.core.game.LoopaError? = null,
+    onRetryCatalog: () -> Unit = {},
     onNotifications: () -> Unit,
     notificationCount: Int = 0,
 ) {
@@ -341,7 +348,7 @@ fun HomeContent(
                     SectionHeader("Son oynananlar", action = "Tümü", onAction = onOpenGames)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.md), modifier = Modifier.testTag("home_recent")) {
                         items(recent, key = { it.id }) { g ->
-                            val st = GameCards.status(g, catalog)
+                            val st = GameCards.status(g, catalog, loading = catalogLoading, error = catalogError)
                             Column(Modifier.width(104.dp).clip(Radii.md).clickable { if (st.canStart) onCreateMode(g.id) else onOpenGames() }) {
                                 Box {
                                     GameArtwork(g.id, Modifier.fillMaxWidth().aspectRatio(1f).clip(Radii.md), label = g.name)
@@ -359,8 +366,8 @@ fun HomeContent(
             Column {
                 SectionHeader(if (catalog?.rotation?.active == true) "Bu haftanın oyunu" else "Öne çıkan", action = "Tüm oyunlar", onAction = onOpenGames)
                 val f = featuredGame(catalog)
-                FeaturedGame(f, GameCards.status(f, catalog), ui.creating == f.id, { onCreateMode(f.id) }, onOpenPlus,
-                    showPlusAction = membership?.hasPlusAccess != true, weekly = catalog?.rotation?.active == true && f.id in catalog.rotation.freeModes)
+                FeaturedGame(f, GameCards.status(f, catalog, loading = catalogLoading, error = catalogError), ui.creating == f.id, { onCreateMode(f.id) }, onOpenPlus,
+                    showPlusAction = membership?.hasPlusAccess != true, weekly = catalog?.rotation?.active == true && f.id in catalog.rotation.freeModes, onRetry = onRetryCatalog)
             }
             // G. Recent results (real match history only)
             val history = profile?.history.orEmpty()
@@ -377,7 +384,8 @@ fun HomeContent(
 
 /** Game choice before creating a room: shows what this host may start right now. */
 @Composable
-fun GamePicker(catalog: GameCatalog?, isPublic: Boolean, onPublic: (Boolean) -> Unit, creating: String?, onPick: (String) -> Unit) {
+fun GamePicker(catalog: GameCatalog?, isPublic: Boolean, onPublic: (Boolean) -> Unit, creating: String?,
+               catalogLoading: Boolean = false, catalogError: com.loopa.core.game.LoopaError? = null, onPick: (String) -> Unit) {
     LazyColumn(Modifier.fillMaxWidth().testTag("game_picker"), contentPadding = PaddingValues(start = Spacing.xl, end = Spacing.xl, bottom = Spacing.section),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         item {
@@ -392,7 +400,7 @@ fun GamePicker(catalog: GameCatalog?, isPublic: Boolean, onPublic: (Boolean) -> 
             }
         }
         items(GameModes.all, key = { it.id }) { g ->
-            val st = GameCards.status(g, catalog)
+            val st = GameCards.status(g, catalog, loading = catalogLoading, error = catalogError)
             Row(
                 Modifier.fillMaxWidth().clip(Radii.md).clickable(enabled = st.canStart && creating == null) { onPick(g.id) }
                     .background(Loopa.colors.card).padding(Spacing.sm).testTag("picker_${g.id}"),

@@ -120,7 +120,7 @@ class GamesViewModel(private val c: DataContainer) : ViewModel() {
 
     /** Creates a private room for [info]. Only for games this client can play and the server allows. */
     fun create(info: GameModeInfo, onReady: (String) -> Unit) {
-        val status = GameCards.status(info, catalog.value.data)
+        val status = GameCards.status(info, catalog.value.data, loading = catalog.value.loading, error = catalog.value.error)
         if (!status.canStart || _creating.value != null) return
         _creating.value = info.id
         viewModelScope.launch {
@@ -208,20 +208,29 @@ fun GamesContent(
                     item(key = "plan") { PlanStrip(membership, onOpenPlus) }
                     item(key = "featured") {
                         val f = featuredGame(data)
-                        FeaturedGame(f, GameCards.status(f, data), creating == f.id, { onCreate(f) }, onOpenPlus, showPlusAction,
-                            weekly = data?.rotation?.active == true && f.id in data.rotation.freeModes)
+                        FeaturedGame(f, GameCards.status(f, data, loading = catalog.loading, error = catalog.error), creating == f.id, { onCreate(f) }, onOpenPlus, showPlusAction,
+                            weekly = data?.rotation?.active == true && f.id in data.rotation.freeModes, onRetry = onRefresh)
                     }
                     if (recent.isNotEmpty()) item(key = "recent") {
                         Column {
                             SectionHeader("Son oynananlar")
                             LazyRow(Modifier.testTag("recent_games"), horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                                 items(recent, key = { it.id }) { g ->
-                                    MiniGameTile(g, GameCards.status(g, data)) { if (GameCards.status(g, data).canStart) onCreate(g) else onOpenPlus() }
+                                    MiniGameTile(g, GameCards.status(g, data, loading = catalog.loading, error = catalog.error)) {
+                                        val st = GameCards.status(g, data, loading = catalog.loading, error = catalog.error)
+                                        when { st.canStart -> onCreate(g); st.kind == com.loopa.core.game.GameCardKind.LOCKED_PLUS -> onOpenPlus(); st.retryable -> onRefresh(); else -> Unit }
+                                    }
                                 }
                             }
                         }
                     }
                     item(key = "rotation") { RotationCard(catalog) }
+                    val missing = data?.let { d -> com.loopa.core.game.GameModes.all.filter { d.mode(it.id) == null } }.orEmpty()
+                    if (missing.isNotEmpty()) item(key = "server_missing") {
+                        Text("Bağlı sunucu ${missing.size} oyunu henüz tanımıyor (${missing.joinToString(", ") { it.name }}). Bu oyunlar sunucu güncellenince açılacak; diğer oyunlar etkilenmez.",
+                            style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft,
+                            modifier = Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp)).background(Loopa.colors.card).padding(14.dp).testTag("games_server_missing"))
+                    }
                 }
                 item(key = "all_header") {
                     SectionHeader(if (filtering) "${games.size} oyun bulundu" else "Tüm oyunlar")
@@ -233,8 +242,8 @@ fun GamesContent(
                     item(key = "row_" + row.joinToString("_") { it.id }) {
                         Row(Modifier.fillMaxWidth().animateItem(), horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                             row.forEach { info ->
-                                GameCard(info, GameCards.status(info, data), creating == info.id, { onCreate(info) }, onOpenPlus,
-                                    showPlusAction = showPlusAction, modifier = Modifier.weight(1f))
+                                GameCard(info, GameCards.status(info, data, loading = catalog.loading, error = catalog.error), creating == info.id, { onCreate(info) }, onOpenPlus,
+                                    showPlusAction = showPlusAction, modifier = Modifier.weight(1f), onRetry = onRefresh)
                             }
                             if (row.size < columns) Spacer(Modifier.weight(1f))
                         }

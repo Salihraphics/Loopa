@@ -115,11 +115,14 @@ class PlusUiTest {
 
     @Composable
     private fun games(catalog: Remote<GameCatalog>, membership: Remote<Membership>, onPlus: () -> Unit = {}) =
-        GamesContent(catalog, membership, null, null, {}, {}, {}, onPlus, {})
+        GamesContent(catalog, membership, null, null, {}, onRetry, {}, onPlus, {})
+
+    private var retries = 0
+    private val onRetry: () -> Unit = { retries++ }
 
     private fun scrollTo(tag: String) = compose.onNodeWithTag("games_list").performScrollToNode(hasTestTag(tag))
 
-    /** [badge]: "Yakında" when the server says coming soon, "Bilgi yok" when there is no catalogue. */
+    /** [badge]: "Yakında" when the server says coming soon; "Sunucu eski" / "Bağlantı yok" when there is no catalogue. */
     private fun assertOnlyIsimSehirStartable(badge: String = "Yakında") {
         scrollTo("game_card_isim_sehir"); compose.onNodeWithTag("game_create_isim_sehir").assertIsDisplayed()
         GameModes.all.drop(1).forEach { info ->
@@ -183,7 +186,7 @@ class PlusUiTest {
         snap("23_games_older_server")
         compose.onNodeWithTag("rotation_unsupported").assertIsDisplayed()
         assertEquals(0, compose.onAllNodesWithText("Ücretsiz").fetchSemanticsNodes().size)   // plan unknown: no "Ücretsiz" badge
-        assertOnlyIsimSehirStartable("Bilgi yok")
+        assertOnlyIsimSehirStartable("Sunucu eski")
     }
 
     @Test fun offlineCatalogue() {
@@ -191,7 +194,39 @@ class PlusUiTest {
         compose.onNodeWithTag("rotation_error").assertIsDisplayed()
         compose.onNodeWithText("Üyelik bilgisi alınamadı.").assertIsDisplayed()
         assertEquals(0, compose.onAllNodesWithText("Üyelik bilgisi yükleniyor…").fetchSemanticsNodes().size)
-        assertOnlyIsimSehirStartable("Bilgi yok")
+        assertOnlyIsimSehirStartable("Bağlantı yok")
+        // every locked card offers a retry that reloads the catalogue (no misleading "Bilgi yok")
+        assertEquals(0, compose.onAllNodesWithText("Bilgi yok").fetchSemanticsNodes().size)
+        scrollTo("game_card_tavla")
+        val before = retries
+        compose.onNodeWithTag("game_retry_tavla").assertIsDisplayed().performClick()
+        assertEquals(before + 1, retries)
+    }
+
+    @Test fun catalogueStillLoading() {
+        render { games(Remote(loading = true), Remote(loading = true)) }
+        assertOnlyIsimSehirStartable("Yükleniyor")
+        assertEquals(0, compose.onAllNodesWithText("Bilgi yok").fetchSemanticsNodes().size)
+    }
+
+    /** The hosted server before the 0.8 migrations: 10 games answered, the 9 new ones are not in its catalogue. */
+    @Test fun serverWithoutTheNewGames() {
+        val old = catalog("free").let { c -> c.copy(modes = c.modes.filter { m -> GameModes.info(m.id).addedIn != "0.8.0" }) }
+        render { games(Remote(old), Remote(free)) }
+        snap("24_games_server_without_080")
+        compose.onNodeWithTag("games_list").performScrollToNode(hasTestTag("games_server_missing"))
+        compose.onNodeWithTag("games_server_missing").assertIsDisplayed()
+        GameModes.all.filter { it.addedIn == "0.8.0" }.forEach { info ->
+            scrollTo("game_card_${info.id}")
+            compose.onNodeWithTag("game_card_${info.id}", useUnmergedTree = true).assert(hasAnyDescendant(hasText("Sunucuda yok")))
+            assertEquals(0, compose.onAllNodesWithTag("game_create_${info.id}").fetchSemanticsNodes().size)
+            assertEquals(0, compose.onAllNodesWithTag("game_retry_${info.id}").fetchSemanticsNodes().size)
+        }
+        scrollTo("game_card_renk_kartlari"); snap("25_games_new_cards_not_on_server")
+        // the old games keep the server's answer (here: coming soon), untouched by the missing ones
+        scrollTo("game_card_gizli_kelime")
+        compose.onNodeWithTag("game_card_gizli_kelime", useUnmergedTree = true).assert(hasAnyDescendant(hasText("Yakında")))
+        assertEquals(0, compose.onAllNodesWithText("Bilgi yok").fetchSemanticsNodes().size)
     }
 
     @Test fun lockedCardOffersPlusOnlyToFreeUsers() {

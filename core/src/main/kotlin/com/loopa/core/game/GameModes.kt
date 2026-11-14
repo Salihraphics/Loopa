@@ -120,7 +120,15 @@ object GameModes {
 }
 
 /** What a game card shows and allows. */
-enum class GameCardKind { PLAYABLE, COMING_SOON, LOCKED_PLUS, UNAVAILABLE }
+enum class GameCardKind {
+    PLAYABLE, COMING_SOON, LOCKED_PLUS, UNAVAILABLE,
+    /** The catalogue is being requested; nothing is claimed about access yet. */
+    LOADING,
+    /** The catalogue request failed (network, server error); [GameCardStatus.retryable]. */
+    ERROR,
+    /** The catalogue loaded but the connected server does not know this game (its migrations are not applied there). */
+    NOT_ON_SERVER,
+}
 
 data class GameCardStatus(
     val kind: GameCardKind,
@@ -134,6 +142,8 @@ data class GameCardStatus(
     val freeThisWeek: Boolean = false,
     /** Free in next week's rotation (preview). */
     val freeNextWeek: Boolean = false,
+    /** A "Tekrar dene" action makes sense (the catalogue could not be loaded). */
+    val retryable: Boolean = false,
 )
 
 object GameCards {
@@ -142,7 +152,15 @@ object GameCards {
      * be loaded (offline or an older server): then nothing is claimed about access, except that
      * İsim Şehir is always free.
      */
-    fun status(info: GameModeInfo, catalog: GameCatalog?, implemented: Set<String> = GameModes.implemented): GameCardStatus {
+    fun status(
+        info: GameModeInfo,
+        catalog: GameCatalog?,
+        implemented: Set<String> = GameModes.implemented,
+        /** The catalogue request is still running (or has not started yet). */
+        loading: Boolean = false,
+        /** Why the last catalogue request failed, when [catalog] is null. */
+        error: LoopaError? = null,
+    ): GameCardStatus {
         val mode: CatalogMode? = catalog?.mode(info.id)
         val rotation = catalog?.rotation
         val thisWeek = rotation?.active == true && info.id in rotation.freeModes
@@ -164,9 +182,24 @@ object GameCards {
                 "Bu oyun henüz hazırlanıyor; şimdilik başlatılamaz.$when_",
                 canStart = false, freeThisWeek = thisWeek, freeNextWeek = nextWeek)
         }
+        if (catalog == null) {
+            // No answer from the server (yet): say exactly that, never "no information".
+            return when {
+                error == null || loading -> GameCardStatus(GameCardKind.LOADING, "Yükleniyor", "Erişim bilgisi sunucudan alınıyor…", canStart = false)
+                error == LoopaError.NETWORK -> GameCardStatus(GameCardKind.ERROR, "Bağlantı yok",
+                    "Oyun kataloğu yüklenemedi: sunucuya bağlanılamadı. İnternetini kontrol edip tekrar dene.", canStart = false, retryable = true)
+                error == LoopaError.NOT_CONFIGURED -> GameCardStatus(GameCardKind.ERROR, "Sunucu ayarı yok",
+                    "Bu uygulama sürümünde sunucu adresi yapılandırılmamış.", canStart = false)
+                error == LoopaError.SERVER_OUTDATED -> GameCardStatus(GameCardKind.ERROR, "Sunucu eski",
+                    "Bağlı sunucu oyun kataloğunu henüz desteklemiyor.", canStart = false, retryable = true)
+                else -> GameCardStatus(GameCardKind.ERROR, "Yüklenemedi",
+                    "Oyun kataloğu yüklenemedi (${error.message}). Tekrar dene.", canStart = false, retryable = true)
+            }
+        }
         if (mode == null) {
-            return GameCardStatus(GameCardKind.UNAVAILABLE, "Bilgi yok",
-                "Erişim bilgisi sunucudan alınamadı. Bağlantını kontrol edip tekrar dene.", canStart = false)
+            // The server answered, but this game is not in its catalogue: an older backend.
+            return GameCardStatus(GameCardKind.NOT_ON_SERVER, "Sunucuda yok",
+                "Bu oyun uygulamada hazır ama bağlı sunucuda henüz etkinleştirilmedi. Sunucu güncellendiğinde açılacak.", canStart = false)
         }
         if (mode.access.allowed) {
             val badge = when (mode.access.unlockedBy) {
