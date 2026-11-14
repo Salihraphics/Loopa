@@ -41,10 +41,10 @@ import java.io.File
 import java.time.Instant
 import kotlin.random.Random
 
-/** Buckshot rendered from server snapshots in landscape: what a player sees and may do, and what is sent. */
+/** Buckshot (portrait, around one table) rendered from server snapshots: what a player sees and may do, and what is sent. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], application = ScreenshotApp::class, qualifiers = "w900dp-h420dp-land-xhdpi")
+@Config(sdk = [35], application = ScreenshotApp::class, qualifiers = "w400dp-h860dp-xhdpi")
 class BuckshotScreenTest {
     @get:Rule val compose = createAndroidComposeRule<androidx.activity.ComponentActivity>()
     private val out = File("build/screenshots").apply { mkdirs() }
@@ -91,41 +91,52 @@ class BuckshotScreenTest {
         File(out, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
-    @Test fun myTurnShowsOwnItemsTargetsAndPrivateKnowledge() {
+    @Test fun myTurnShowsTheTableOwnItemsAndPrivateKnowledgeButNoOdds() {
         show("80_buckshot_my_turn", room(0), state("u0", "u0"))
-        compose.onNodeWithTag("bs_round").assertIsDisplayed()
-        // own items with their LOOPA names; opponents only as counts
+        compose.onNodeWithTag("bs_table").assertIsDisplayed()
+        compose.onNodeWithTag("bs_seat_u1").assertExists()              // rivals around the table
+        compose.onNodeWithTag("bs_seat_u2").assertExists()
+        compose.onNodeWithText("ELENDİ", substring = true).assertExists()  // the eliminated one stays at the table
+        // own items lie in front of the player as objects; rivals' items are crates (never named)
         compose.onNodeWithTag("bs_item_saw").assertExists()
-        compose.onNodeWithText("Testere", substring = true).assertExists()
-        compose.onNodeWithText("5 eşya", substring = true).assertExists()            // Barış: a count, never which items
-        // Barış's unused items (phone, inverter, remote) appear nowhere; his public beer use does appear in the log
+        compose.onNodeWithTag("bs_item_handcuffs").assertExists()
         listOf("Telsiz", "Çevirici", "Kumanda").forEach { assertEquals(it, 0, compose.onAllNodesWithText(it, substring = true).fetchSemanticsNodes().size) }
-        assertEquals(0, compose.onAllNodesWithTag("bs_item_beer").fetchSemanticsNodes().size)
-        // what this player learnt (magnifier) and the public odds
-        compose.onNodeWithTag("bs_known").assertExists()
+        // facts only: loaded counts, shells left, what this player learnt — and no computed odds
+        compose.onNodeWithText("Yüklenen: 5 dolu · 3 boş").assertExists()
+        compose.onNodeWithText("Kalan mermi: 6").assertExists()
         compose.onNodeWithText("Bildiğin: 3. mermi DOLU").assertExists()
-        compose.onNodeWithText("tahmini dolu 4 (%66)", substring = true).assertExists()
-        // targets: self and the living rival; the eliminated one cannot be shot
-        compose.onNodeWithTag("bs_fire_self").assertExists()
-        compose.onNodeWithTag("bs_fire_u1").assertExists()
-        assertEquals(0, compose.onAllNodesWithTag("bs_fire_u2").fetchSemanticsNodes().size)
-        compose.onNodeWithTag("bs_fire_u1").performScrollTo().performClick()
+        assertEquals("no percentages anywhere", 0, compose.onAllNodesWithText("%", substring = true).fetchSemanticsNodes()
+            .count { n -> n.config.toString().let { !it.contains("can") } })
+        assertEquals(0, compose.onAllNodesWithText("tahmin", substring = true).fetchSemanticsNodes().size)
+        // aim at a rival by tapping the seat, then fire
+        compose.onNodeWithTag("bs_seat_u1").performClick()
+        compose.onNodeWithTag("bs_fire").assertIsDisplayed().performClick()
         val (kind, p) = sent.last()
         assertEquals("fire", kind)
         assertEquals("u1", p["target"]!!.jsonPrimitive.content)
         assertTrue("every action carries a nonce", p["nonce"]!!.jsonPrimitive.content.length >= 8)
+        // the eliminated rival cannot be aimed at
+        compose.onNodeWithTag("bs_seat_u2").performClick()
+        assertEquals(0, compose.onAllNodesWithTag("bs_fire").fetchSemanticsNodes().size)
+        // aiming at yourself
+        compose.onNodeWithTag("bs_seat_u0").performClick()
+        compose.onNodeWithText("KENDİNE ATEŞ ET").assertExists()
+        compose.onNodeWithTag("bs_fire").performClick()
+        assertEquals("u0", sent.last().second["target"]!!.jsonPrimitive.content)
     }
 
-    @Test fun itemsAreSentWithTargetsAndFreshNonces() {
+    @Test fun itemsAreLiftedThenUsedWithTargetsAndFreshNonces() {
         show("81_buckshot_item_target", room(0), state("u0", "u0"))
-        compose.onNodeWithTag("bs_item_saw").performScrollTo().performClick()
+        compose.onNodeWithTag("bs_item_saw").performClick()
+        compose.onNodeWithText("Testere KULLAN").assertExists()
+        compose.onNodeWithTag("bs_use").performClick()
         assertEquals("item" to "saw", sent.last().first to sent.last().second["item"]!!.jsonPrimitive.content)
         val n1 = sent.last().second["nonce"]!!.jsonPrimitive.content
-        // handcuffs need a target chosen at the table
-        compose.onNodeWithTag("bs_item_handcuffs").performScrollTo().performClick()
-        compose.onNodeWithText("Masadan bir rakip seç.").assertExists()
-        assertEquals(0, compose.onAllNodesWithTag("bs_fire_self").fetchSemanticsNodes().size)   // cannot cuff yourself
-        compose.onNodeWithTag("bs_fire_u1").performScrollTo().performClick()
+        // handcuffs need a rival chosen at the table
+        compose.onNodeWithTag("bs_item_handcuffs").performClick()
+        compose.onNodeWithText("Masadan bir rakip seç.", substring = true).assertExists()
+        compose.onNodeWithTag("bs_seat_u1").performClick()
+        compose.onNodeWithTag("bs_use").performClick()
         val last = sent.last().second
         assertEquals("handcuffs", last["item"]!!.jsonPrimitive.content)
         assertEquals("u1", last["target"]!!.jsonPrimitive.content)
@@ -134,11 +145,11 @@ class BuckshotScreenTest {
 
     @Test fun waitingPlayerCannotActAndSeesNoForeignKnowledge() {
         show("82_buckshot_waiting", room(1), state("u0", "u1"))
-        assertEquals(0, compose.onAllNodesWithTag("bs_fire_self").fetchSemanticsNodes().size)
-        assertEquals(0, compose.onAllNodesWithTag("bs_fire_u0").fetchSemanticsNodes().size)
         assertEquals(0, compose.onAllNodesWithTag("bs_known").fetchSemanticsNodes().size)   // Ayşe's magnifier result is not here
-        compose.onNodeWithText("Gazoz ×2", substring = true).assertExists()
-        compose.onNodeWithTag("bs_item_beer").performScrollTo().performClick()
+        compose.onNodeWithTag("bs_seat_u0").performClick()
+        compose.onAllNodesWithTag("bs_item_beer")[0].performClick()      // two cans lie on the table: two objects
+        assertEquals(0, compose.onAllNodesWithTag("bs_fire").fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithTag("bs_use").fetchSemanticsNodes().size)
         assertTrue("no action when it is not your turn", sent.isEmpty())
     }
 
@@ -147,5 +158,26 @@ class BuckshotScreenTest {
         compose.onNodeWithTag("bs_round_over").assertIsDisplayed()
         compose.onNodeWithText("Para çantası: +100 coin").assertExists()
         compose.onNodeWithText("Raundu kazandın!").assertExists()
+    }
+
+    @Test fun fourPlayersSitAroundTheTable() {
+        val four = RoomState(serverTime = iso(0), me = Me("u0", "player", "active"),
+            room = Room("room1", "KPX7A2", "u0", "in_game", false, RoomSettings(gameMode = "buckshot")),
+            players = listOf("Ayşe", "Barış", "Cem", "Deniz").mapIndexed { i, n -> RoomPlayer("u$i", n, AvatarCatalog.random(Random(i * 5 + 1)).toJson(), isHost = i == 0) },
+            match = Match("m1", "in_progress", 3, 1, RoomSettings(gameMode = "buckshot"),
+                scoreboard = listOf("Ayşe", "Barış", "Cem", "Deniz").mapIndexed { i, n -> ScoreEntry("u$i", n, AvatarCatalog.random(Random(i * 5 + 1)).toJson(), 0, 0) }))
+        val m = ModeJson.decodeFromString(ModeState.serializer(), """
+            {"server_time":"${iso(0)}","mode":"buckshot","match_id":"m1","public":{},
+             "round":{"id":"r2","number":2,"phase":"play","actor_id":"u2","started_at":"${iso(-5000)}","deadline_at":"${iso(25000)}","results":null,
+               "public":{"round":2,"max_hp":4,"order":["u0","u1","u2","u3"],"dir":-1,"turn":"u2","wins":{"u3":1},
+                 "players":{"u0":{"hp":4,"alive":true,"items":6,"cuffed":false,"saw":false},"u1":{"hp":1,"alive":true,"items":2,"cuffed":false,"saw":true},
+                            "u2":{"hp":3,"alive":true,"items":8,"cuffed":false,"saw":false},"u3":{"hp":0,"alive":false,"items":4,"cuffed":false,"saw":false}},
+                 "mag":{"no":2,"remaining":3,"loaded_live":4,"loaded_blank":4,"live_seen":3,"blank_seen":2,"inverted":1},
+                 "log":[{"e":"reload","live":4,"blank":4},{"e":"out","u":"u3"},{"e":"item","u":"u1","item":"saw"}]}},
+             "me":{"inv":["beer","cigarettes","magnifier","inverter","phone","medicine"],"known":[]}}""".trimIndent())
+        show("84_buckshot_four_players", four, m)
+        listOf("u1", "u2", "u3").forEach { compose.onNodeWithTag("bs_seat_$it").assertExists() }
+        compose.onNodeWithText("Sıra: Cem").assertExists()
+        assertEquals(0, compose.onAllNodesWithTag("bs_fire").fetchSemanticsNodes().size)
     }
 }

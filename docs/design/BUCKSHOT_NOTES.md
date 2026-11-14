@@ -59,7 +59,27 @@ Görseller, item adları ve arayüz LOOPA'ya özgüdür; kaynak oyunun görsel �
   - bilinmeyen eylem.
   - Kullanılamayan eşya (dolu canla Yara Bandı vb.) harcanmaz.
 
+## Arayüz (kullanıcının yeniden tasarım isteği)
+- **Dikey ekran:** Yatay zorunluluğu kaldırıldı; oyun her iki yönde de çalışır. Yatay kilit altyapısı kodda duruyor ama hiçbir oyun kullanmıyor.
+- **Masa:** Ekranın merkezinde, lambayla aydınlatılmış oval metal ve keçe bir masa var.
+  - Tüfek masanın ortasındadır ve nişan alınan oyuncuya (yoksa sırası gelene) döner.
+  - Dolu atışta namlu ucunda bir parlama olur.
+- **Oyuncular:**
+  - Rakipler masanın çevresinde oturur: 2 oyuncuda karşıda, 3 oyuncuda üst köşelerde, 4 oyuncuda solda, karşıda ve sağda.
+  - Her oyuncunun avatarı, adı, can lambaları ve durumu (kelepçeli, testere, kazandığı çantalar) görünür.
+  - Sırası gelen oyuncu ışıkla, nişan alınan kırmızıyla belirginleşir.
+  - Elenen oyuncu soluk ve ✕ ile masada kalır.
+- **Eşyalar:**
+  - Oyuncunun eşyaları ekranın altında, keçe şerit üzerinde çizilmiş nesnelerdir.
+  - Seçilen eşya kalkar ve ışıklanır; "KULLAN" ile kullanılır. Hedef gereken eşyalarda masadan bir rakip seçilir.
+  - Rakiplerin eşyaları, önlerinde kapalı kasalar olarak durur; yalnızca sayısı belli olur.
+- **Mermiler:**
+  - Şarjörün 8 mermisi masada dizili durur. Atılanlar devrik ve gri çizilir.
+  - Bilinmeyen mermiler nötr renktedir. Yalnızca oyuncunun bildiği mermiler kırmızı (dolu) ya da mavi (boş) olur.
+  - **Olasılık hesabı gösterilmez.** Görünen bilgiler: yüklenen dolu/boş sayısı, kalan mermi ve kendi öğrendiğin bilgiler.
+- **Animasyonlar:** Azaltılmış hareket açıkken tüfeğin dönüşü, lamba nabzı, sıra ışığı, eşya kalkışı, atış parlaması ve para çantası animasyonu kapalıdır.
+
 ## Bilinen sınırlamalar
-- **Cihaz testi yapılmadı.** Ekran Robolectric ile yatay ve dikey düzende test edildi.
-- **Yatay ekran kilidi:** Buckshot açıkken ekran yatay konuma kilitlenir; çıkışta eski ayara döner. Bu davranış da yalnızca testte doğrulandı.
-- **Animasyonlar basit:** dolu atışta kırmızı parlama ve para çantası nabzı. Azaltılmış harekette ikisi de kapalı.
+- **Cihaz testi yapılmadı.** Ekran Robolectric ile dikey düzende, 3 ve 4 oyunculu masalarla test edildi.
+- **Çizimler sınırlı:** Masa ve nesneler vektör çizimdir (Canvas); hazır 3B görsel kullanılmadı.
+- **Cihazda denenmedi:** Dokunma hissi ve animasyon akıcılığı gerçek cihazda değerlendirilmeli.

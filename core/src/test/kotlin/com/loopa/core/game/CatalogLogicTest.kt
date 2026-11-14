@@ -27,9 +27,8 @@ class CatalogLogicTest {
     }
 
     @Test fun orientationDefaultsToFlexible() {
-        // Buckshot is the one landscape game; every other game adapts to both.
-        assertTrue(GameModes.all.filter { it.id != "buckshot" }.all { it.orientation == GameOrientation.FLEXIBLE })
-        assertEquals(GameOrientation.LANDSCAPE, GameModes.info("buckshot").orientation)
+        // Every game, Buckshot included, is designed for portrait and adapts to landscape.
+        assertTrue(GameModes.all.all { it.orientation == GameOrientation.FLEXIBLE })
     }
 
     @Test fun roadmapIsPlanningOnly() {

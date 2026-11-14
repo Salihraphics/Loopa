@@ -97,7 +97,7 @@ object GameModes {
         GameModeInfo("kralliklar", "Krallıklar", "Kaynak topla, ordu kur, diplomasi yap; başkentini koru.", "4-20 oyuncu", GameCategory.STRATEJI, addedIn = "0.8.0", kind = GameKind.STRATEGY),
         // 0.9.0
         GameModeInfo("buckshot", "Buckshot", "Tek tüfek, gizli mermiler. Eşyalarını kullan, olasılığı hesapla, ayakta kal.", "2-4 oyuncu", GameCategory.STRATEJI,
-            addedIn = "0.9.0", orientation = GameOrientation.LANDSCAPE, kind = GameKind.TURN_BASED),
+            addedIn = "0.9.0", kind = GameKind.TURN_BASED),
     )
 
     /** Categories that at least one game uses, in catalogue order. */
