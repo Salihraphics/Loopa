@@ -273,12 +273,12 @@ private fun InviteCard(invite: RoomInviteItem, busy: Boolean, onRespond: (RoomIn
             GameArtwork(invite.gameMode, Modifier.size(52.dp).clip(Radii.sm), label = GameModes.name(invite.gameMode))
             Spacer(Modifier.width(Spacing.md))
             Column(Modifier.weight(1f)) {
-                Text("${invite.from.username} seni davet etti", style = MaterialTheme.typography.titleSmall, color = LoopaPalette.Ink,
+                Text("${invite.from.username} seni davet etti", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(listOfNotNull(GameModes.name(invite.gameMode), "Oda ${invite.roomCode}", SocialFormat.remaining(invite.expiresAt))
-                    .joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = LoopaPalette.Ink.copy(alpha = 0.7f))
+                    .joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
                 if (invite.roomStatus == "in_game") Text("Oyun başladı: izleyici olarak katılırsın.", style = MaterialTheme.typography.labelSmall,
-                    color = LoopaPalette.Ink.copy(alpha = 0.7f))
+                    color = Loopa.colors.textSoft)
             }
         }
         Spacer(Modifier.height(Spacing.md))

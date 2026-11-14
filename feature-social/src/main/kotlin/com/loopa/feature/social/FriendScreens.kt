@@ -273,10 +273,10 @@ fun UserProfileScreen(userId: String, onBack: () -> Unit, onOpenChat: (String) -
                                 LevelBadge(p.level, Modifier.align(Alignment.BottomEnd), size = 36.dp)
                             }
                             Spacer(Modifier.height(Spacing.sm))
-                            Text(p.username, style = MaterialTheme.typography.headlineMedium, color = LoopaPalette.Ink, textAlign = TextAlign.Center)
+                            Text(p.username, style = MaterialTheme.typography.headlineMedium, color = Loopa.colors.text, textAlign = TextAlign.Center)
                             val presence = SocialFormat.presence(p.presence)
                             Text(listOfNotNull("Seviye ${p.level}", presence, "${p.friendCount} arkadaş").joinToString(" · "),
-                                style = MaterialTheme.typography.bodyMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f), textAlign = TextAlign.Center)
+                                style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft, textAlign = TextAlign.Center)
                         }
                     }
                     ErrorBanner(st.message, onDismiss = vm::dismiss)

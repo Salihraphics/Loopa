@@ -139,11 +139,11 @@ fun ProfileScreen(onEditAvatar: () -> Unit, onOpenShop: () -> Unit, onOpenPlus: 
                     }
                     Spacer(Modifier.height(Spacing.sm))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(p?.username ?: "…", style = MaterialTheme.typography.headlineMedium, color = LoopaPalette.Ink,
+                        Text(p?.username ?: "…", style = MaterialTheme.typography.headlineMedium, color = Loopa.colors.text,
                             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                        IconButton(onClick = { editing = true }) { Icon(Icons.Rounded.Edit, "Adı düzenle", tint = LoopaPalette.Ink) }
+                        IconButton(onClick = { editing = true }) { Icon(Icons.Rounded.Edit, "Adı düzenle", tint = Loopa.colors.text) }
                     }
-                    Text("Seviye ${p?.level ?: 1} · ${p?.xp ?: 0} toplam XP", style = MaterialTheme.typography.bodyMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
+                    Text("Seviye ${p?.level ?: 1} · ${p?.xp ?: 0} toplam XP", style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.textSoft)
                     Spacer(Modifier.height(Spacing.sm))
                     MembershipLine(membership, onOpenPlus)
                     Spacer(Modifier.height(Spacing.md))
@@ -288,7 +288,7 @@ private fun MembershipLine(state: com.loopa.core.data.Remote<com.loopa.core.mode
         com.loopa.core.ui.components.PlanBadge(m?.tier)
         if (text != null) {
             Spacer(Modifier.width(8.dp))
-            Text(text, style = MaterialTheme.typography.labelMedium, color = LoopaPalette.Ink.copy(alpha = 0.75f))
+            Text(text, style = MaterialTheme.typography.labelMedium, color = Loopa.colors.textSoft)
         }
     }
 }
