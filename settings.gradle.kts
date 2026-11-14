@@ -33,4 +33,5 @@ include(
     ":feature-avatar",
     ":feature-shop",
     ":feature-settings",
+    ":feature-social",
 )

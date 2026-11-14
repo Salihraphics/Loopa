@@ -22,6 +22,7 @@ class DataContainer(context: Context, val config: SupabaseConfig = SupabaseConfi
     val membership = MembershipRepository(backend)
     val catalog = GameCatalogRepository(backend)
     val sessions = RoomSessionManager(backend, clock)
+    val social = SocialRepository(backend)
 }
 
 interface DataContainerProvider {

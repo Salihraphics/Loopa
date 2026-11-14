@@ -104,6 +104,7 @@ dependencies {
     implementation(project(":feature-avatar"))
     implementation(project(":feature-shop"))
     implementation(project(":feature-settings"))
+    implementation(project(":feature-social"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

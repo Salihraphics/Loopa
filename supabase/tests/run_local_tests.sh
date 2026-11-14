@@ -17,4 +17,5 @@ for t in supabase/tests/*_test.sql; do
 done
 LOOPA_TEST_DB=$DB ./supabase/tests/promo_concurrency.sh
 LOOPA_TEST_DB=$DB ./supabase/tests/lock_order_stress.sh
+LOOPA_TEST_DB=$DB ./supabase/tests/social_concurrency.sh
 echo "ALL BACKEND TESTS PASSED"

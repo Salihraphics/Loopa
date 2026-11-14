@@ -95,3 +95,50 @@ class RoomSignalListener(
         runCatching { backend.client?.realtime?.removeChannel(ch) }
     }
 }
+
+/**
+ * "Something changed for me" for the social features: CDC on the caller's own row of
+ * `public.social_signals` (RLS only lets a user read their own row). Like the room signals it
+ * carries no data; the listener re-fetches through the RPCs.
+ */
+class SocialSignalListener(
+    private val backend: LoopaBackend,
+    private val userId: String,
+    private val scope: CoroutineScope,
+    private val onSignal: () -> Unit,
+) {
+    private val _status = MutableStateFlow(LiveStatus.CONNECTING)
+    val status: StateFlow<LiveStatus> = _status.asStateFlow()
+    private var channel: RealtimeChannel? = null
+    private val jobs = mutableListOf<Job>()
+
+    fun start() {
+        val client = backend.client ?: run { _status.value = LiveStatus.OFFLINE; return }
+        val ch = client.channel("social-$userId")
+        channel = ch
+        jobs += ch.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "social_signals"
+            filter("user_id", FilterOperator.EQ, userId)
+        }.onEach { onSignal() }.launchIn(scope)
+        jobs += ch.status.onEach { s ->
+            val before = _status.value
+            _status.value = when (s) {
+                RealtimeChannel.Status.SUBSCRIBED -> LiveStatus.LIVE
+                RealtimeChannel.Status.SUBSCRIBING -> LiveStatus.CONNECTING
+                else -> LiveStatus.OFFLINE
+            }
+            if (_status.value == LiveStatus.LIVE && before != LiveStatus.LIVE) onSignal()
+        }.launchIn(scope)
+        jobs += scope.launch {
+            runCatching { ch.subscribe(blockUntilSubscribed = false) }.onFailure { _status.value = LiveStatus.OFFLINE }
+        }
+    }
+
+    suspend fun stop() {
+        jobs.forEach { it.cancel() }
+        jobs.clear()
+        val ch = channel ?: return
+        channel = null
+        runCatching { backend.client?.realtime?.removeChannel(ch) }
+    }
+}

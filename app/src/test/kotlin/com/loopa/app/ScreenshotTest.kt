@@ -49,7 +49,7 @@ import com.loopa.feature.game.VotingView
 import com.loopa.feature.home.HomeScreen
 import com.loopa.feature.lobby.LobbyScreen
 import com.loopa.feature.lobby.GamesScreen
-import com.loopa.feature.home.SocialScreen
+import com.loopa.feature.social.SocialScreen
 import com.loopa.feature.profile.ProfileScreen
 import com.loopa.feature.avatar.AvatarEditorScreen
 import com.loopa.feature.settings.SettingsScreen

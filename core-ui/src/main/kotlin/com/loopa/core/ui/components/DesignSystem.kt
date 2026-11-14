@@ -23,6 +23,10 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -144,7 +148,7 @@ fun IconAction(icon: ImageVector, contentDescription: String, onClick: () -> Uni
 }
 
 /** A destination of the bottom navigation. */
-data class NavItem(val key: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector = icon)
+data class NavItem(val key: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector = icon, val badge: Int = 0)
 
 /**
  * Compact bottom navigation: a pastel pill slides behind the selected icon and the label of the
@@ -185,13 +189,29 @@ private fun NavDestination(item: NavItem, isSel: Boolean, onClick: () -> Unit, m
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(Modifier.width(pill).heightIn(min = 30.dp).clip(Radii.pill).background(pillColor), contentAlignment = Alignment.Center) {
-            Icon(if (isSel) item.selectedIcon else item.icon, null,
-                tint = if (isSel) LoopaPalette.Ink else Loopa.colors.textSoft, modifier = Modifier.padding(vertical = 3.dp).size(24.dp))
+        Box(contentAlignment = Alignment.Center) {
+            Box(Modifier.width(pill).heightIn(min = 30.dp).clip(Radii.pill).background(pillColor), contentAlignment = Alignment.Center) {
+                Icon(if (isSel) item.selectedIcon else item.icon, null,
+                    tint = if (isSel) LoopaPalette.Ink else Loopa.colors.textSoft, modifier = Modifier.padding(vertical = 3.dp).size(24.dp))
+            }
+            if (item.badge > 0) CountBadge(item.badge, Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-2).dp).testTag("nav_badge_${item.key}"))
         }
         Spacer(Modifier.heightIn(min = 2.dp))
         Text(item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1,
             color = if (isSel) Loopa.colors.text else Loopa.colors.textSoft)
+    }
+}
+
+/** Small count bubble ("3", "9+") for unread items. */
+@Composable
+fun CountBadge(count: Int, modifier: Modifier = Modifier) {
+    if (count <= 0) return
+    Box(
+        modifier.heightIn(min = 18.dp).widthIn(min = 18.dp).clip(Radii.pill).background(LoopaPalette.PeachDeep)
+            .semantics { contentDescription = "$count yeni" }.padding(horizontal = 5.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(if (count > 9) "9+" else "$count", style = MaterialTheme.typography.labelSmall, color = LoopaPalette.Ink, maxLines = 1)
     }
 }
 

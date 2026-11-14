@@ -58,7 +58,7 @@ import com.loopa.core.ui.theme.LoopaMotion
 import com.loopa.core.ui.theme.Motion
 import com.loopa.feature.avatar.AvatarEditorScreen
 import com.loopa.feature.home.HomeScreen
-import com.loopa.feature.home.SocialScreen
+import com.loopa.feature.social.SocialScreen
 import com.loopa.feature.lobby.GamesScreen
 import com.loopa.feature.lobby.PublicRoomsScreen
 import com.loopa.feature.profile.ProfileScreen
