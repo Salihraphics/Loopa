@@ -11,13 +11,17 @@ create or replace function pg_temp.act(p uuid) returns void language sql as $$
     select set_config('request.jwt.claim.sub', coalesce(p::text, ''), true);
 $$;
 create or replace function pg_temp.expect_error(p_sql text, p_code text) returns void language plpgsql as $$
+declare ok boolean := false;
 begin
-    execute p_sql;
-    raise exception 'expected error % but statement succeeded: %', p_code, p_sql;
-exception when others then
-    if sqlerrm not like '%' || p_code || '%' then
-        raise exception 'expected error % but got: % (statement: %)', p_code, sqlerrm, p_sql;
-    end if;
+    begin
+        execute p_sql;
+        ok := true;                      -- reached only when the statement did NOT fail
+    exception when others then
+        if sqlerrm not like '%' || p_code || '%' then
+            raise exception 'expected error % but got: % (statement: %)', p_code, sqlerrm, p_sql;
+        end if;
+    end;
+    if ok then raise exception 'expected error % but the statement succeeded: %', p_code, p_sql; end if;
 end $$;
 create or replace function pg_temp.check(ok boolean, what text) returns void language plpgsql as $$
 begin

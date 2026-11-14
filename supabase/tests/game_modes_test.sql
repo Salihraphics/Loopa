@@ -10,13 +10,17 @@ create or replace function pg_temp.act(p uuid) returns void language sql as $$
     select set_config('request.jwt.claim.sub', coalesce(p::text, ''), true);
 $$;
 create or replace function pg_temp.expect_error(p_sql text, p_code text) returns void language plpgsql as $$
+declare ok boolean := false;
 begin
-    execute p_sql;
-    raise exception 'expected error % but statement succeeded: %', p_code, p_sql;
-exception when others then
-    if sqlerrm not like '%' || p_code || '%' then
-        raise exception 'expected error % but got: % (statement: %)', p_code, sqlerrm, p_sql;
-    end if;
+    begin
+        execute p_sql;
+        ok := true;                      -- reached only when the statement did NOT fail
+    exception when others then
+        if sqlerrm not like '%' || p_code || '%' then
+            raise exception 'expected error % but got: % (statement: %)', p_code, sqlerrm, p_sql;
+        end if;
+    end;
+    if ok then raise exception 'expected error % but the statement succeeded: %', p_code, p_sql; end if;
 end $$;
 create or replace function pg_temp.check(ok boolean, what text) returns void language plpgsql as $$
 begin
@@ -55,7 +59,7 @@ begin
     perform public.admin_grant_plus(PH, 30, 'test');
 
     -- ---------------- catalogue ----------------
-    perform pg_temp.check((select count(*) from public.game_modes) = 10, '10 modes');
+    perform pg_temp.check((select count(*) from public.game_modes where id in ('isim_sehir','gizli_kelime','kelime_zinciri','bilgi_arenasi','iki_dogru_bir_yalan','ciz_tahmin','en_muhtemel_kim','anlat_bakalim','cizim_telefonu','sessiz_sinema')) = 10, 'the original 10 modes');
     perform pg_temp.check((select count(*) from public.game_modes where always_free) = 1
                           and (select always_free from public.game_modes where id = 'isim_sehir'), 'only İsim Şehir always free');
     perform pg_temp.check(not exists (select 1 from public.mode_rotation where mode_id = 'isim_sehir'), 'İsim Şehir not in rotation');
@@ -133,7 +137,7 @@ begin
     -- Free host: locked mode refused, rotation mode accepted.
     perform pg_temp.expect_error(format($q$select public.update_room_settings(%L, %L::jsonb, false)$q$, room, s || '{"game_mode":"gizli_kelime"}'), 'LOOPA:PLUS_REQUIRED');
     perform pg_temp.expect_error(format($q$select public.update_room_settings(%L, %L::jsonb, false)$q$, room, s || '{"game_mode":"anlat_bakalim"}'), 'LOOPA:MODE_NOT_AVAILABLE');
-    perform pg_temp.expect_error(format($q$select public.update_room_settings(%L, %L::jsonb, false)$q$, room, s || '{"game_mode":"tavla"}'), 'LOOPA:MODE_NOT_FOUND');
+    perform pg_temp.expect_error(format($q$select public.update_room_settings(%L, %L::jsonb, false)$q$, room, s || '{"game_mode":"yok_boyle_oyun"}'), 'LOOPA:MODE_NOT_FOUND');
     s := public.update_room_settings(room, s || '{"game_mode":"ciz_tahmin"}', false);
     perform pg_temp.check(s->>'game_mode' = 'ciz_tahmin', 'rotation mode selected');
     perform public.update_room_settings(room, s, true);   -- public, so it is listed
@@ -190,7 +194,7 @@ begin
     perform pg_temp.expect_error($q$update public.rotation_settings set anchor_week = null$q$, 'permission denied');
     perform pg_temp.expect_error($q$insert into public.mode_rotation values (1, 'gizli_kelime')$q$, 'permission denied');
     perform pg_temp.expect_error($q$update public.matches set entitlement_snapshot = '{}'$q$, 'permission denied');
-    perform pg_temp.check((select count(*) from public.game_modes) = 10, 'catalogue readable');
+    perform pg_temp.check((select count(*) from public.game_modes) >= 10, 'catalogue readable');
     reset role;
 
     raise notice 'game mode tests OK';

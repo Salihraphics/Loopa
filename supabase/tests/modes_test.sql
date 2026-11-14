@@ -14,13 +14,17 @@ create or replace function pg_temp.act(p uuid) returns void language sql as $$
     select set_config('request.jwt.claim.sub', coalesce(p::text, ''), true);
 $$;
 create or replace function pg_temp.expect_error(p_sql text, p_code text) returns void language plpgsql as $$
+declare ok boolean := false;
 begin
-    execute p_sql;
-    raise exception 'expected error % but statement succeeded: %', p_code, p_sql;
-exception when others then
-    if sqlerrm not like '%' || p_code || '%' then
-        raise exception 'expected error % but got: % (statement: %)', p_code, sqlerrm, p_sql;
-    end if;
+    begin
+        execute p_sql;
+        ok := true;                      -- reached only when the statement did NOT fail
+    exception when others then
+        if sqlerrm not like '%' || p_code || '%' then
+            raise exception 'expected error % but got: % (statement: %)', p_code, sqlerrm, p_sql;
+        end if;
+    end;
+    if ok then raise exception 'expected error % but the statement succeeded: %', p_code, p_sql; end if;
 end $$;
 create or replace function pg_temp.check(ok boolean, what text) returns void language plpgsql as $$
 begin
@@ -117,7 +121,7 @@ begin
     select u, 'admin', now() - interval '1 day', now() + interval '30 days' from unnest(array[A, B, C, D, E, F]) u;
 
     -- ============================================================ catalogue / start rules
-    perform pg_temp.check((select count(*) from public.game_modes where status = 'available') = 10, 'all 10 games available');
+    perform pg_temp.check((select count(*) from public.game_modes where status = 'available' and id in ('isim_sehir','gizli_kelime','kelime_zinciri','bilgi_arenasi','iki_dogru_bir_yalan','ciz_tahmin','en_muhtemel_kim','anlat_bakalim','cizim_telefonu','sessiz_sinema')) = 10, 'all 10 original games available');
     perform pg_temp.check((select count(*) from public.mode_content where kind = 'question') >= 90, 'quiz pool');
     perform pg_temp.check((select bool_and(jsonb_array_length(payload->'options') = 4 and (payload->>'answer')::int between 0 and 3)
                              from public.mode_content where kind = 'question'), 'quiz items well formed');

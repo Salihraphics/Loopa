@@ -616,7 +616,11 @@ begin
                from public.match_players mp
                join public.room_players rp on rp.room_id = mp.room_id and rp.user_id = mp.user_id
               where mp.match_id = p_match loop
-        v_won := p.final_rank = 1;
+        -- a shared first place is a draw, not a win (unless it is one team)
+        v_won := p.final_rank = 1 and (
+            (select count(*) from public.match_players x where x.match_id = p_match and x.final_rank = 1) = 1
+            or (p.team_side is not null and not exists (select 1 from public.match_players x
+                    where x.match_id = p_match and x.final_rank = 1 and x.team_side is distinct from p.team_side)));
         select coalesce(string_agg(x.user_id::text, ',' order by x.user_id), '') into opp
           from public.match_players x where x.match_id = p_match and x.user_id <> p.user_id;
         v_valid := true; v_why := null;
@@ -1161,7 +1165,7 @@ end $$;
 create or replace function public.start_match(p_room_id uuid)
 returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
 declare r public.rooms := public._lock_room(p_room_id); v_match uuid; n int; not_ready int; p record;
-        v_mode text; acc jsonb; v_min int; v_max int; t jsonb; k int := 0; id text;
+        v_mode text; acc jsonb; v_min int; v_max int; t jsonb; k int := 0; v_member text;
 begin
     perform public._require_host(r);
     if r.status <> 'lobby' then raise exception 'LOOPA:GAME_IN_PROGRESS'; end if;
@@ -1196,8 +1200,8 @@ begin
     if jsonb_typeof(r.settings->'teams') = 'array' then
         for t in select value from jsonb_array_elements(r.settings->'teams') loop
             k := k + 1;
-            for id in select jsonb_array_elements_text(t->'members') loop
-                update public.match_players set team_side = k where match_id = v_match and user_id = id::uuid;
+            for v_member in select jsonb_array_elements_text(t->'members') loop
+                update public.match_players set team_side = k where match_id = v_match and user_id = v_member::uuid;
             end loop;
         end loop;
         if exists (select 1 from public.match_players where match_id = v_match and team_side is null) then
