@@ -310,6 +310,16 @@ class RoomSession(
         signals.ink()
     }
 
+    /** 0.8.0: the server draws a game from the players' preferences and switches the room to it (setup restarts). */
+    suspend fun spinWheel(): JsonObject {
+        var res: JsonObject = JsonObject(emptyMap())
+        act { res = backend.rpc("spin_game_wheel") { put("p_room_id", roomId) } as? JsonObject ?: JsonObject(emptyMap()) }
+        return res
+    }
+
+    /** 0.8.0: the server splits the players into fair teams by skill and stores them in the room settings. */
+    suspend fun balanceTeams(teams: Int = 2) = act { backend.rpc("balance_room_teams") { put("p_room_id", roomId); put("p_teams", teams) } }
+
     suspend fun modeSkip() = act { backend.rpc("mode_skip") { put("p_room_id", roomId) } }
 
     suspend fun updateSettings(settings: RoomSettings, isPublic: Boolean) = act {

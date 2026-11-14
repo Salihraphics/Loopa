@@ -102,7 +102,11 @@ fun RoomSettingsSheet(
                     val st = gameStatus(g.id)
                     // The current game stays selectable; others only when the server says this host may start them.
                     val allowed = g.id == s.gameMode || g.id == com.loopa.core.game.GameModes.ISIM_SEHIR || st?.canStart == true
-                    LoopaChip(g.name, s.gameMode == g.id, { s = s.copy(gameMode = g.id); localError = null },
+                    LoopaChip(g.name, s.gameMode == g.id, {
+                        s = s.copy(gameMode = g.id, maxPlayers = com.loopa.core.game.ModeOptions.fitLimit(g.id, s.maxPlayers, currentPlayers),
+                            modeOptions = com.loopa.core.game.ModeOptions.normalize(g.id, if (g.id == s.gameMode) s.modeOptions else kotlinx.serialization.json.JsonObject(emptyMap())))
+                        localError = null
+                    },
                         color = com.loopa.core.ui.components.gameVisual(g.id).color, enabled = allowed,
                         leading = { com.loopa.core.ui.components.GameIcon(g.id, size = 20.dp, dimmed = !allowed) })
                 }
@@ -118,8 +122,9 @@ fun RoomSettingsSheet(
                 RoomSettings.ROUNDS.forEach { r -> LoopaChip("$r", s.rounds == r, { s = s.copy(rounds = r) }, color = LoopaPalette.Peach) }
             }
             labels.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft) }
+            ModeOptionsPanel(s.gameMode, s.modeOptions) { s = s.copy(modeOptions = it) }
             Section("Oyuncu sınırı") {
-                RoomSettings.PLAYER_LIMITS.forEach { m ->
+                com.loopa.core.game.ModeOptions.playerLimits(s.gameMode).forEach { m ->
                     LoopaChip("$m kişi", s.maxPlayers == m, { s = s.copy(maxPlayers = m) }, color = LoopaPalette.Sky, enabled = m >= currentPlayers)
                 }
             }
@@ -213,7 +218,8 @@ fun RoomSettingsSheet(
 
             ErrorBanner(localError)
             LoopaButton(
-                "Kaydet", { onSave(s, isPublic) }, loading = saving, icon = Icons.Rounded.Save,
+                "Kaydet", { onSave(s.copy(configured = true, modeOptions = com.loopa.core.game.ModeOptions.normalize(s.gameMode, s.modeOptions)), isPublic) },
+                loading = saving, icon = Icons.Rounded.Save,
                 color = LoopaPalette.Mint, modifier = Modifier.fillMaxWidth(),
             )
             Text(
@@ -259,7 +265,46 @@ data class ModeSettingsLabels(val duration: String?, val rounds: String?, val no
             "kelime_zinciri" -> ModeSettingsLabels("Hamle süresi (30→15, 60→20, 90→25, 120→30 sn)", "Tur (her oyuncu için)")
             "iki_dogru_bir_yalan" -> ModeSettingsLabels("Yazma süresi", null, "Her yazan oyuncu için bir oylama turu.")
             "cizim_telefonu" -> ModeSettingsLabels("Çizim süresi", null, "Adım sayısı oyuncu sayısı kadardır; tahminler 35 saniye.")
+            "tavla", "yirmi_bir", "kizma_birader", "amiral_batti", "renk_kartlari", "okey", "milyoner" -> ModeSettingsLabels(null, null)
+            "kurt_adam" -> ModeSettingsLabels(null, null, "Rol dağılımı oyuncu sayısına göre sunucuda yapılır (6-8: 1 kurt, 9-11: 2 kurt + 1 bağımsız, 12-15: 3 + 1, 16-20: 4 + 2).")
+            "kralliklar" -> ModeSettingsLabels(null, null, "Harita oyuncu sayısına göre 200-600 karodur. Turlar 60 saniye. Denge değerleri geçicidir.")
             else -> ModeSettingsLabels("Süre", "Tur sayısı")
+        }
+    }
+}
+
+/** Options of the 0.8.0 games, exactly the values the server accepts. */
+@Composable
+private fun ModeOptionsPanel(mode: String, options: kotlinx.serialization.json.JsonObject, onChange: (kotlinx.serialization.json.JsonObject) -> Unit) {
+    val spec = com.loopa.core.game.ModeOptions.of(mode)
+    if (spec.isEmpty()) return
+    val o = com.loopa.core.game.ModeOptions.normalize(mode, options)
+    fun set(key: String, v: kotlinx.serialization.json.JsonElement) = onChange(kotlinx.serialization.json.JsonObject(o + (key to v)))
+    Column(Modifier.testTag("mode_options"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        spec.forEach { opt ->
+            when (opt) {
+                is com.loopa.core.game.ModeOptions.Choice -> Section(opt.label) {
+                    opt.values.forEach { v ->
+                        LoopaChip(opt.display(v), com.loopa.core.game.ModeOptions.value(o, opt.key) == v.toString(),
+                            { set(opt.key, if (v is Int) kotlinx.serialization.json.JsonPrimitive(v) else kotlinx.serialization.json.JsonPrimitive(v.toString())) },
+                            color = LoopaPalette.Butter)
+                    }
+                }
+                is com.loopa.core.game.ModeOptions.Toggle -> ToggleRow(opt.label, "", com.loopa.core.game.ModeOptions.value(o, opt.key) == "true") {
+                    set(opt.key, kotlinx.serialization.json.JsonPrimitive(it))
+                }
+                is com.loopa.core.game.ModeOptions.Disabled -> {
+                    val off = (o[opt.key] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.orEmpty().toSet()
+                    Section("${opt.label} (dokun: aç/kapat)") {
+                        opt.items.forEach { (k, name) ->
+                            LoopaChip(name, k !in off, {
+                                val next = if (k in off) off - k else off + k
+                                set(opt.key, kotlinx.serialization.json.JsonArray(next.map { kotlinx.serialization.json.JsonPrimitive(it) }))
+                            }, color = LoopaPalette.Lavender)
+                        }
+                    }
+                }
+            }
         }
     }
 }

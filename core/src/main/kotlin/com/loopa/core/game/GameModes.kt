@@ -65,6 +65,9 @@ data class GameModeInfo(
 object GameModes {
     const val ISIM_SEHIR = "isim_sehir"
 
+    /** Games whose rooms open in "setup" (configured = false) until the host saves the options (0.8.0 flow). */
+    val SETUP_FLOW: Set<String> = setOf("tavla", "yirmi_bir", "kizma_birader", "amiral_batti", "renk_kartlari", "okey", "milyoner", "kurt_adam", "kralliklar")
+
     /**
      * Games this app version can actually play. A mode the server marks as available but that is
      * not in this set is shown as "Yakında" and can never be started from this client.

@@ -143,6 +143,13 @@ class LobbyViewModel(private val c: DataContainer, roomId: String) : ViewModel()
     val catalog = c.catalog.state
     fun refreshCatalog() = viewModelScope.launch { c.catalog.refresh() }
 
+    /** Last wheel result from the server (the animation lands on it; the client never picks). */
+    private val _wheel = MutableStateFlow<kotlinx.serialization.json.JsonObject?>(null)
+    val wheel: StateFlow<kotlinx.serialization.json.JsonObject?> = _wheel.asStateFlow()
+    fun spinWheel() = run("wheel") { _wheel.value = spinWheel() }
+    fun dismissWheel() { _wheel.value = null }
+    fun balanceTeams() = run("teams") { balanceTeams(2) }
+
     fun leave(onLeft: () -> Unit) {
         viewModelScope.launch {
             session.leave()
@@ -173,7 +180,14 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
     LaunchedEffect(state.isHost, modeId, state.room.hostId) { if (state.isHost) vm.checkMode(modeId) }
     val modeBlocked = state.isHost && modeId != com.loopa.core.game.GameModes.ISIM_SEHIR && modeStatus?.canStart != true
     val minPlayers = com.loopa.core.game.GameModes.info(modeId).minPlayers
-    val canStart = state.isHost && players.size >= minPlayers && notReady == 0 && !modeBlocked
+    val configured = state.room.settings.configured
+    val canStart = state.isHost && players.size >= minPlayers && notReady == 0 && !modeBlocked && configured
+    val wheel by vm.wheel.collectAsStateWithLifecycle()
+    // 0.8.0 flow: a freshly opened room of a new game asks the host for the setup first
+    var setupAsked by remember(modeId) { mutableStateOf(false) }
+    LaunchedEffect(state.isHost, configured, modeId, wheel == null) {
+        if (state.isHost && !configured && !setupAsked && wheel == null) { setupAsked = true; showSettings = true }
+    }
     val catalog by vm.catalog.collectAsStateWithLifecycle()
 
     // joining / readiness sounds
@@ -212,7 +226,21 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
                         compact = true, modifier = Modifier.fillMaxWidth().testTag("lobby_invite_friends"))
                 }
                 item { ErrorBanner(error, onDismiss = vm::dismissError) }
+                if (!configured) item {
+                    Text(if (state.isHost) "Oyunu ayarla: seçenekleri kaydettiğinde oyuncular hazır olabilir."
+                         else "Oda sahibi oyunu ayarlıyor… Ayarlar kaydedilince hazır olabilirsin.",
+                        style = MaterialTheme.typography.bodyMedium, color = LoopaPalette.PeachDeep, modifier = Modifier.testTag("lobby_setup_pending"))
+                }
                 item { SettingsSummary(state.room.settings, state.isHost) { showSettings = true } }
+                if (state.isHost) item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LoopaButton("Oyun çarkı", vm::spinWheel, loading = busy == "wheel", color = LoopaPalette.Lavender, compact = true,
+                            modifier = Modifier.weight(1f).testTag("lobby_wheel"))
+                        if (modeId in setOf("amiral_batti") && players.size >= 4) LoopaButton("Takımları dengele", vm::balanceTeams, loading = busy == "teams",
+                            color = LoopaPalette.Sky, compact = true, modifier = Modifier.weight(1f).testTag("lobby_balance"))
+                    }
+                }
+                state.room.settings.teams?.let { t -> item { TeamsCard(t, state) } }
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Oyuncular", style = MaterialTheme.typography.titleLarge, color = Loopa.colors.text, modifier = Modifier.weight(1f))
@@ -256,6 +284,7 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
                         )
                         LoopaButton(
                             text = when {
+                                !configured -> "Önce oyunu ayarla"
                                 players.size < minPlayers -> "En az $minPlayers oyuncu gerekli"
                                 notReady > 0 -> "$notReady oyuncu hazır değil"
                                 else -> "Oyunu Başlat"
@@ -272,8 +301,8 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
                         val ready = me?.isReady == true
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             LoopaButton(
-                                if (ready) "Hazırım ✓" else "Hazır ol", { vm.toggleReady(ready); feedback.haptic(Haptic.MEDIUM) },
-                                loading = busy == "ready", color = if (ready) LoopaPalette.Mint else LoopaPalette.Butter,
+                                if (!configured) "Ayar bekleniyor" else if (ready) "Hazırım ✓" else "Hazır ol", { vm.toggleReady(ready); feedback.haptic(Haptic.MEDIUM) },
+                                loading = busy == "ready", enabled = configured || ready, color = if (ready) LoopaPalette.Mint else LoopaPalette.Butter,
                                 icon = Icons.Rounded.CheckCircle, modifier = Modifier.weight(1f), sfx = Sfx.READY,
                             )
                             if (state.room.settings.allowSpectators) {
@@ -287,6 +316,7 @@ fun LobbyScreen(roomId: String, state: RoomState, onLeft: () -> Unit) {
         }
     }
 
+    wheel?.let { w -> WheelDialog(w, onDismiss = vm::dismissWheel) }
     if (inviteFriends) {
         InviteFriendsSheet(roomId, players.map { it.userId }.toSet()) { inviteFriends = false }
     }
@@ -392,8 +422,14 @@ private fun SettingsSummary(s: RoomSettings, isHost: Boolean, onEdit: () -> Unit
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill("🎮 ${com.loopa.core.game.GameModes.name(s.gameMode)}", com.loopa.core.ui.components.gameVisual(s.gameMode).color, Modifier.testTag("lobby_game_mode"))
-            Pill("⏱ ${s.roundSeconds} sn", LoopaPalette.Butter)
-            Pill("🔁 ${s.rounds} tur", LoopaPalette.Peach)
+            if (s.gameMode !in com.loopa.core.game.GameModes.SETUP_FLOW) {
+                Pill("⏱ ${s.roundSeconds} sn", LoopaPalette.Butter)
+                Pill("🔁 ${s.rounds} tur", LoopaPalette.Peach)
+            }
+            com.loopa.core.game.ModeOptions.of(s.gameMode).filterIsInstance<com.loopa.core.game.ModeOptions.Choice>().forEach { o ->
+                val v = com.loopa.core.game.ModeOptions.value(s.modeOptions, o.key)
+                if (v != null) Pill("${o.label}: ${o.values.firstOrNull { it.toString() == v }?.let(o.display) ?: v}", LoopaPalette.Butter)
+            }
             Pill("👥 en fazla ${s.maxPlayers}", LoopaPalette.Sky)
             if (s.gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) {
                 Pill("🗳 oylama ${s.voteSeconds} sn", LoopaPalette.Lavender)
@@ -483,4 +519,53 @@ private fun PlayerRow(
             }
         }
     }
+}
+
+/** Teams written by `balance_room_teams` (fair split by skill). */
+@Composable
+private fun TeamsCard(t: kotlinx.serialization.json.JsonElement, state: RoomState) {
+    val teams = (t as? kotlinx.serialization.json.JsonArray).orEmpty()
+    if (teams.isEmpty()) return
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Loopa.colors.card).padding(14.dp).testTag("lobby_teams"),
+        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Takımlar (güce göre dengelendi)", style = MaterialTheme.typography.titleSmall, color = Loopa.colors.text)
+        teams.forEachIndexed { i, team ->
+            val members = ((team as? kotlinx.serialization.json.JsonObject)?.get("members") as? kotlinx.serialization.json.JsonArray).orEmpty()
+                .mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+            Text("Takım ${'A' + i}: " + members.joinToString(", ") { id -> state.players.firstOrNull { it.userId == id }?.username ?: "Oyuncu" },
+                style = MaterialTheme.typography.bodyMedium, color = Loopa.colors.text)
+        }
+    }
+}
+
+/** The wheel spins through the server's candidates and stops on the server's result. */
+@Composable
+private fun WheelDialog(w: kotlinx.serialization.json.JsonObject, onDismiss: () -> Unit) {
+    val result = (w["result"] as? kotlinx.serialization.json.JsonPrimitive)?.content
+    val cands = (w["candidates"] as? kotlinx.serialization.json.JsonArray).orEmpty()
+        .mapNotNull { ((it as? kotlinx.serialization.json.JsonObject)?.get("mode") as? kotlinx.serialization.json.JsonPrimitive)?.content }
+        .ifEmpty { listOfNotNull(result) }
+    val reduced = com.loopa.core.ui.theme.LocalReducedMotion.current
+    var shown by remember(w) { mutableStateOf(if (reduced) result else cands.firstOrNull()) }
+    var done by remember(w) { mutableStateOf(reduced) }
+    LaunchedEffect(w) {
+        if (!reduced && cands.isNotEmpty()) {
+            val target = cands.indexOf(result).coerceAtLeast(0)
+            val steps = cands.size * 3 + target
+            for (k in 0..steps) { shown = cands[k % cands.size]; kotlinx.coroutines.delay(40L + (k * k * 220L) / (steps * steps).coerceAtLeast(1)) }
+            shown = result
+        }
+        done = true
+    }
+    androidx.compose.material3.AlertDialog(onDismissRequest = onDismiss,
+        title = { Text("Oyun çarkı") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                com.loopa.core.ui.components.GameIcon(shown ?: "isim_sehir", size = 72.dp)
+                Spacer(Modifier.height(8.dp))
+                Text(com.loopa.core.game.GameModes.name(shown), style = MaterialTheme.typography.titleLarge, color = Loopa.colors.text, modifier = Modifier.testTag("wheel_result"))
+                if (done) Text("Tercihlere göre sunucu seçti. Oda sahibi şimdi oyunu ayarlayabilir.", style = MaterialTheme.typography.bodySmall, color = Loopa.colors.textSoft)
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onDismiss, enabled = done) { Text("Tamam") } })
 }

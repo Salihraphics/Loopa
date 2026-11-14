@@ -58,6 +58,13 @@ data class RoomSettings(
     @SerialName("allow_spectators") val allowSpectators: Boolean = true,
     @SerialName("excluded_letters") val excludedLetters: List<String> = emptyList(),
     val categories: List<Category> = emptyList(),
+    /** 0.8.0: per-game options (validated by the server's `_opts_<mode>`). */
+    @SerialName("mode_options") val modeOptions: JsonObject = JsonObject(emptyMap()),
+    /** 0.8.0: false while the host is still setting the game up; absent on older rooms = true. */
+    val configured: Boolean = true,
+    /** 0.8.0: balanced teams written by the server (`balance_room_teams`); read-only here. */
+    val teams: kotlinx.serialization.json.JsonElement? = null,
+    @SerialName("tournament_id") val tournamentId: String? = null,
 ) {
     companion object {
         val DURATIONS = listOf(30, 60, 90, 120)

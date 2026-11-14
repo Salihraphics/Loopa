@@ -249,13 +249,18 @@ class RoomRepository(private val backend: LoopaBackend) {
      */
     suspend fun createRoom(isPublic: Boolean, gameMode: String): RoomRef {
         val ref = createRoom(isPublic)
+        val setup = gameMode in com.loopa.core.game.GameModes.SETUP_FLOW
         if (gameMode == com.loopa.core.game.GameModes.ISIM_SEHIR) return ref
         val state = backend.rpc("get_room_state", com.loopa.core.model.RoomState.serializer()) { put("p_room_id", ref.id) }
         try {
             backend.rpc("update_room_settings") {
                 put("p_room_id", ref.id)
+                // 0.8.0 flow: game chosen -> room opens -> host configures (configured=false until saved) -> ready -> start
                 put("p_settings", com.loopa.core.network.LoopaJson.encodeToJsonElement(
-                    com.loopa.core.model.RoomSettings.serializer(), state.room.settings.copy(gameMode = gameMode)))
+                    com.loopa.core.model.RoomSettings.serializer(), state.room.settings.copy(gameMode = gameMode,
+                        maxPlayers = com.loopa.core.game.ModeOptions.fitLimit(gameMode, state.room.settings.maxPlayers, 1),
+                        modeOptions = com.loopa.core.game.ModeOptions.normalize(gameMode, kotlinx.serialization.json.JsonObject(emptyMap())),
+                        configured = !setup)))
                 put("p_is_public", isPublic)
             }
         } catch (e: com.loopa.core.game.LoopaException) {
