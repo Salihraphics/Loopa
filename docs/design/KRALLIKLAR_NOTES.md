@@ -155,7 +155,7 @@ Yerleşim, bileşenler, test etiketleri ve gönderilen veriler aynı kaldı. Yal
 
 ## Harita v2: doğal biyomlar, üç seviyeli sis, kaleler (0.9.0)
 
-### Sunucu (yerel; hosted'a uygulanmadı, onay bekliyor)
+### Sunucu (kullanıcı onayıyla 2026-11-15'te hosted'a uygulandı)
 
 - `supabase/migrations/20261122000001_kralliklar_explored.sql`
   (geri alma: `supabase/rollback/20261122000001_kralliklar_explored_down.sql`).

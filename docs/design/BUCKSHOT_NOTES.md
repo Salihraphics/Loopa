@@ -89,3 +89,27 @@ Görseller, item adları ve arayüz LOOPA'ya özgüdür; kaynak oyunun görsel �
 - **Cihaz testi yapılmadı.** Ekran Robolectric ile dikey düzende, 3 ve 4 oyunculu masalarla test edildi.
 - **Çizimler sınırlı:** Masa ve nesneler vektör çizimdir (Canvas); hazır 3B görsel kullanılmadı.
 - **Cihazda denenmedi:** Dokunma hissi ve animasyon akıcılığı gerçek cihazda değerlendirilmeli.
+
+## Hosted uygulama (2026-11-15, kullanıcı onayıyla)
+
+**Yedek:** uygulamadan önce salt okunur mantıksal yedek alındı. İçerik: 72 tablo, 155.273
+satır, 424 fonksiyon, politikalar, yetkiler, kısıtlar, indeksler ve tetikleyiciler. Yedek
+oturum çalışma alanında `hosted_backup_pre_090_2026-11-15.tar.gz` olarak duruyor.
+
+**Uygulanan migration'lar:** her biri kendi işleminde (transaction), schema_migrations kaydıyla
+birlikte ve şu sırayla uygulandı:
+1. `20261121000001_buckshot`
+2. `20261121000002_wheel_room_limits`
+3. `20261122000001_kralliklar_explored`
+4. `20261122000002_kralliklar_terrain_seeds`
+
+**Doğrulama (salt okunur):**
+- Dört sürüm kayıtlı.
+- `buckshot` katalogda.
+- Yeni iç fonksiyonlar mevcut ve anon/authenticated rolleri bunları çalıştıramıyor.
+- Harita üreticisi düzeltmesi canlıda.
+- Satır sayısı farkları yalnızca beklenenler: `game_modes` 19→20, `economy_config` 11→12. Diğer
+  70 tablo aynı.
+- Uygulama anında lobi dışında Krallıklar odası yoktu.
+
+**Geri alma:** `supabase/rollback/` içindeki dört `_down.sql` dosyası ters sırayla çalıştırılır.
