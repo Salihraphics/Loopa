@@ -79,3 +79,44 @@ Savaş formülü:
 - 20 krallıklı oyunun başlangıcı, oda kurulumu dahil: yaklaşık 1,5 sn.
 - Bir tur işleme: yaklaşık 0,06 sn.
 - 20 oyuncunun özel görünümü: toplam yaklaşık 0,03 sn.
+
+## Arayüz (0.9.0 — izometrik yeniden tasarım)
+
+Yalnızca istemci değişti. Sunucu fonksiyonları, veri modeli, eylem yükleri (`orders`, `ready`,
+`letter`, `offer`, `respond`, `cancel_offer`, `leave_alliance`, `rename`) ve kurallar aynı kaldı.
+`kralliklar_test.sql` yeniden çalıştırıldı ve geçti.
+
+Dosyalar: `feature-game/.../modes/KralliklarArt.kt` (çizim), `KralliklarMap.kt` (harita, kamera,
+dokunma), `KralliklarScreen.kt` (ekran ve paneller).
+
+- **Harita:** mevcut eksenel hex koordinatları, dikey 0.6 basıklıkla izometrik çiziliyor. Her bölge
+  yüksekliği araziye göre değişen bir prizma. Çizim sırası arkadan öne; ekran dışı bölgeler
+  çizilmiyor; bölge 9 px'ten küçükse ayrıntılar atlanıyor. Kaydırma, iki parmakla yakınlaştırma
+  (0.8–5x), dokunarak seçim, `+ / − / başkent` düğmeleri var.
+- **Arazi:** ova (çimen), tarım (tarla sıraları), orman (ağaçlar; tükenince kütükler), maden (karlı
+  dağ zirveleri), altın tepesi (külçeler). Sahibin rengi bölgenin üstüne karışıyor; kendi
+  bölgelerinin ek bir iç çizgisi var. Görülmeyen bölgeler koyu sis prizması.
+- **Veri sınırı:** sunucu verisinde su veya nehir bölgesi yok. Kenardaki deniz yalnızca dekoratif
+  arka plan; dağlar maden bölgeleri. Yeni arazi türü eklenmedi (kural değişikliği olurdu).
+- **Birimler ve yapılar:** asker figürü ve sayı bayrağı, tarafsız garnizon kalkanı; kale (başkent),
+  kışla, pazar, ambar. Planlanan ve yoldaki hareketler kavisli ok olarak çiziliyor: planlananlar
+  kesikli ve hareketli, ETA etiketli. Son turdaki çatışmalar çapraz kılıç işaretiyle gösteriliyor.
+- **Üst bölüm:** arma (krallık numarasına göre 6 amblem), krallık adı, tur, kimin hazır olduğu
+  şeridi. Kaynak çubuğunda simge, değer ve önceki tura göre fark (+/−) var.
+- **Alt panel:** seçili bölgenin türü, sahibi, askerleri, yapısı, kalan kaynak ömrü ve savunma
+  bonusu. Yalnızca geçerli eylemler gösteriliyor: asker varsa "Asker gönder" (komşu seçimi,
+  mesafe ve ETA, kaydırıcı); yapı yalnızca kendi boş bölgende, başkent dışında ve kuyruğa alınmış
+  maliyetlerden sonra karşılanabiliyorsa.
+- **Emirler:** açılır kartlar ve silme düğmesi, "Emirleri gönder" (kaydedilince "Gönderildi ✓"),
+  "Hazırım". Kaydedilmemiş değişiklik renkli nokta ile işaretleniyor.
+- **Diplomasi:** önce gelen teklifler, ardından ilişki rozetli krallık kartları (Müttefik, anlaşma
+  ve bitiş turu, Nötr, Düştü). Ticaret teklifleri iki sütunda ("Sen alırsın / Sen verirsin").
+  Mektup, krallık kartının altında açılan satır içi parşömen kartta yazılıyor; diyalog
+  kullanılmamasının nedeni klavye açıkken alanın görünür kalması.
+- **Raporlar:** özel olaylar ve genel kayıt, tura göre gruplu bir günlükte birleşiyor. Her satırın
+  bir simgesi ve tonu var; "Haritada ›" ilgili bölgeyi seçip haritaya geçiyor.
+- **Küçük ekran:** yükseklik 640 dp'nin altındaysa kompakt düzen kullanılıyor (küçük arma, tek
+  satır kaynaklar, ipucu satırı gizli, alt panel en fazla 190 dp).
+- **Hareket azaltma:** açıkken seçim nabzı ve rota animasyonu kapanıyor.
+- **Ölçüm:** 600 bölgeli 20 krallık haritasında çizim süresi Robolectric/JVM üzerinde ölçüldü
+  (`kralliklar_perf.txt`). Bu bir cihaz ölçümü değil; gerçek cihazda ölçülmedi.
