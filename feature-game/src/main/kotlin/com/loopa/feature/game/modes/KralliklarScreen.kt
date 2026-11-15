@@ -39,6 +39,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -51,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -63,22 +67,58 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loopa.core.game.modes.Hex
 import com.loopa.core.model.ModeState
+import com.loopa.core.ui.components.LoopaButton
+import com.loopa.core.ui.theme.Loopa
 import com.loopa.core.ui.theme.LocalReducedMotion
+import com.loopa.core.ui.theme.LoopaPalette
 import com.loopa.feature.game.modes.KrArt.crest
 import com.loopa.feature.game.modes.KrArt.prism
 import com.loopa.feature.game.modes.KrArt.resourceIcon
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
-// Strategy-game panels: deep navy with parchment accents (the map carries the colour).
-private val Panel = Color(0xFF1C2130)
-private val PanelHigh = Color(0xFF272E42)
-private val Rim = Color(0xFF3E4760)
-private val Cream = Color(0xFFF3E7CF)
-private val Soft = Color(0xFFB9B3A5)
-private val Amber = Color(0xFFFFB25C)
-private val Good = Color(0xFF7CC08A)
-private val Bad = Color(0xFFE97B6A)
+/**
+ * Krallıklar panels in the LOOPA Pastel Party language: light, airy surfaces with lavender, mint,
+ * peach, butter and sky accents. Text colours are the deep variants so small labels keep contrast.
+ * The dark theme uses LOOPA's soft plum night instead of navy.
+ */
+@Immutable
+private data class KrPalette(
+    val bg: Color, val card: Color, val cardHigh: Color, val rim: Color, val ink: Color, val soft: Color,
+    val accent: Color, val accentText: Color, val warm: Color, val warmText: Color,
+    val good: Color, val goodText: Color, val bad: Color, val badText: Color, val dark: Boolean,
+)
+private val LightKr = KrPalette(
+    bg = Color(0xFFF7F3FC), card = Color.White, cardHigh = Color(0xFFF1ECFA), rim = Color(0xFFE6DFF2),
+    ink = LoopaPalette.Ink, soft = Color(0xFF6E6880),
+    accent = LoopaPalette.Lavender, accentText = Color(0xFF6A51BE), warm = LoopaPalette.Butter, warmText = Color(0xFF94650A),
+    good = LoopaPalette.Mint, goodText = Color(0xFF2E8462), bad = LoopaPalette.Peach, badText = Color(0xFFC0473E), dark = false,
+)
+private val DarkKr = KrPalette(
+    bg = LoopaPalette.Night, card = LoopaPalette.NightCard, cardHigh = LoopaPalette.NightCardHigh, rim = Color(0xFF433D59),
+    ink = LoopaPalette.NightText, soft = LoopaPalette.NightTextSoft,
+    accent = LoopaPalette.Lavender, accentText = LoopaPalette.Lavender, warm = LoopaPalette.Butter, warmText = LoopaPalette.Butter,
+    good = LoopaPalette.Mint, goodText = LoopaPalette.Mint, bad = LoopaPalette.Peach, badText = Color(0xFFFFA594), dark = true,
+)
+private val LocalKr = staticCompositionLocalOf { LightKr }
+private val Panel: Color @Composable get() = LocalKr.current.bg
+private val PanelHigh: Color @Composable get() = LocalKr.current.card
+private val Tint: Color @Composable get() = LocalKr.current.cardHigh
+private val Rim: Color @Composable get() = LocalKr.current.rim
+private val Cream: Color @Composable get() = LocalKr.current.ink
+private val Soft: Color @Composable get() = LocalKr.current.soft
+private val Amber: Color @Composable get() = LocalKr.current.accentText
+private val Warm: Color @Composable get() = LocalKr.current.warmText
+private val Good: Color @Composable get() = LocalKr.current.goodText
+private val Bad: Color @Composable get() = LocalKr.current.badText
+private val InkOn = LoopaPalette.Ink
+private val CardShape = RoundedCornerShape(20.dp)
+
+/** Soft card: white surface, hairline rim, a faint lavender shadow (the LOOPA card language). */
+@Composable
+private fun Modifier.krCard(shape: androidx.compose.ui.graphics.Shape = CardShape, color: Color = PanelHigh, rim: Color = Rim): Modifier =
+    this.shadow(if (LocalKr.current.dark) 0.dp else 3.dp, shape, ambientColor = LoopaPalette.Lavender.copy(alpha = 0.3f), spotColor = LoopaPalette.Lavender.copy(alpha = 0.3f))
+        .clip(shape).background(color).border(1.dp, rim, shape)
 
 internal fun terrainName(t: String?): String = KrArt.terrain(t).name
 internal fun buildingName(b: String?): String = when (b) { "barracks" -> "Kışla"; "market" -> "Pazar"; "farm" -> "Çiftlik"; else -> "—" }
@@ -133,6 +173,7 @@ fun KralliklarScreen(ctx: ModeContext, mode: ModeState, ui: ModeUi) {
         selected = i; sending = false; target = null
     }
 
+    CompositionLocalProvider(LocalKr provides if (Loopa.colors.isDark) DarkKr else LightKr) {
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().background(Panel)) {
         val compact = maxHeight < 640.dp
         Column(Modifier.fillMaxSize()) {
@@ -141,7 +182,7 @@ fun KralliklarScreen(ctx: ModeContext, mode: ModeState, ui: ModeUi) {
             when (tab) {
                 0 -> {
                     Box(Modifier.fillMaxWidth().weight(1f)) {
-                        KrIsoMap(proj, cam, tiles, { kColor(it) }, myK, selected, target, routes, battles, onTap = ::select, modifier = Modifier.fillMaxSize())
+                        KrIsoMap(proj, cam, tiles, { kColor(it) }, myK, selected, target, routes, battles, onTap = ::select, modifier = Modifier.fillMaxSize(), dark = LocalKr.current.dark)
                         MapControls(cam, onCapital = { (me / "capital").i()?.let { c -> proj.focus(c, cam.size, cam); select(c) } }, Modifier.align(Alignment.CenterEnd))
                         if (sending && target == null) Hint("Hedef bölgeye dokun", Modifier.align(Alignment.TopCenter))
                         TurnBanner(turnNo, Modifier.align(Alignment.Center))
@@ -164,6 +205,7 @@ fun KralliklarScreen(ctx: ModeContext, mode: ModeState, ui: ModeUi) {
             }
         }
     }
+    }
 }
 
 // ====================================================================== header
@@ -172,21 +214,26 @@ private fun KingdomHeader(ctx: ModeContext, kingdoms: List<JsonElement>, myK: In
                           compact: Boolean) {
     val mine = kingdoms.firstOrNull { (it / "k").i() == myK }
     val color = parseColor((mine / "color").s())
-    Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFF151927), Panel))).padding(horizontal = 12.dp, vertical = if (compact) 4.dp else 8.dp)) {
+    Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(LoopaPalette.Lavender.copy(alpha = if (LocalKr.current.dark) 0.14f else 0.22f), Panel))).padding(horizontal = 14.dp, vertical = if (compact) 4.dp else 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Canvas(Modifier.size(if (compact) 24.dp else 34.dp, if (compact) 28.dp else 40.dp).testTag("kr_crest")) { crest(Offset(size.width * 0.04f, 0f), size.width * 0.92f, color, myK ?: 1) }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(if (myK != null) kName(myK) else "İzleyici", color = Cream, fontWeight = FontWeight.Black, fontSize = if (compact) 15.sp else 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.testTag("kr_kingdom_name"))
-                Text(buildString { append("Tur $turnNo"); if (!alive && myK != null) append(" · düştü"); if (over) append(" · oyun bitti") }, color = Amber, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(buildString { append("Tur $turnNo"); if (!alive && myK != null) append(" · düştü"); if (over) append(" · oyun bitti") }, color = Soft, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             // who is ready: a crest per living kingdom with a check
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.testTag("kr_ready_strip")) {
-                kingdoms.filter { (it / "alive").b() }.forEach { k ->
+            val living = kingdoms.filter { (it / "alive").b() }
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.testTag("kr_ready_strip")) {
+                // many kingdoms: a few crests (ready ones first) and a counter, so the name keeps its room
+                val shown = if (living.size <= 6) living else living.sortedByDescending { (it / "ready").b() }.take(4)
+                if (living.size > 6) Text("${living.count { (it / "ready").b() }}/${living.size} hazır", color = Soft, fontSize = 11.sp, fontWeight = FontWeight.Black,
+                    maxLines = 1, softWrap = false, modifier = Modifier.padding(end = 4.dp))
+                shown.forEach { k ->
                     Box(contentAlignment = Alignment.BottomEnd) {
                         Canvas(Modifier.size(18.dp, 21.dp)) { crest(Offset.Zero, size.width, parseColor((k / "color").s()), (k / "k").i() ?: 1) }
-                        if ((k / "ready").b()) Box(Modifier.size(10.dp).clip(CircleShape).background(Good), contentAlignment = Alignment.Center) {
+                        if ((k / "ready").b()) Box(Modifier.size(11.dp).clip(CircleShape).background(Color.White).padding(1.dp).clip(CircleShape).background(LoopaPalette.MintDeep), contentAlignment = Alignment.Center) {
                             Text("✓", color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Black)
                         }
                     }
@@ -209,9 +256,12 @@ private fun ResourceBar(res: JsonElement?, turnNo: Int, compact: Boolean) {
             val v = now[k] ?: 0
             val shown by animateIntAsState(v, if (LocalReducedMotion.current) tween(0) else tween(600), label = k)
             val d = prev?.get(k)?.let { v - it }
-            Row(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(PanelHigh).border(1.dp, Rim, RoundedCornerShape(10.dp))
+            val tint = when (k) { "wood" -> LoopaPalette.Peach; "iron" -> LoopaPalette.Sky; "gold" -> LoopaPalette.Butter; else -> LoopaPalette.Mint }
+            Row(Modifier.weight(1f).krCard(RoundedCornerShape(16.dp), rim = tint.copy(alpha = 0.6f))
                 .padding(horizontal = if (compact) 4.dp else 6.dp, vertical = if (compact) 2.dp else 4.dp).testTag("kr_res_$k"), verticalAlignment = Alignment.CenterVertically) {
-                Canvas(Modifier.size(if (compact) 14.dp else 20.dp)) { resourceIcon(k, Offset.Zero, size.minDimension) }
+                Box(Modifier.size(if (compact) 18.dp else 26.dp).clip(CircleShape).background(tint.copy(alpha = 0.35f)), contentAlignment = Alignment.Center) {
+                    Canvas(Modifier.size(if (compact) 13.dp else 18.dp)) { resourceIcon(k, Offset.Zero, size.minDimension) }
+                }
                 Spacer(Modifier.width(3.dp))
                 val dText = if (d == null || d == 0) null else (if (d > 0) "+$d" else "$d")
                 val dColor = when { d == null || d == 0 -> Soft; d > 0 -> Good; else -> Bad }
@@ -219,7 +269,7 @@ private fun ResourceBar(res: JsonElement?, turnNo: Int, compact: Boolean) {
                     Text("$shown", color = Cream, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1)
                     dText?.let { Text(" $it", color = dColor, fontSize = 9.sp, maxLines = 1) }
                 } else Column {
-                    Text("$shown", color = Cream, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+                    Text("$shown", color = Cream, fontWeight = FontWeight.Black, fontSize = 14.sp, maxLines = 1)
                     Text(dText ?: n, color = dColor, fontSize = 9.sp, maxLines = 1)
                 }
             }
@@ -229,13 +279,13 @@ private fun ResourceBar(res: JsonElement?, turnNo: Int, compact: Boolean) {
 
 @Composable
 private fun Tabs(tab: Int, incoming: Int, onTab: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 12.dp, vertical = 4.dp).clip(RoundedCornerShape(12.dp)).background(PanelHigh).padding(3.dp)) {
+    Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 12.dp, vertical = 4.dp).clip(RoundedCornerShape(50)).background(Tint).padding(3.dp)) {
         listOf("Harita", "Diplomasi", "Raporlar").forEachIndexed { i, t ->
-            Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (tab == i) Amber else Color.Transparent).clickable { onTab(i) }
+            Box(Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (tab == i) LoopaPalette.Lavender else Color.Transparent).clickable { onTab(i) }
                 .padding(vertical = 6.dp).testTag("kr_tab_$i"), contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(t, color = if (tab == i) Color(0xFF241D12) else Cream, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    if (i == 1 && incoming > 0) Box(Modifier.padding(start = 5.dp).size(16.dp).clip(CircleShape).background(Bad), contentAlignment = Alignment.Center) {
+                    Text(t, color = if (tab == i) InkOn else Soft, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                    if (i == 1 && incoming > 0) Box(Modifier.padding(start = 5.dp).size(16.dp).clip(CircleShape).background(LoopaPalette.PeachDeep), contentAlignment = Alignment.Center) {
                         Text("$incoming", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     }
                 }
@@ -256,14 +306,14 @@ private fun MapControls(cam: KrCamera, onCapital: () -> Unit, modifier: Modifier
 
 @Composable
 private fun RoundBtn(label: String, tag: String, onClick: () -> Unit) {
-    Box(Modifier.size(38.dp).clip(CircleShape).background(Panel.copy(alpha = 0.85f)).border(1.dp, Rim, CircleShape).clickable(onClick = onClick).testTag(tag),
-        contentAlignment = Alignment.Center) { Text(label, color = Cream, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+    Box(Modifier.size(40.dp).krCard(CircleShape, PanelHigh.copy(alpha = 0.94f)).clickable(onClick = onClick).testTag(tag),
+        contentAlignment = Alignment.Center) { Text(label, color = Amber, fontSize = 19.sp, fontWeight = FontWeight.Black) }
 }
 
 @Composable
 private fun Hint(text: String, modifier: Modifier) {
-    Text(text, color = Color(0xFF241D12), fontWeight = FontWeight.Bold, fontSize = 13.sp,
-        modifier = modifier.padding(top = 8.dp).clip(RoundedCornerShape(20.dp)).background(Amber).padding(horizontal = 14.dp, vertical = 6.dp).testTag("kr_hint"))
+    Text(text, color = InkOn, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+        modifier = modifier.padding(top = 10.dp).krCard(RoundedCornerShape(50), LoopaPalette.Butter, LoopaPalette.ButterDeep.copy(alpha = 0.6f)).padding(horizontal = 16.dp, vertical = 7.dp).testTag("kr_hint"))
 }
 
 /** "TUR 8" for a moment when a new turn starts (not with reduced motion). */
@@ -276,8 +326,8 @@ private fun TurnBanner(turnNo: Int, modifier: Modifier) {
         if (turnNo != shownFor && !reduced) { shownFor = turnNo; visible = true; kotlinx.coroutines.delay(1_400); visible = false } else shownFor = turnNo
     }
     AnimatedVisibility(visible, modifier, enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut()) {
-        Text("TUR $turnNo", color = Cream, fontWeight = FontWeight.Black, fontSize = 34.sp, letterSpacing = 4.sp,
-            modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 24.dp, vertical = 10.dp).testTag("kr_turn_banner"))
+        Text("TUR $turnNo", color = InkOn, fontWeight = FontWeight.Black, fontSize = 34.sp, letterSpacing = 4.sp,
+            modifier = Modifier.krCard(RoundedCornerShape(24.dp), Color.White.copy(alpha = 0.92f), LoopaPalette.Lavender).padding(horizontal = 28.dp, vertical = 10.dp).testTag("kr_turn_banner"))
     }
 }
 
@@ -295,14 +345,14 @@ private fun Dock(selected: Int?, tiles: Map<Int, KrTile>, map: List<List<Int>>, 
     val t = tiles[selected]
     val qr = map.getOrNull(selected)
     val bal = me / "balance"
-    Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(PanelHigh, Panel))).border(1.dp, Rim, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+    Column(Modifier.fillMaxWidth().krCard(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
         .heightIn(max = if (compact) 190.dp else 300.dp).verticalScroll(rememberScrollState()).padding(if (compact) 8.dp else 12.dp).animateContentSize().testTag("kr_tile_info"),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Canvas(Modifier.size(52.dp, 44.dp)) {
                 val s = size.width * 0.42f; val c = Offset(size.width / 2, size.height * 0.42f)
                 if (t == null) prism(c, s, 0.12f, KrArt.FogTop, KrArt.FogSide)
-                else { val tr = KrArt.terrain(t.t); prism(c, s, tr.height, tr.top, tr.side, if (t.owner > 0) kColor(t.owner).copy(alpha = 0.25f) else null) }
+                else { val tr = KrArt.terrain(t.t); prism(c, s, tr.height, tr.top, tr.side, if (t.owner > 0) kColor(t.owner).copy(alpha = 0.08f) else null, band = if (t.owner > 0) kColor(t.owner) else null) }
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
@@ -334,7 +384,7 @@ private fun Dock(selected: Int?, tiles: Map<Int, KrTile>, map: List<List<Int>>, 
         val available = t.troops - queuedOut
         if (mine && !sending) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (available > 0) Action("Asker gönder", Amber, "kr_send", onSend)
+                if (available > 0) Action("Asker gönder", LoopaPalette.Lavender, "kr_send", onClick = onSend)
             }
             if (t.building == null && !t.capital && builds.none { it.tile == selected }) {
                 val stock = resNames.associate { (k, _) -> k to ((me / "res" / k).i() ?: 0) }.toMutableMap()
@@ -358,27 +408,37 @@ private fun Dock(selected: Int?, tiles: Map<Int, KrTile>, map: List<List<Int>>, 
 
 @Composable
 private fun Fact(icon: String?, text: String) {
-    Row(Modifier.clip(RoundedCornerShape(20.dp)).background(Panel).border(1.dp, Rim, RoundedCornerShape(20.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
+    Row(Modifier.clip(RoundedCornerShape(50)).background(Tint).padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Canvas(Modifier.size(16.dp)) { resourceIcon(icon, Offset.Zero, size.minDimension) }; Spacer(Modifier.width(4.dp)) }
         Text(text, color = Cream, fontSize = 12.sp)
     }
 }
 
+/** Primary action: the shared LOOPA button (pastel fill, dark ink, pressed depth). */
 @Composable
-private fun Action(text: String, color: Color, tag: String, onClick: () -> Unit) {
-    Box(Modifier.clip(RoundedCornerShape(12.dp)).background(color).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp).testTag(tag)) {
-        Text(text, color = Color(0xFF241D12), fontWeight = FontWeight.Black, fontSize = 13.sp)
-    }
+private fun Action(text: String, color: Color, tag: String, content: Color = InkOn, onClick: () -> Unit) {
+    LoopaButton(text, onClick, Modifier.testTag(tag), color = color, contentColor = content, compact = true)
+}
+
+@Composable
+private fun InfoPill(text: String) {
+    Text(text, color = Cream, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(Tint).padding(horizontal = 12.dp, vertical = 5.dp))
+}
+
+private fun offerHue(t: String?) = when (t) {
+    "nap" -> LoopaPalette.Sky; "alliance" -> LoopaPalette.Mint; "trade" -> LoopaPalette.Butter
+    "joint_enemy" -> LoopaPalette.Peach; else -> LoopaPalette.Lavender
 }
 
 @Composable
 private fun BuildOption(type: String, def: JsonElement?, onClick: () -> Unit) {
-    Column(Modifier.width(110.dp).clip(RoundedCornerShape(12.dp)).background(Panel).border(1.dp, Rim, RoundedCornerShape(12.dp)).clickable(onClick = onClick)
+    Column(Modifier.width(112.dp).krCard(RoundedCornerShape(18.dp), Tint).clickable(onClick = onClick)
         .padding(8.dp).testTag("kr_build_$type"), horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(Modifier.size(44.dp, 36.dp)) {
             val c = Offset(size.width / 2, size.height * 0.75f); val s = size.width * 0.6f
-            when (type) { "barracks" -> with(KrArt) { barracks(c, s, Color(0xFF8E74D6)) }; "market" -> with(KrArt) { market(c, s) }; else -> with(KrArt) { barn(c, s) } }
+            when (type) { "barracks" -> with(KrArt) { barracks(c, s, LoopaPalette.LavenderDeep) }; "market" -> with(KrArt) { market(c, s) }; else -> with(KrArt) { barn(c, s) } }
         }
         Text(buildingName(type), color = Cream, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         Text(when (type) {
@@ -408,9 +468,10 @@ private fun MoveComposer(from: Int, target: Int?, available: Int, map: List<List
         dirs.forEach { (dq, dr, name) ->
             val i = index[q + dq to r + dr] ?: return@forEach
             val t = tiles[i]
-            Box(Modifier.clip(RoundedCornerShape(10.dp)).background(if (target == i) Amber else Panel).border(1.dp, Rim, RoundedCornerShape(10.dp))
-                .clickable { onPickTarget(i) }.padding(horizontal = 8.dp, vertical = 5.dp).testTag("kr_neighbour_$i")) {
-                Text("$name · ${t?.let { terrainName(it.t) } ?: "Sis"}", color = if (target == i) Color(0xFF241D12) else Cream, fontSize = 11.sp)
+            Box(Modifier.clip(RoundedCornerShape(50)).background(if (target == i) LoopaPalette.Peach else Tint)
+                .border(1.dp, if (target == i) LoopaPalette.PeachDeep else Rim, RoundedCornerShape(50))
+                .clickable { onPickTarget(i) }.padding(horizontal = 10.dp, vertical = 6.dp).testTag("kr_neighbour_$i")) {
+                Text("$name · ${t?.let { terrainName(it.t) } ?: "Sis"}", color = if (target == i) InkOn else Cream, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -422,8 +483,8 @@ private fun MoveComposer(from: Int, target: Int?, available: Int, map: List<List
         Text("${count.toInt()} asker → ${tiles[target]?.let { terrainName(it.t) + if (it.owner > 0) " (${kName(it.owner)})" else "" } ?: "sisli bölge"} · mesafe $d · " +
             if (turns == 1) "bu tur sonunda varır" else "$turns tur sonunda varır", color = Cream, fontSize = 12.sp, modifier = Modifier.testTag("kr_move_summary"))
         if (available > 1) Slider(count, { count = it }, valueRange = 1f..available.toFloat(), steps = (available - 2).coerceAtLeast(0),
-            colors = SliderDefaults.colors(thumbColor = Amber, activeTrackColor = Amber))
-        Action("Emre ekle", Good, "kr_add_move") { onAdd(Move(from, target, count.toInt())) }
+            colors = SliderDefaults.colors(thumbColor = LoopaPalette.LavenderDeep, activeTrackColor = LoopaPalette.Lavender, inactiveTrackColor = Tint))
+        Action("Emre ekle", LoopaPalette.Mint, "kr_add_move") { onAdd(Move(from, target, count.toInt())) }
     }
 }
 
@@ -433,7 +494,7 @@ private fun OrdersBar(moves: MutableList<Move>, builds: MutableList<Build>, sync
                       kingdoms: List<JsonElement>, onFocus: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val n = moves.size + builds.size
-    Column(Modifier.fillMaxWidth().background(Color(0xFF141826)).padding(horizontal = 12.dp, vertical = 8.dp).animateContentSize().testTag("kr_orders")) {
+    Column(Modifier.fillMaxWidth().background(PanelHigh).border(1.dp, Rim, RoundedCornerShape(topStart = 0.dp)).padding(horizontal = 12.dp, vertical = 8.dp).animateContentSize().testTag("kr_orders")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { open = !open }.padding(vertical = 6.dp).testTag("kr_orders_toggle"),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -442,23 +503,19 @@ private fun OrdersBar(moves: MutableList<Move>, builds: MutableList<Build>, sync
                 Text("Emirler ($n)", color = Cream, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, softWrap = false)
                 if (n > 0) {
                     Spacer(Modifier.width(6.dp))
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(if (synced) Good else Amber))
-                    Text(if (synced) " kaydedildi" else " gönderilmedi", color = if (synced) Good else Amber, fontSize = 11.sp,
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(if (synced) LoopaPalette.MintDeep else LoopaPalette.PeachDeep))
+                    Text(if (synced) " kaydedildi" else " gönderilmedi", color = if (synced) Good else Bad, fontSize = 11.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 }
             }
-            Box(Modifier.clip(RoundedCornerShape(12.dp)).background(if (synced) PanelHigh else Good)
-                .clickable(enabled = ui.busy == null && !synced) {
-                    ui.act("orders", payload(
-                        "moves" to jsonList(moves.map { payload("from" to it.from, "to" to it.to, "n" to it.n) }),
-                        "builds" to jsonList(builds.map { payload("tile" to it.tile, "type" to it.type) }))) { ui.flash("Emirler kaydedildi") }
-                }.padding(horizontal = 12.dp, vertical = 9.dp).testTag("kr_submit")) {
-                Text(if (synced) "Gönderildi ✓" else "Emirleri gönder", color = if (synced) Soft else Color(0xFF14261A), fontWeight = FontWeight.Black, fontSize = 12.sp)
+            BarButton(if (synced) "Gönderildi ✓" else "Emirleri gönder", if (synced) Tint else LoopaPalette.Mint, "kr_submit", enabled = ui.busy == null && !synced) {
+                ui.act("orders", payload(
+                    "moves" to jsonList(moves.map { payload("from" to it.from, "to" to it.to, "n" to it.n) }),
+                    "builds" to jsonList(builds.map { payload("tile" to it.tile, "type" to it.type) }))) { ui.flash("Emirler kaydedildi") }
             }
             Spacer(Modifier.width(6.dp))
-            Box(Modifier.clip(RoundedCornerShape(12.dp)).background(if (ready) Amber else PanelHigh).border(1.dp, Amber, RoundedCornerShape(12.dp))
-                .clickable(enabled = ui.busy == null) { ui.act("ready", payload("ready" to !ready)) {} }.padding(horizontal = 12.dp, vertical = 9.dp).testTag("kr_ready")) {
-                Text(if (ready) "Hazır ✓" else "Hazırım", color = if (ready) Color(0xFF241D12) else Amber, fontWeight = FontWeight.Black, fontSize = 12.sp)
+            BarButton(if (ready) "Hazır ✓" else "Hazırım", if (ready) LoopaPalette.Butter else LoopaPalette.Lavender, "kr_ready", enabled = ui.busy == null) {
+                ui.act("ready", payload("ready" to !ready)) {}
             }
         }
         if (open) {
@@ -477,9 +534,20 @@ private fun OrdersBar(moves: MutableList<Move>, builds: MutableList<Build>, sync
     }
 }
 
+/** Compact pill button in the LOOPA style for the orders bar (fits narrow phones). */
+@Composable
+private fun BarButton(text: String, color: Color, tag: String, enabled: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(Modifier.shadow(if (enabled && !LocalKr.current.dark) 3.dp else 0.dp, shape, ambientColor = com.loopa.core.ui.components.darken(color), spotColor = com.loopa.core.ui.components.darken(color))
+        .clip(shape).background(color).border(1.5.dp, com.loopa.core.ui.components.darken(color).copy(alpha = 0.35f), shape)
+        .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp).testTag(tag), contentAlignment = Alignment.Center) {
+        Text(text, color = if (color == Tint) Soft else InkOn, fontWeight = FontWeight.Black, fontSize = 12.sp, maxLines = 1, softWrap = false)
+    }
+}
+
 @Composable
 private fun OrderCard(icon: String, title: String, sub: String, tag: String, onFocus: () -> Unit, onDelete: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(PanelHigh).border(1.dp, Rim, RoundedCornerShape(12.dp)).clickable(onClick = onFocus)
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Tint).clickable(onClick = onFocus)
         .padding(horizontal = 10.dp, vertical = 6.dp).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
         Text(icon, fontSize = 16.sp)
         Spacer(Modifier.width(8.dp))
@@ -487,7 +555,7 @@ private fun OrderCard(icon: String, title: String, sub: String, tag: String, onF
             Text(title, color = Cream, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             Text(sub, color = Soft, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Box(Modifier.size(30.dp).clip(CircleShape).background(Bad.copy(alpha = 0.25f)).clickable(onClick = onDelete).testTag("${tag}_delete"), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(30.dp).clip(CircleShape).background(LoopaPalette.Peach.copy(alpha = 0.45f)).clickable(onClick = onDelete).testTag("${tag}_delete"), contentAlignment = Alignment.Center) {
             Text("✕", color = Bad, fontWeight = FontWeight.Black)
         }
     }
@@ -533,16 +601,17 @@ private fun Diplomacy(ctx: ModeContext, p: JsonObject, me: JsonElement?, myK: In
                 }
                 if (!isMe && !dead && isEmpty()) add("Nötr" to Soft)
             }
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Brush.horizontalGradient(listOf(kColor(id).copy(alpha = 0.22f), PanelHigh)))
-                .border(1.dp, if (isMe) kColor(id) else Rim, RoundedCornerShape(16.dp)).padding(10.dp).testTag("kr_kingdom_$id"), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().krCard(CardShape, rim = if (isMe) kColor(id).copy(alpha = 0.7f) else Rim)
+                .background(Brush.horizontalGradient(listOf(kColor(id).copy(alpha = 0.12f), Color.Transparent)))
+                .padding(12.dp).testTag("kr_kingdom_$id"), verticalAlignment = Alignment.CenterVertically) {
                 Canvas(Modifier.size(36.dp, 42.dp)) { crest(Offset.Zero, size.width, kColor(id), id) }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(kName(id) + if (isMe) " (sen)" else "", color = Cream, fontWeight = FontWeight.Black, fontSize = 15.sp)
                     Text(ctx.name((k / "user").s()) + if ((k / "ready").b() && !dead) " · hazır" else "", color = Soft, fontSize = 11.sp)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 3.dp)) {
-                        rel.forEach { (t, c) -> Text(t, color = c, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Panel).padding(horizontal = 6.dp, vertical = 2.dp)) }
+                        rel.forEach { (t, c) -> Text(t, color = c, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(c.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 3.dp)) }
                     }
                 }
                 if (canAct && !isMe && !dead) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -581,8 +650,8 @@ private fun SectionLabel(t: String) { Text(t.uppercase(), color = Amber, fontWei
 
 @Composable
 private fun SmallBtn(text: String, tag: String, onClick: () -> Unit) {
-    Box(Modifier.clip(RoundedCornerShape(10.dp)).background(Panel).border(1.dp, Rim, RoundedCornerShape(10.dp)).clickable(onClick = onClick)
-        .padding(horizontal = 10.dp, vertical = 6.dp).testTag(tag)) { Text(text, color = Cream, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+    Box(Modifier.clip(RoundedCornerShape(50)).background(Tint).border(1.dp, Rim, RoundedCornerShape(50)).clickable(onClick = onClick)
+        .padding(horizontal = 12.dp, vertical = 7.dp).testTag(tag)) { Text(text, color = Amber, fontSize = 11.sp, fontWeight = FontWeight.Black) }
 }
 
 private fun statusName(s: String?) = when (s) { "pending" -> "bekliyor"; "accepted" -> "kabul edildi"; "rejected" -> "reddedildi"; "failed" -> "gerçekleşmedi"; "cancelled" -> "geri çekildi"; else -> s.orEmpty() }
@@ -593,38 +662,40 @@ private fun OfferCard(o: JsonElement, myK: Int?, kName: (Int?) -> String, kColor
     val other = if (incoming) (o / "from").i() else (o / "to").i()
     val pending = (o / "status").s() == "pending"
     val type = (o / "type").s()
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (incoming && pending) Color(0xFF3A3222) else PanelHigh)
-        .border(1.dp, if (incoming && pending) Amber else Rim, RoundedCornerShape(16.dp)).padding(12.dp).testTag("kr_offer_card_${(o / "id").i()}"),
-        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val hue = offerHue(type)
+    Column(Modifier.fillMaxWidth().krCard(CardShape, rim = if (incoming && pending) hue else Rim)
+        .background(Brush.verticalGradient(listOf(hue.copy(alpha = if (incoming && pending) 0.26f else 0.12f), Color.Transparent)))
+        .padding(14.dp).testTag("kr_offer_card_${(o / "id").i()}"),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(offerIcon(type), fontSize = 20.sp)
-            Spacer(Modifier.width(8.dp))
+            Box(Modifier.size(38.dp).clip(CircleShape).background(hue.copy(alpha = 0.55f)), contentAlignment = Alignment.Center) { Text(offerIcon(type), fontSize = 18.sp) }
+            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(offerName(type), color = Cream, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text(offerName(type), color = Cream, fontWeight = FontWeight.Black, fontSize = 15.sp)
                 Text(if (incoming) "${kName(other)} sana teklif ediyor" else "${kName(other)} krallığına · ${statusName((o / "status").s())}", color = Soft, fontSize = 11.sp)
             }
-            Canvas(Modifier.size(22.dp, 26.dp)) { crest(Offset.Zero, size.width, kColor(other), other ?: 1) }
+            Canvas(Modifier.size(26.dp, 31.dp)) { crest(Offset.Zero, size.width, kColor(other), other ?: 1) }
         }
         when (type) {
             "trade" -> {
                 // what each side gives, side by side; seen from this player
                 val theyGive = if (incoming) o / "give" else o / "get"
                 val iGive = if (incoming) o / "get" else o / "give"
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TradeSide("Sen alırsın", theyGive, Good, Modifier.weight(1f))
-                    TradeSide("Sen verirsin", iGive, Bad, Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TradeSide("Sen alırsın", theyGive, LoopaPalette.Mint, Good, Modifier.weight(1f))
+                    Text("⇄", color = Soft, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    TradeSide("Sen verirsin", iGive, LoopaPalette.Peach, Bad, Modifier.weight(1f))
                 }
             }
-            "nap", "peace" -> Text("Süre: ${(o / "turns").i()} tur", color = Cream, fontSize = 12.sp)
-            "joint_enemy" -> Text("Ortak düşman: ${kName((o / "target").i())} · ${(o / "turns").i()} tur", color = Cream, fontSize = 12.sp)
+            "nap", "peace" -> InfoPill("⏳ ${(o / "turns").i()} tur sürer")
+            "joint_enemy" -> InfoPill("🎯 ${kName((o / "target").i())} · ${(o / "turns").i()} tur")
             else -> Text(offerAbout(type ?: ""), color = Soft, fontSize = 11.sp)
         }
         if (canAct && pending) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (incoming) {
-                Action("Kabul et", Good, "kr_accept") { ui.act("respond", payload("id" to (o / "id").i(), "accept" to true)) {} }
-                Box(Modifier.clip(RoundedCornerShape(12.dp)).background(Panel).border(1.dp, Bad, RoundedCornerShape(12.dp))
-                    .clickable { ui.act("respond", payload("id" to (o / "id").i(), "accept" to false)) {} }.padding(horizontal = 16.dp, vertical = 10.dp).testTag("kr_reject")) {
-                    Text("Reddet", color = Bad, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                Action("Kabul et", LoopaPalette.Mint, "kr_accept") { ui.act("respond", payload("id" to (o / "id").i(), "accept" to true)) {} }
+                Action("Reddet", if (LocalKr.current.dark) LoopaPalette.NightCardHigh else Color.White, "kr_reject", content = Bad) {
+                    ui.act("respond", payload("id" to (o / "id").i(), "accept" to false)) {}
                 }
             } else SmallBtn("Geri çek", "kr_cancel_offer") { ui.act("cancel_offer", payload("id" to (o / "id").i())) {} }
         }
@@ -632,9 +703,9 @@ private fun OfferCard(o: JsonElement, myK: Int?, kName: (Int?) -> String, kColor
 }
 
 @Composable
-private fun TradeSide(title: String, bundle: JsonElement?, accent: Color, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(12.dp)).background(Panel).border(1.dp, accent.copy(alpha = 0.6f), RoundedCornerShape(12.dp)).padding(8.dp)) {
-        Text(title, color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+private fun TradeSide(title: String, bundle: JsonElement?, fill: Color, accent: Color, modifier: Modifier) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(fill.copy(alpha = if (LocalKr.current.dark) 0.16f else 0.3f)).padding(10.dp)) {
+        Text(title, color = accent, fontWeight = FontWeight.Black, fontSize = 11.sp)
         val items = bundle.o().entries.filter { (it.value.i() ?: 0) > 0 }
         if (items.isEmpty()) Text("—", color = Soft, fontSize = 12.sp)
         items.forEach { (k, v) ->
@@ -650,15 +721,15 @@ private fun TradeSide(title: String, bundle: JsonElement?, accent: Color, modifi
 @Composable
 private fun Letter(l: JsonElement, kName: (Int?) -> String, kColor: (Int?) -> Color, incoming: Boolean) {
     val who = if (incoming) (l / "from").i() else (l / "to").ints().firstOrNull()
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFEDE2C8)).border(1.dp, Color(0xFFC9B68A), RoundedCornerShape(12.dp)).padding(10.dp)
+    Column(Modifier.fillMaxWidth().krCard(RoundedCornerShape(18.dp), Color(0xFFFFF8EA), LoopaPalette.Butter).padding(12.dp)
         .testTag("kr_letter_card")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(10.dp).clip(CircleShape).background(kColor(who)))
             Spacer(Modifier.width(6.dp))
-            Text((if (incoming) "${kName(who)} → sen" else "sen → ${kName(who)}") + " · tur ${(l / "turn").i()}", color = Color(0xFF5A4A30), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text((if (incoming) "${kName(who)} → sen" else "sen → ${kName(who)}") + " · tur ${(l / "turn").i()}", color = Color(0xFF7A6A55), fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
-        Text((l / "subject").s().orEmpty().ifEmpty { "(konusuz)" }, color = Color(0xFF2E2416), fontWeight = FontWeight.Black, fontSize = 14.sp)
-        Text((l / "body").s().orEmpty(), color = Color(0xFF2E2416), fontSize = 13.sp)
+        Text((l / "subject").s().orEmpty().ifEmpty { "(konusuz)" }, color = InkOn, fontWeight = FontWeight.Black, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        Text((l / "body").s().orEmpty(), color = InkOn, fontSize = 13.sp)
     }
 }
 
@@ -667,25 +738,26 @@ private fun Letter(l: JsonElement, kName: (Int?) -> String, kColor: (Int?) -> Co
 private fun LetterComposer(to: String, color: Color, k: Int, onDismiss: () -> Unit, onSend: (String, String) -> Unit) {
     var subj by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
-    val ink = Color(0xFF2E2416)
-    val fieldColors = OutlinedTextFieldDefaults.colors(focusedTextColor = ink, unfocusedTextColor = ink, focusedBorderColor = Color(0xFF8A6A3A),
-        unfocusedBorderColor = Color(0xFFB9A57E), focusedLabelColor = Color(0xFF6A5230), unfocusedLabelColor = Color(0xFF7A6A4A), cursorColor = ink)
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFFF3E7CF)).border(2.dp, color.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
+    val ink = InkOn
+    val fieldColors = OutlinedTextFieldDefaults.colors(focusedTextColor = ink, unfocusedTextColor = ink, focusedBorderColor = LoopaPalette.LavenderDeep,
+        unfocusedBorderColor = LoopaPalette.Lavender, focusedLabelColor = LoopaPalette.LavenderDeep, unfocusedLabelColor = Color(0xFF7A6A55), cursorColor = ink,
+        focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
+    Column(Modifier.fillMaxWidth().krCard(CardShape, Color(0xFFFFF8EA), color.copy(alpha = 0.7f))
         .padding(12.dp).testTag("kr_letter_composer"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Canvas(Modifier.size(22.dp, 26.dp)) { crest(Offset.Zero, size.width, color, k) }
             Spacer(Modifier.width(8.dp))
             Text("Mektup: $to", color = ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
         }
-        OutlinedTextField(subj, { subj = it.take(60) }, label = { Text("Konu") }, singleLine = true, colors = fieldColors,
+        OutlinedTextField(subj, { subj = it.take(60) }, label = { Text("Konu") }, singleLine = true, colors = fieldColors, shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth().testTag("kr_letter_subject"))
-        OutlinedTextField(body, { body = it.take(600) }, label = { Text("Mektup") }, minLines = 3, colors = fieldColors,
+        OutlinedTextField(body, { body = it.take(600) }, label = { Text("Mektup") }, minLines = 3, colors = fieldColors, shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth().testTag("kr_letter_body"))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${body.length}/600 · yalnızca alıcı okur", color = Color(0xFF7A6A4A), fontSize = 11.sp, modifier = Modifier.weight(1f))
-            TextButton(onDismiss) { Text("Vazgeç", color = Color(0xFF7A6A4A)) }
-            TextButton({ onSend(subj, body) }, enabled = body.isNotBlank(), modifier = Modifier.testTag("kr_letter_send")) { Text("Mührü bas ve gönder", color = if (body.isNotBlank()) Color(0xFF8A3A1E) else Color(0xFFB9A57E), fontWeight = FontWeight.Bold) }
+            Text("${body.length}/600 · yalnızca alıcı okur", color = Color(0xFF7A6A55), fontSize = 11.sp, modifier = Modifier.weight(1f))
+            TextButton(onDismiss) { Text("Vazgeç", color = Color(0xFF7A6A55), fontWeight = FontWeight.Bold) }
         }
+        LoopaButton("Mührü bas ve gönder", { onSend(subj, body) }, Modifier.fillMaxWidth().testTag("kr_letter_send"), color = LoopaPalette.Lavender, enabled = body.isNotBlank(), compact = true)
     }
 }
 
@@ -699,16 +771,17 @@ private fun OfferDialog(to: Int, others: List<Int>, kName: (Int?) -> String, kCo
     var target by remember { mutableStateOf(others.firstOrNull()) }
     val give = remember { mutableStateMapOf<String, Int>() }
     val get = remember { mutableStateMapOf<String, Int>() }
-    AlertDialog(onDismissRequest = onDismiss, containerColor = Panel,
+    AlertDialog(onDismissRequest = onDismiss, containerColor = PanelHigh, shape = RoundedCornerShape(28.dp),
         title = { Text("Teklif: ${kName(to)}", color = Cream, fontWeight = FontWeight.Black) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("nap", "alliance", "trade", "joint_enemy", "peace").forEach { t ->
-                        Column(Modifier.width(76.dp).clip(RoundedCornerShape(12.dp)).background(if (type == t) Amber else PanelHigh)
+                        Column(Modifier.width(76.dp).clip(RoundedCornerShape(18.dp)).background(if (type == t) offerHue(t) else Tint)
+                            .border(if (type == t) 2.dp else 0.dp, if (type == t) com.loopa.core.ui.components.darken(offerHue(t)) else Color.Transparent, RoundedCornerShape(18.dp))
                             .clickable { type = t; turns = if (t == "peace") 10 else 5 }.padding(6.dp).testTag("kr_offer_type_$t"), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(offerIcon(t), fontSize = 20.sp)
-                            Text(offerName(t), color = if (type == t) Color(0xFF241D12) else Cream, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                            Text(offerName(t), color = if (type == t) InkOn else Cream, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                         }
                     }
                 }
@@ -740,7 +813,7 @@ private fun OfferDialog(to: Int, others: List<Int>, kName: (Int?) -> String, kCo
                     pl += "get" to payload(*resNames.map { (k, _) -> k to (get[k] ?: 0) }.toTypedArray())
                 }
                 onSend(pl)
-            }, enabled = ok, modifier = Modifier.testTag("kr_offer_send")) { Text("Teklifi gönder", color = Amber, fontWeight = FontWeight.Black) }
+            }, enabled = ok, modifier = Modifier.testTag("kr_offer_send")) { Text("Teklifi gönder", color = Amber, fontWeight = FontWeight.Black, fontSize = 15.sp) }
         },
         dismissButton = { TextButton(onDismiss) { Text("Vazgeç", color = Soft) } })
 }
@@ -755,7 +828,7 @@ private fun Stepper(label: String, value: String, tag: String, onMinus: () -> Un
 
 @Composable
 private fun ResStepper(k: String, value: Int, tag: String, max: Int, onChange: (Int) -> Unit) {
-    Row(Modifier.clip(RoundedCornerShape(10.dp)).background(PanelHigh).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.clip(RoundedCornerShape(50)).background(Tint).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
         Canvas(Modifier.size(16.dp)) { resourceIcon(k, Offset.Zero, size.minDimension) }
         StepBtn("−", "${tag}_minus") { onChange((value - 5).coerceAtLeast(0)) }
         Text("$value", color = Cream, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
@@ -765,7 +838,7 @@ private fun ResStepper(k: String, value: Int, tag: String, max: Int, onChange: (
 
 @Composable
 private fun StepBtn(t: String, tag: String, onClick: () -> Unit) {
-    Box(Modifier.size(26.dp).clip(CircleShape).background(Panel).clickable(onClick = onClick).testTag(tag), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(28.dp).clip(CircleShape).background(PanelHigh).border(1.dp, Rim, CircleShape).clickable(onClick = onClick).testTag(tag), contentAlignment = Alignment.Center) {
         Text(t, color = Amber, fontWeight = FontWeight.Black)
     }
 }
@@ -778,7 +851,7 @@ private fun RenameBox(ui: ModeUi, kingdoms: List<JsonElement>, myK: Int?) {
         "#7CB342", "#F4511E", "#5E35B1", "#00897B", "#C0CA33", "#546E7A", "#FFB300", "#26A69A", "#EC407A", "#8D6E63")
     val taken = kingdoms.filter { (it / "k").i() != myK }.mapNotNull { (it / "color").s() }.toSet()
     var color by remember { mutableStateOf(kingdoms.firstOrNull { (it / "k").i() == myK }?.let { (it / "color").s() }) }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(PanelHigh).border(1.dp, Amber, RoundedCornerShape(16.dp)).padding(12.dp),
+    Column(Modifier.fillMaxWidth().krCard(CardShape, rim = LoopaPalette.Lavender).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Canvas(Modifier.size(34.dp, 40.dp)) { crest(Offset.Zero, size.width, parseColor(color), myK ?: 1) }
@@ -790,14 +863,16 @@ private fun RenameBox(ui: ModeUi, kingdoms: List<JsonElement>, myK: Int?) {
             palette.forEach { c ->
                 val free = c !in taken
                 Box(Modifier.size(26.dp).clip(CircleShape).background(parseColor(c).copy(alpha = if (free) 1f else 0.2f))
-                    .border(if (c == color) 3.dp else 0.dp, Cream, CircleShape).clickable(enabled = free) { color = c })
+                    .border(if (c == color) 3.dp else 0.dp, if (LocalKr.current.dark) Color.White else LoopaPalette.Ink, CircleShape).clickable(enabled = free) { color = c })
             }
         }
-        Action("Kaydet", Amber, "kr_rename_save") { if (name.trim().length >= 2) ui.act("rename", payload("name" to name.trim(), "color" to color)) { ui.flash("Krallık güncellendi") } }
+        Action("Kaydet", LoopaPalette.Lavender, "kr_rename_save") { if (name.trim().length >= 2) ui.act("rename", payload("name" to name.trim(), "color" to color)) { ui.flash("Krallık güncellendi") } }
     }
 }
 
 // ====================================================================== journal (reports)
+private fun lerpC(a: Color, b: Color, f: Float) = androidx.compose.ui.graphics.lerp(a, b, f)
+
 private data class Entry(val turn: Int, val icon: String, val text: String, val tone: Color, val tile: Int?, val big: Boolean)
 
 @Composable
@@ -810,29 +885,29 @@ private fun Journal(me: JsonElement?, p: JsonObject, myK: Int?, kName: (Int?) ->
                     val att = (e / "att").i(); val def = (e / "def").i(); val won = (e / "won").b()
                     val iWin = (att == myK && won) || (def == myK && !won)
                     Entry(t, "⚔", "${kName(att)} (${(e / "att_n").i()}) ⟶ ${if (def == 0) "Tarafsız" else kName(def)} (${(e / "def_n").i()}) · " +
-                        (if (won) "bölge el değiştirdi" else "savunma tuttu") + " · ${(e / "left").i()} asker kaldı", if (iWin) Good else Bad, tile, true)
+                        (if (won) "bölge el değiştirdi" else "savunma tuttu") + " · ${(e / "left").i()} asker kaldı", if (iWin) LoopaPalette.MintDeep else LoopaPalette.PeachDeep, tile, true)
                 }
-                "arrived" -> Entry(t, "➜", "${(e / "n").i()} asker bölge #$tile'e ulaştı", Soft, tile, false)
-                "built" -> Entry(t, "🔨", "${buildingName((e / "type").s())} tamamlandı (#$tile)", Good, tile, false)
-                "build_failed" -> Entry(t, "🔨", "${buildingName((e / "type").s())} yapılamadı: ${if ((e / "why").s() == "RESOURCES") "kaynak yetersiz" else "bölge uygun değil"}", Bad, tile, false)
-                "no_food" -> Entry(t, "🌾", "Kışla yiyecek yetmediği için asker üretemedi (#$tile)", Bad, tile, false)
-                "offer" -> Entry(t, "📜", "${kName((e / "from").i())} sana ${offerName((e / "type").s())} teklif etti", Amber, null, false)
-                "offer_accepted" -> Entry(t, "🤝", "${kName((e / "by").i())} ${offerName((e / "type").s())} teklifini kabul etti", Good, null, true)
-                "offer_rejected" -> Entry(t, "✗", "${kName((e / "by").i())} ${offerName((e / "type").s())} teklifini reddetti", Bad, null, false)
-                "trade_failed" -> Entry(t, "⚖", "Ticaret gerçekleşmedi: kaynaklar yetmedi", Bad, null, false)
-                "alliance_failed" -> Entry(t, "🤝", "İttifak kurulamadı (en fazla 3 krallık)", Bad, null, false)
-                "eliminated" -> Entry(t, "☠", "Başkentin düştü", Bad, null, true)
+                "arrived" -> Entry(t, "➜", "${(e / "n").i()} asker bölge #$tile'e ulaştı", LoopaPalette.Sky, tile, false)
+                "built" -> Entry(t, "🔨", "${buildingName((e / "type").s())} tamamlandı (#$tile)", LoopaPalette.MintDeep, tile, false)
+                "build_failed" -> Entry(t, "🔨", "${buildingName((e / "type").s())} yapılamadı: ${if ((e / "why").s() == "RESOURCES") "kaynak yetersiz" else "bölge uygun değil"}", LoopaPalette.PeachDeep, tile, false)
+                "no_food" -> Entry(t, "🌾", "Kışla yiyecek yetmediği için asker üretemedi (#$tile)", LoopaPalette.PeachDeep, tile, false)
+                "offer" -> Entry(t, "📜", "${kName((e / "from").i())} sana ${offerName((e / "type").s())} teklif etti", LoopaPalette.ButterDeep, null, false)
+                "offer_accepted" -> Entry(t, "🤝", "${kName((e / "by").i())} ${offerName((e / "type").s())} teklifini kabul etti", LoopaPalette.MintDeep, null, true)
+                "offer_rejected" -> Entry(t, "✗", "${kName((e / "by").i())} ${offerName((e / "type").s())} teklifini reddetti", LoopaPalette.PeachDeep, null, false)
+                "trade_failed" -> Entry(t, "⚖", "Ticaret gerçekleşmedi: kaynaklar yetmedi", LoopaPalette.PeachDeep, null, false)
+                "alliance_failed" -> Entry(t, "🤝", "İttifak kurulamadı (en fazla 3 krallık)", LoopaPalette.PeachDeep, null, false)
+                "eliminated" -> Entry(t, "☠", "Başkentin düştü", LoopaPalette.PeachDeep, null, true)
                 else -> null
             }
         }
         val public = (p / "log").a().mapNotNull { l ->
             val t = (l / "turn").i() ?: 0
             when ((l / "e").s()) {
-                "eliminated" -> Entry(t, "☠", "${kName((l / "k").i())} düştü — fetheden: ${kName((l / "by").i())}", Bad, null, true)
-                "alliance" -> Entry(t, "🤝", "${kName((l / "a").i())} ile ${kName((l / "b").i())} ittifak kurdu", Amber, null, true)
-                "alliance_broken" -> Entry(t, "💔", "${kName((l / "k").i())}, müttefiki ${kName((l / "victim").i())} krallığına saldırdı; ittifaktan çıktı", Bad, null, true)
-                "alliance_left" -> Entry(t, "🚪", "${kName((l / "k").i())} ittifaktan ayrıldı", Soft, null, false)
-                "pact_broken" -> Entry(t, "⛓", "${kName((l / "k").i())}, ${kName((l / "victim").i())} ile anlaşmasını bozdu", Bad, null, true)
+                "eliminated" -> Entry(t, "☠", "${kName((l / "k").i())} düştü — fetheden: ${kName((l / "by").i())}", LoopaPalette.PeachDeep, null, true)
+                "alliance" -> Entry(t, "🤝", "${kName((l / "a").i())} ile ${kName((l / "b").i())} ittifak kurdu", LoopaPalette.SkyDeep, null, true)
+                "alliance_broken" -> Entry(t, "💔", "${kName((l / "k").i())}, müttefiki ${kName((l / "victim").i())} krallığına saldırdı; ittifaktan çıktı", LoopaPalette.PeachDeep, null, true)
+                "alliance_left" -> Entry(t, "🚪", "${kName((l / "k").i())} ittifaktan ayrıldı", LoopaPalette.Lavender, null, false)
+                "pact_broken" -> Entry(t, "⛓", "${kName((l / "k").i())}, ${kName((l / "victim").i())} ile anlaşmasını bozdu", LoopaPalette.PeachDeep, null, true)
                 else -> null
             }
         }
@@ -842,11 +917,11 @@ private fun Journal(me: JsonElement?, p: JsonObject, myK: Int?, kName: (Int?) ->
         val armies = (me / "armies").a()
         if (armies.isNotEmpty()) {
             SectionLabel("Yoldaki orduların")
-            armies.forEach { a -> JournalRow(Entry(0, "🚩", "${(a / "n").i()} asker → bölge #${(a / "to").i()} · ${(a / "arrive").i()}. tur sonunda varır", Amber, (a / "to").i(), false), onTile) }
+            armies.forEach { a -> JournalRow(Entry(0, "🚩", "${(a / "n").i()} asker → bölge #${(a / "to").i()} · ${(a / "arrive").i()}. tur sonunda varır", LoopaPalette.LavenderDeep, (a / "to").i(), false), onTile) }
         }
         if (entries.isEmpty()) Text("Henüz olay yok. Tur sonları burada kayda geçer.", color = Soft, fontSize = 12.sp)
         entries.groupBy { it.turn }.forEach { (turn, list) ->
-            Text("TUR $turn", color = Amber, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 6.dp).testTag("kr_journal_turn_$turn"))
+            Text("TUR $turn", color = Soft, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 6.dp).testTag("kr_journal_turn_$turn"))
             list.forEach { JournalRow(it, onTile) }
         }
     }
@@ -854,13 +929,11 @@ private fun Journal(me: JsonElement?, p: JsonObject, myK: Int?, kName: (Int?) ->
 
 @Composable
 private fun JournalRow(e: Entry, onTile: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (e.big) e.tone.copy(alpha = 0.14f) else PanelHigh)
-        .clickable(enabled = e.tile != null) { e.tile?.let(onTile) }.padding(end = 10.dp).testTag("kr_journal_entry"), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(4.dp).height(44.dp).background(e.tone))
-        Spacer(Modifier.width(8.dp))
-        Text(e.icon, fontSize = 16.sp)
-        Spacer(Modifier.width(8.dp))
+    Row(Modifier.fillMaxWidth().krCard(RoundedCornerShape(16.dp), if (e.big) lerpC(PanelHigh, e.tone, 0.12f) else PanelHigh)
+        .clickable(enabled = e.tile != null) { e.tile?.let(onTile) }.padding(start = 8.dp, end = 10.dp).testTag("kr_journal_entry"), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(32.dp).clip(CircleShape).background(e.tone.copy(alpha = 0.28f)), contentAlignment = Alignment.Center) { Text(e.icon, fontSize = 15.sp) }
+        Spacer(Modifier.width(10.dp))
         Text(e.text, color = Cream, fontSize = 12.sp, fontWeight = if (e.big) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
-        if (e.tile != null) Text("Haritada ›", color = Amber, fontSize = 10.sp)
+        if (e.tile != null) Text("Haritada ›", color = Amber, fontSize = 11.sp, fontWeight = FontWeight.Black)
     }
 }

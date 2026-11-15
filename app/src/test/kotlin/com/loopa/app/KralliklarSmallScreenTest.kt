@@ -36,7 +36,7 @@ class KralliklarSmallScreenTest {
         val m = ModeJson.decodeFromString(ModeState.serializer(), javaClass.getResource("/kralliklar_4p_state.json")!!.readText())
         val r = ModeJson.decodeFromString(RoomState.serializer(), javaClass.getResource("/kralliklar_4p_room.json")!!.readText())
         compose.setContent {
-            LoopaTheme(darkTheme = true) { Box(Modifier.fillMaxSize().background(Loopa.colors.background)) { ModeGameContent(r, m, System.currentTimeMillis(), ModeUi()) } }
+            LoopaTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Loopa.colors.background)) { ModeGameContent(r, m, System.currentTimeMillis(), ModeUi()) } }
         }
         compose.waitForIdle()
         val width = compose.onNodeWithTag("kr_map").fetchSemanticsNode().boundsInRoot.right

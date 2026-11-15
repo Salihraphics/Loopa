@@ -107,7 +107,9 @@ internal fun KrIsoMap(
     battles: Set<Int>,
     onTap: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    dark: Boolean = false,
 ) {
+    val scene = if (dark) KrArt.DarkScenery else KrArt.LightScenery
     val reduced = LocalReducedMotion.current
     val pulse = if (reduced) null else rememberInfiniteTransition(label = "map").animateFloat(0f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "p")
     val dash = if (reduced) null else rememberInfiniteTransition(label = "dash").animateFloat(0f, 40f, infiniteRepeatable(tween(1200)), label = "d")
@@ -128,8 +130,21 @@ internal fun KrIsoMap(
     ) {
         val size = IntSize(this.size.width.toInt(), this.size.height.toInt())
         // sea around the island (scenery only: the map data has no water tiles)
-        drawRect(Brush.verticalGradient(listOf(KrArt.SeaDeep, KrArt.Sea, KrArt.SeaDeep)))
+        drawRect(Brush.verticalGradient(listOf(scene.seaTop, scene.seaBottom)))
         val s = proj.base(size) * cam.zoom
+        // gentle wave marks that move with the camera
+        val step = (s * 2.6f).coerceAtLeast(36f)
+        val ox = ((cam.pan.x % step) + step) % step; val oy = ((cam.pan.y % step) + step) % step
+        var row = 0
+        var y = oy - step
+        while (y < this.size.height + step) {
+            var x = ox - step + if (row % 2 == 0) 0f else step / 2
+            while (x < this.size.width + step) {
+                drawArc(scene.wave, 200f, 140f, false, Offset(x, y), androidx.compose.ui.geometry.Size(step * 0.32f, step * 0.12f), style = Stroke(step * 0.025f, cap = StrokeCap.Round))
+                x += step
+            }
+            y += step * 0.6f; row++
+        }
         val detail = s >= 9f
         val p = pulse?.value ?: 0.5f
         for (i in proj.order) {
@@ -138,18 +153,18 @@ internal fun KrIsoMap(
             val tile = tiles[i]
             if (tile == null) {
                 val c = c0 - Offset(0f, 0.12f * s * 0.5f)
-                prism(c, s * 0.97f, 0.12f, KrArt.FogTop, KrArt.FogSide)
-                if (detail) fog(c, s, i)
+                prism(c, s * 0.97f, 0.12f, scene.fogTop, scene.fogSide)
+                if (detail) fog(c, s, i, scene.fogPuff)
                 continue
             }
             val tr = KrArt.terrain(tile.t)
             val c = c0 - Offset(0f, tr.height * s * 0.5f)
             val owner = tile.owner
-            val tint = if (owner > 0) colorOf(owner).copy(alpha = 0.22f) else null
-            prism(c, s * 0.97f, tr.height, tr.top, tr.side, tint)
-            if (owner > 0) {
-                drawPath(KrArt.topPath(c, s * 0.9f), colorOf(owner), style = Stroke(s * (if (owner == me) 0.12f else 0.09f)))
-                if (owner == me) drawPath(KrArt.topPath(c, s * 0.78f), KrArt.Parchment.copy(alpha = 0.5f), style = Stroke(s * 0.03f))
+            val oc = if (owner > 0) colorOf(owner) else null
+            prism(c, s * 0.97f, tr.height, tr.top, tr.side, oc?.copy(alpha = 0.08f), band = oc)
+            if (oc != null) {
+                drawPath(KrArt.topPath(c, s * 0.88f), oc, style = Stroke(s * (if (owner == me) 0.1f else 0.075f)))
+                if (owner == me) drawPath(KrArt.topPath(c, s * 0.76f), Color.White.copy(alpha = 0.75f), style = Stroke(s * 0.03f))
             }
             if (detail) {
                 when {
@@ -165,8 +180,16 @@ internal fun KrIsoMap(
                 else if (detail) with(KrArt) { garrison(c, s, tile.troops) }
             }
             if (i in battles) swords(c + Offset(-s * 0.45f, -s * 0.35f), s * 0.8f, if (reduced) 1f else 0.6f + 0.4f * p)
-            if (i == selected) drawPath(KrArt.topPath(c, s * (1.02f + 0.05f * p)), Color.White, style = Stroke(s * 0.1f))
-            if (i == target) drawPath(KrArt.topPath(c, s * 1.02f), Color(0xFFFFB25C), style = Stroke(s * 0.1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(s * 0.3f, s * 0.2f))))
+            if (i == selected) {
+                val sp = KrArt.topPath(c, s * (1.02f + 0.05f * p))
+                drawPath(sp, Color.White, style = Stroke(s * 0.15f))
+                drawPath(sp, Color(0xFF8E74D6), style = Stroke(s * 0.08f))
+            }
+            if (i == target) {
+                val tp = KrArt.topPath(c, s * 1.02f)
+                drawPath(tp, Color.White, style = Stroke(s * 0.14f))
+                drawPath(tp, Color(0xFFF08A6C), style = Stroke(s * 0.09f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(s * 0.3f, s * 0.2f))))
+            }
         }
         // routes on top of the tiles
         routes.forEach { r -> route(proj, size, cam, tiles, r, s, dash?.value ?: 0f) }
@@ -184,8 +207,8 @@ private fun DrawScope.route(proj: KrProjection, size: IntSize, cam: KrCamera, ti
     val b = topCentre(proj, size, cam, tiles, r.to, s) - Offset(0f, s * 0.3f)
     val mid = Offset((a.x + b.x) / 2, (a.y + b.y) / 2 - hypot(b.x - a.x, b.y - a.y) * 0.3f)
     val path = Path().apply { moveTo(a.x, a.y); quadraticTo(mid.x, mid.y, b.x, b.y) }
-    val col = if (r.planned) Color(0xFFFFE08A) else Color.White
-    drawPath(path, Color.Black.copy(alpha = 0.35f), style = Stroke(s * 0.16f, cap = StrokeCap.Round))
+    val col = if (r.planned) Color(0xFF8E74D6) else KrArt.Ink
+    drawPath(path, Color.White.copy(alpha = 0.9f), style = Stroke(s * 0.17f, cap = StrokeCap.Round))
     drawPath(path, col, style = Stroke(s * 0.09f, cap = StrokeCap.Round,
         pathEffect = if (r.planned) PathEffect.dashPathEffect(floatArrayOf(s * 0.35f, s * 0.22f), phase) else null))
     // arrowhead pointing along the curve's end
@@ -198,9 +221,11 @@ private fun DrawScope.route(proj: KrProjection, size: IntSize, cam: KrCamera, ti
     val text = r.label?.let { "${r.n} · $it" } ?: "${r.n}"
     val paint = android.graphics.Paint().apply {
         isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER; textSize = (s * 0.42f).coerceIn(18f, 34f); isFakeBoldText = true
-        color = android.graphics.Color.rgb(38, 34, 46)
+        color = android.graphics.Color.WHITE
     }
     val w = paint.measureText(text) + paint.textSize
+    drawRoundRect(Color.White, top - Offset(w / 2 + 3f, paint.textSize * 0.85f + 3f), androidx.compose.ui.geometry.Size(w + 6f, paint.textSize * 1.3f + 6f),
+        androidx.compose.ui.geometry.CornerRadius(paint.textSize * 0.65f + 3f))
     drawRoundRect(col, top - Offset(w / 2, paint.textSize * 0.85f), androidx.compose.ui.geometry.Size(w, paint.textSize * 1.3f),
         androidx.compose.ui.geometry.CornerRadius(paint.textSize * 0.65f))
     drawContext.canvas.nativeCanvas.drawText(text, top.x, top.y + paint.textSize * 0.1f, paint)

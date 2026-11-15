@@ -60,10 +60,10 @@ class KralliklarScreenTest {
     private fun room(n: Int) = ModeJson.decodeFromString(RoomState.serializer(), res("kralliklar_${n}p_room.json"))
     private val sent = mutableListOf<Pair<String, JsonObject>>()
 
-    private fun show(n: Int = 4) {
+    private fun show(n: Int = 4, dark: Boolean = false) {
         val r = room(n); val m = mode(n)
         compose.setContent {
-            LoopaTheme(darkTheme = true) {
+            LoopaTheme(darkTheme = dark) {
                 Box(Modifier.fillMaxSize().background(Loopa.colors.background)) {
                     ModeGameContent(r, m, System.currentTimeMillis(), ModeUi(act = { k, p, _ -> sent += k to p }))
                 }
@@ -96,6 +96,17 @@ class KralliklarScreenTest {
         compose.onNodeWithTag("kr_tab_2").performClick()
         compose.onNodeWithTag("kr_journal_turn_6").assertExists()
         shot("92_kralliklar_4p_reports")
+    }
+
+    /** The same screen in LOOPA's dark theme (plum night, same pastel accents). */
+    @Test fun darkThemeScreens() {
+        show(dark = true)
+        compose.onNodeWithTag("kr_to_capital").performClick()
+        compose.onNodeWithTag("kr_tile_info").assertIsDisplayed()
+        shot("99_kralliklar_dark_map")
+        compose.onNodeWithTag("kr_tab_1").performClick()
+        compose.onNodeWithText("Ege Beyliği").assertExists()
+        shot("99b_kralliklar_dark_diplomacy")
     }
 
     @Test fun zoomPanAndTapSelection() {

@@ -120,3 +120,35 @@ dokunma), `KralliklarScreen.kt` (ekran ve paneller).
 - **Hareket azaltma:** açıkken seçim nabzı ve rota animasyonu kapanıyor.
 - **Ölçüm:** 600 bölgeli 20 krallık haritasında çizim süresi Robolectric/JVM üzerinde ölçüldü
   (`kralliklar_perf.txt`). Bu bir cihaz ölçümü değil; gerçek cihazda ölçülmedi.
+
+### Pastel Party görsel geçişi
+
+Yerleşim, bileşenler, test etiketleri ve gönderilen veriler aynı kaldı. Yalnızca görünüm değişti.
+
+- **Palet:** paneller LOOPA temasına bağlandı. Açık temada lavanta tonlu açık zemin ve beyaz kartlar
+  var; koyu temada LOOPA'nın mor gecesi kullanılıyor. Lacivert ve bordo kaldırıldı. Lavanta, mint,
+  şeftali, pastel sarı ve açık mavi vurgu olarak kullanılıyor. Küçük metinler için bu renklerin
+  koyu tonları seçildi; okunabilirlik böyle korunuyor.
+- **Bileşenler:** kaynak kutuları yumuşak beyaz kartlar oldu ve her kaynağın kendi pastel çerçevesi
+  ile simge dairesi var. Sekmeler hap biçiminde lavanta bir segment. Ana eylemler (Asker gönder,
+  Emre ekle, Kabul et, Reddet, Kaydet, Mührü bas) uygulamanın ortak `LoopaButton` bileşenini
+  kullanıyor. Emir çubuğunun düğmeleri aynı dilde, dar ekrana uyan bir sürüm. Kartlar 16–24 dp
+  köşeli; sert çerçeveler yerini ince çizgiye ve hafif lavanta gölgeye bıraktı.
+- **Diplomasi:** her teklif türünün kendi rengi var (saldırmazlık açık mavi, ittifak mint, ticaret
+  pastel sarı, ortak düşman şeftali, barış lavanta). Ticaret iki renkli sütunda gösteriliyor ve
+  aralarında ⇄ işareti var. İlişki rozetleri renkli hap biçiminde. Mektuplar krem kâğıt kartlarda.
+- **Harita:** izometrik basıklık 0.56'ya indi ve bölge yükseklikleri arttı. Yan yüzler üç tonla
+  (aydınlık, orta, gölge) ve toprak bandıyla çiziliyor; arka kenarda ışık çizgisi var. Arazi
+  pastel ama ayırt edilebilir: ova yeşil, tarla sarı şeritli, orman mint ve iki katlı çam ağaçları
+  ile yuvarlak ağaçlar, dağ lavanta-gri, üç zirveli ve maden girişli, altın tepesi şeftali-hardal
+  tepeler ve külçelerle. Kale duvar, kuleler ve sahip renginde külahlı çatılardan oluşuyor; kışla
+  çadır ve silahlık, pazar tenteli tezgâh, çiftlik ambar ve siloyla çiziliyor. Askerlerde miğfer,
+  sorguç, mızrak ve kalkan var.
+- **Sahiplik:** yüzey tonu hafifletildi (çamurlu renk oluşmasın diye). Sahiplik artık kalın
+  kenar ve yan yüzlerdeki renk bandıyla okunuyor. Krallık renkleri sunucudan geldiği gibi
+  kullanılıyor.
+- **Deniz ve sis:** temaya uyuyor (açıkta açık mavi deniz ve beyaz bulutlu sis, koyuda mor gece).
+- **Çok krallık:** 6'dan fazla krallık varsa hazır şeridi "x/20 hazır" sayacı ve 4 arma
+  gösteriyor; krallık adı sıkışmıyor.
+- **Ölçüm:** 600 bölge, 20 krallık için yakınlaştırma adımı başına ortalama 2.0 ms
+  (Robolectric/JVM; cihaz ölçümü değil).

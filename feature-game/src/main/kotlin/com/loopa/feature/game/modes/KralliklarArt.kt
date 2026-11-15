@@ -20,25 +20,30 @@ import kotlin.math.sin
  * projection is isometric: world y is squashed and every tile gets a height (a prism).
  */
 internal object KrArt {
-    /** Vertical squash of the isometric projection. */
-    const val ISO = 0.6f
+    /** Vertical squash of the isometric projection (lower = flatter, more depth on the sides). */
+    const val ISO = 0.56f
 
-    val Sea = Color(0xFF2B5D7A)
-    val SeaDeep = Color(0xFF1C4560)
-    val Ink = Color(0xFF26222E)
-    val Parchment = Color(0xFFF3E7CF)
-    val Gold = Color(0xFFE8B23A)
-    val FogTop = Color(0xFF3A3F4E)
-    val FogSide = Color(0xFF2A2E3A)
+    // Pastel Party map palette: soft, light and clean, with enough value contrast to read terrain.
+    val Ink = Color(0xFF353344)
+    val Parchment = Color(0xFFFFF9F0)
+    val Gold = Color(0xFFF2C14E)
+
+    /** Sea and fog follow the app theme; terrain stays the same in both. */
+    data class Scenery(val seaTop: Color, val seaBottom: Color, val wave: Color, val fogTop: Color, val fogSide: Color, val fogPuff: Color)
+    val LightScenery = Scenery(Color(0xFFD7EEF8), Color(0xFFA9D5F2), Color.White.copy(alpha = 0.55f), Color(0xFFE4DEF0), Color(0xFFC3BAD8), Color.White.copy(alpha = 0.5f))
+    val DarkScenery = Scenery(Color(0xFF2E3A5A), Color(0xFF232A44), Color(0xFFA9D5F2).copy(alpha = 0.14f), Color(0xFF3E3856), Color(0xFF2C283F), Color(0xFFB9A5E8).copy(alpha = 0.10f))
+    // kept for the tile dock preview
+    val FogTop = Color(0xFFE4DEF0)
+    val FogSide = Color(0xFFC3BAD8)
 
     data class Terrain(val top: Color, val side: Color, val height: Float, val name: String)
 
     fun terrain(t: String?): Terrain = when (t) {
-        "forest" -> Terrain(Color(0xFF6FA35A), Color(0xFF4C6E3D), 0.26f, "Orman")
-        "farm" -> Terrain(Color(0xFFD9C46A), Color(0xFF9C8A45), 0.2f, "Tarım arazisi")
-        "mine" -> Terrain(Color(0xFF9AA3A8), Color(0xFF66707A), 0.44f, "Maden (dağ)")
-        "gold" -> Terrain(Color(0xFFC9A86A), Color(0xFF8C7346), 0.36f, "Altın tepesi")
-        else -> Terrain(Color(0xFF9ACB72), Color(0xFF6A8F4F), 0.2f, "Ova")
+        "forest" -> Terrain(Color(0xFF9DD3AE), Color(0xFF6FA88A), 0.34f, "Orman")
+        "farm" -> Terrain(Color(0xFFF6DF95), Color(0xFFD1B06A), 0.26f, "Tarım arazisi")
+        "mine" -> Terrain(Color(0xFFCFC9DE), Color(0xFF9A93B1), 0.6f, "Maden (dağ)")
+        "gold" -> Terrain(Color(0xFFF6CFA0), Color(0xFFCF9E6C), 0.48f, "Altın tepesi")
+        else -> Terrain(Color(0xFFC6E5A8), Color(0xFF94BE7E), 0.26f, "Ova")
     }
 
     /** Top-face vertex k (pointy-top hex, isometric). */
@@ -52,201 +57,313 @@ internal object KrArt {
         close()
     }
 
-    /** One prism: front side faces then the top face. [c] is the TOP face centre. */
-    fun DrawScope.prism(c: Offset, s: Float, h: Float, top: Color, side: Color, tint: Color? = null) {
+    private fun face(c: Offset, s: Float, from: Int, to: Int, drop: Float) = Path().apply {
+        val v = (from..to).map { vertex(c, s, it) }
+        moveTo(v[0].x, v[0].y); v.drop(1).forEach { lineTo(it.x, it.y) }
+        v.reversed().forEach { lineTo(it.x, it.y + drop) }; close()
+    }
+
+    /**
+     * One prism: three lit side faces (right shaded, front mid, left lit), a soil band at the
+     * bottom, then the top face. [c] is the TOP face centre. [band] draws the owner's colour along
+     * the top edge of the sides so territory reads even from far away.
+     */
+    fun DrawScope.prism(c: Offset, s: Float, h: Float, top: Color, side: Color, tint: Color? = null, band: Color? = null) {
         val drop = h * s
-        // visible side: vertices 0 (-30°) .. 4 (210°) through the bottom
-        val side1 = Path().apply {
-            val v = (0..4).map { vertex(c, s, it) }
-            moveTo(v[0].x, v[0].y)
-            v.drop(1).forEach { lineTo(it.x, it.y) }
-            v.reversed().forEach { lineTo(it.x, it.y + drop) }
-            close()
+        drawPath(face(c, s, 0, 1, drop), lerp(side, Ink, 0.22f))          // right (shade)
+        drawPath(face(c, s, 1, 2, drop), side)                              // front
+        drawPath(face(c, s, 2, 3, drop), lerp(side, Color.White, 0.16f))   // left (light)
+        // soil band and contact line at the base
+        val soil = drop * 0.28f
+        for ((a, b) in listOf(0 to 1, 1 to 2, 2 to 3)) {
+            val pa = vertex(c, s, a); val pb = vertex(c, s, b)
+            drawPath(Path().apply {
+                moveTo(pa.x, pa.y + drop - soil); lineTo(pb.x, pb.y + drop - soil); lineTo(pb.x, pb.y + drop); lineTo(pa.x, pa.y + drop); close()
+            }, Ink.copy(alpha = 0.10f))
         }
-        drawPath(side1, Brush.verticalGradient(listOf(side, lerp(side, Color.Black, 0.35f)), c.y, c.y + s * ISO + drop))
-        // a lighter left half of the side for low-poly shading
-        val left = Path().apply {
-            val a = vertex(c, s, 2); val b = vertex(c, s, 3); val d = vertex(c, s, 4)
-            moveTo(a.x, a.y); lineTo(b.x, b.y); lineTo(d.x, d.y); lineTo(d.x, d.y + drop); lineTo(b.x, b.y + drop); lineTo(a.x, a.y + drop); close()
+        if (band != null) for ((a, b) in listOf(0 to 1, 1 to 2, 2 to 3)) {
+            val pa = vertex(c, s, a); val pb = vertex(c, s, b); val bh = minOf(drop * 0.45f, s * 0.12f)
+            drawPath(Path().apply { moveTo(pa.x, pa.y); lineTo(pb.x, pb.y); lineTo(pb.x, pb.y + bh); lineTo(pa.x, pa.y + bh); close() },
+                if (a == 0) lerp(band, Ink, 0.2f) else band)
         }
-        drawPath(left, Color.White.copy(alpha = 0.08f))
         val tp = topPath(c, s)
-        drawPath(tp, Brush.linearGradient(listOf(lerp(top, Color.White, 0.18f), top, lerp(top, Color.Black, 0.08f)),
+        drawPath(tp, Brush.linearGradient(listOf(lerp(top, Color.White, 0.28f), top, lerp(top, Ink, 0.06f)),
             Offset(c.x - s, c.y - s * ISO), Offset(c.x + s, c.y + s * ISO)))
         if (tint != null) drawPath(tp, tint)
-        drawPath(tp, Color.Black.copy(alpha = 0.18f), style = Stroke(s * 0.035f))
+        // rim light on the back edges, a soft outline on the front ones
+        drawPath(Path().apply { val a = vertex(c, s, 3); moveTo(a.x, a.y); for (k in 4..6) vertex(c, s, k % 6).let { lineTo(it.x, it.y) } },
+            Color.White.copy(alpha = 0.55f), style = Stroke(s * 0.035f, cap = StrokeCap.Round))
+        drawPath(tp, Ink.copy(alpha = 0.14f), style = Stroke(s * 0.025f))
     }
 
     // ------------------------------------------------------------------ terrain details (seeded per tile)
     private fun rnd(seed: Int, k: Int): Float = (((seed * 73856093) xor (k * 19349663)) and 0x7fffffff) % 1000 / 1000f
 
+    /** Contact shadow under an object standing on a tile. */
+    private fun DrawScope.shadow(base: Offset, w: Float) =
+        drawOval(Ink.copy(alpha = 0.16f), Offset(base.x - w / 2, base.y - w * 0.12f), Size(w, w * 0.24f))
+
     fun DrawScope.details(t: String?, c: Offset, s: Float, seed: Int, depleted: Boolean) {
         when (t) {
             "forest" -> {
-                val spots = listOf(Offset(-0.38f, -0.1f), Offset(0.05f, -0.28f), Offset(0.36f, 0.02f), Offset(-0.08f, 0.2f))
+                // back to front so nearer trees overlap farther ones
+                val spots = listOf(Offset(0.08f, -0.42f), Offset(-0.42f, -0.16f), Offset(0.44f, -0.08f), Offset(-0.06f, 0.06f), Offset(-0.38f, 0.32f), Offset(0.3f, 0.36f))
                 spots.forEachIndexed { k, o ->
-                    val p = Offset(c.x + o.x * s + (rnd(seed, k) - 0.5f) * s * 0.12f, c.y + o.y * s * ISO * 2f)
-                    if (depleted) stump(p, s * 0.5f) else tree(p, s * (0.48f + rnd(seed, k + 9) * 0.16f), k)
+                    val p = Offset(c.x + o.x * s + (rnd(seed, k) - 0.5f) * s * 0.1f, c.y + o.y * s * ISO * 1.7f)
+                    if (depleted) { if (k % 2 == 0) stump(p, s * 0.5f) }
+                    else if (rnd(seed, k + 20) < 0.28f) roundTree(p, s * (0.36f + rnd(seed, k + 9) * 0.1f))
+                    else tree(p, s * (0.46f + rnd(seed, k + 9) * 0.16f), k)
                 }
             }
             "mine" -> {
-                peak(Offset(c.x - s * 0.22f, c.y + s * 0.12f), s * 0.62f, Color(0xFFA9B1B6), Color(0xFF6E777F), snow = !depleted)
-                peak(Offset(c.x + s * 0.28f, c.y + s * 0.18f), s * 0.46f, Color(0xFFB6BDC2), Color(0xFF7A838B), snow = false)
-                if (!depleted) drawOval(Color(0xFF2B2B30), Offset(c.x - s * 0.08f, c.y + s * 0.08f), Size(s * 0.16f, s * 0.12f))
+                peak(Offset(c.x - s * 0.3f, c.y + s * 0.16f), s * 0.6f, Color(0xFFDCD6EA), Color(0xFF9790B0), snow = !depleted)
+                peak(Offset(c.x + s * 0.12f, c.y + s * 0.06f), s * 0.86f, Color(0xFFE6E1F2), Color(0xFFA49DBC), snow = !depleted)
+                peak(Offset(c.x + s * 0.46f, c.y + s * 0.24f), s * 0.44f, Color(0xFFD3CCE3), Color(0xFF8F88A8), snow = false)
+                if (!depleted) {
+                    // mine entrance with timber frame
+                    val m = Offset(c.x - s * 0.06f, c.y + s * 0.24f)
+                    drawRoundRect(Color(0xFF3E3A4C), Offset(m.x - s * 0.09f, m.y - s * 0.14f), Size(s * 0.18f, s * 0.14f), CornerRadius(s * 0.08f, s * 0.08f))
+                    drawLine(Color(0xFF9A6F4A), Offset(m.x - s * 0.11f, m.y), Offset(m.x - s * 0.11f, m.y - s * 0.15f), s * 0.035f)
+                    drawLine(Color(0xFF9A6F4A), Offset(m.x + s * 0.11f, m.y), Offset(m.x + s * 0.11f, m.y - s * 0.15f), s * 0.035f)
+                    drawLine(Color(0xFF9A6F4A), Offset(m.x - s * 0.13f, m.y - s * 0.15f), Offset(m.x + s * 0.13f, m.y - s * 0.15f), s * 0.035f)
+                }
             }
             "gold" -> {
-                peak(Offset(c.x, c.y + s * 0.15f), s * 0.6f, Color(0xFFD1B47A), Color(0xFF9B7F4C), snow = false)
-                if (!depleted) for (k in 0..2) {
-                    val p = Offset(c.x + (k - 1) * s * 0.18f, c.y + s * (0.05f + 0.06f * (k % 2)))
-                    nugget(p, s * 0.09f)
+                hill(Offset(c.x - s * 0.18f, c.y + s * 0.12f), s * 0.5f, Color(0xFFF8D9AE), Color(0xFFD7A673))
+                hill(Offset(c.x + s * 0.24f, c.y + s * 0.2f), s * 0.38f, Color(0xFFF3CFA0), Color(0xFFCC9864))
+                if (!depleted) for (k in 0..3) {
+                    val p = Offset(c.x + (k - 1.5f) * s * 0.17f, c.y + s * (0.18f + 0.05f * (k % 2)))
+                    nugget(p, s * (0.08f + 0.02f * (k % 2)))
                 }
             }
             "farm" -> {
-                // furrows across the top face, wheat when alive
+                // diagonal field strips with a path, wheat tufts when alive
                 for (k in -2..2) {
-                    val y = c.y + k * s * 0.13f * ISO * 1.6f
-                    val half = s * (0.78f - 0.12f * kotlin.math.abs(k))
-                    drawLine(if (depleted) Color(0xFF8C7A55) else if (k % 2 == 0) Color(0xFFE9D27A) else Color(0xFF8DBA5A),
-                        Offset(c.x - half, y), Offset(c.x + half, y), s * 0.07f, StrokeCap.Round)
+                    val y = c.y + k * s * 0.15f * ISO * 1.6f
+                    val half = s * (0.72f - 0.12f * kotlin.math.abs(k))
+                    drawLine(if (depleted) Color(0xFFD8C8A6) else if (k % 2 == 0) Color(0xFFEFC765) else Color(0xFFC3DFA2),
+                        Offset(c.x - half, y), Offset(c.x + half, y), s * 0.075f, StrokeCap.Round)
                 }
+                drawLine(Color(0xFFE8D2A6), Offset(c.x - s * 0.15f, c.y - s * 0.45f * ISO), Offset(c.x + s * 0.15f, c.y + s * 0.45f * ISO), s * 0.05f, StrokeCap.Round)
             }
             else -> {
-                for (k in 0..2) {
+                for (k in 0..3) {
                     val p = Offset(c.x + (rnd(seed, k) - 0.5f) * s * 1.1f, c.y + (rnd(seed, k + 4) - 0.5f) * s * 0.7f * ISO)
-                    drawLine(Color(0xFF6E9E4E), p, p + Offset(-s * 0.05f, -s * 0.1f), s * 0.03f, StrokeCap.Round)
-                    drawLine(Color(0xFF6E9E4E), p, p + Offset(s * 0.05f, -s * 0.11f), s * 0.03f, StrokeCap.Round)
+                    drawLine(Color(0xFF7DB070), p, p + Offset(-s * 0.05f, -s * 0.1f), s * 0.03f, StrokeCap.Round)
+                    drawLine(Color(0xFF7DB070), p, p + Offset(s * 0.05f, -s * 0.11f), s * 0.03f, StrokeCap.Round)
+                }
+                if (rnd(seed, 30) < 0.5f) {   // a few flowers
+                    val p = Offset(c.x + (rnd(seed, 31) - 0.5f) * s * 0.8f, c.y + (rnd(seed, 32) - 0.5f) * s * 0.5f * ISO)
+                    drawCircle(Color(0xFFFFB9A5), s * 0.035f, p); drawCircle(Color(0xFFB9A5E8), s * 0.035f, p + Offset(s * 0.1f, s * 0.03f))
                 }
             }
         }
     }
 
-    /** Low-poly conifer: two-tone triangles (light left, dark right). */
+    /** Low-poly conifer: two stacked tiers, light west face and shaded east face. */
     private fun DrawScope.tree(base: Offset, h: Float, k: Int) {
-        drawLine(Color(0xFF6B4A2E), base, base + Offset(0f, -h * 0.25f), h * 0.1f)
-        val tip = base + Offset(0f, -h)
-        val l = base + Offset(-h * 0.32f, -h * 0.2f); val r = base + Offset(h * 0.32f, -h * 0.2f); val m = base + Offset(0f, -h * 0.2f)
-        drawPath(Path().apply { moveTo(tip.x, tip.y); lineTo(l.x, l.y); lineTo(m.x, m.y); close() }, if (k % 2 == 0) Color(0xFF4F8F4A) else Color(0xFF5C9E52))
-        drawPath(Path().apply { moveTo(tip.x, tip.y); lineTo(m.x, m.y); lineTo(r.x, r.y); close() }, Color(0xFF2F6136))
+        shadow(base, h * 0.55f)
+        drawLine(Color(0xFF8A6446), base, base + Offset(0f, -h * 0.22f), h * 0.09f)
+        val light = if (k % 2 == 0) Color(0xFF5FAE7E) else Color(0xFF6BB98A)
+        val dark = Color(0xFF3B7F62)
+        for ((bottom, top, w) in listOf(Triple(0.18f, 0.72f, 0.34f), Triple(0.48f, 1.0f, 0.25f))) {
+            val tip = base + Offset(0f, -h * top)
+            val l = base + Offset(-h * w, -h * bottom); val r = base + Offset(h * w, -h * bottom); val m = base + Offset(h * 0.04f, -h * bottom)
+            drawPath(Path().apply { moveTo(tip.x, tip.y); lineTo(l.x, l.y); lineTo(m.x, m.y); close() }, light)
+            drawPath(Path().apply { moveTo(tip.x, tip.y); lineTo(m.x, m.y); lineTo(r.x, r.y); close() }, dark)
+        }
+    }
+
+    /** Round broadleaf tree: two-tone canopy. */
+    private fun DrawScope.roundTree(base: Offset, h: Float) {
+        shadow(base, h * 0.7f)
+        drawLine(Color(0xFF8A6446), base, base + Offset(0f, -h * 0.45f), h * 0.11f)
+        val c = base + Offset(0f, -h * 0.72f)
+        drawCircle(Color(0xFF4F9A73), h * 0.36f, c)
+        drawCircle(Color(0xFF7CC69A), h * 0.26f, c + Offset(-h * 0.08f, -h * 0.07f))
     }
 
     private fun DrawScope.stump(base: Offset, h: Float) {
-        drawRoundRect(Color(0xFF7A5634), base + Offset(-h * 0.1f, -h * 0.18f), Size(h * 0.2f, h * 0.18f), CornerRadius(h * 0.04f))
-        drawOval(Color(0xFFC79B6A), base + Offset(-h * 0.1f, -h * 0.22f), Size(h * 0.2f, h * 0.08f))
+        drawRoundRect(Color(0xFF9A714E), base + Offset(-h * 0.1f, -h * 0.18f), Size(h * 0.2f, h * 0.18f), CornerRadius(h * 0.04f))
+        drawOval(Color(0xFFE6C9A0), base + Offset(-h * 0.1f, -h * 0.22f), Size(h * 0.2f, h * 0.08f))
     }
 
-    /** Low-poly peak: light west face, dark east face, optional snow cap. */
+    /** Low-poly peak: light west face, shaded east face, a ridge line and an optional snow cap. */
     private fun DrawScope.peak(base: Offset, h: Float, light: Color, dark: Color, snow: Boolean) {
+        shadow(base + Offset(0f, h * 0.02f), h * 1.1f)
         val tip = base + Offset(h * 0.05f, -h)
-        val l = base + Offset(-h * 0.55f, 0f); val r = base + Offset(h * 0.55f, 0f); val m = base + Offset(h * 0.1f, 0f)
+        val l = base + Offset(-h * 0.55f, 0f); val r = base + Offset(h * 0.55f, 0f); val m = base + Offset(h * 0.12f, 0f)
         drawPath(Path().apply { moveTo(tip.x, tip.y); lineTo(l.x, l.y); lineTo(m.x, m.y); close() }, light)
         drawPath(Path().apply { moveTo(tip.x, tip.y); lineTo(m.x, m.y); lineTo(r.x, r.y); close() }, dark)
+        // a secondary facet for a chiselled look
+        drawPath(Path().apply { moveTo(tip.x, tip.y); lineTo(l.x + h * 0.25f, l.y - h * 0.18f); lineTo(m.x - h * 0.05f, m.y); close() }, lerp(light, Color.White, 0.25f))
         if (snow) drawPath(Path().apply {
-            moveTo(tip.x, tip.y); lineTo(tip.x - h * 0.18f, tip.y + h * 0.3f); lineTo(tip.x + h * 0.02f, tip.y + h * 0.22f); lineTo(tip.x + h * 0.16f, tip.y + h * 0.3f); close()
-        }, Color(0xFFF4F6F8))
+            moveTo(tip.x, tip.y); lineTo(tip.x - h * 0.2f, tip.y + h * 0.32f); lineTo(tip.x - h * 0.04f, tip.y + h * 0.24f)
+            lineTo(tip.x + h * 0.04f, tip.y + h * 0.32f); lineTo(tip.x + h * 0.18f, tip.y + h * 0.3f); close()
+        }, Color.White)
+    }
+
+    /** Rounded hill with a lit flank. */
+    private fun DrawScope.hill(base: Offset, h: Float, light: Color, dark: Color) {
+        shadow(base, h * 1.3f)
+        drawArc(dark, 180f, 180f, true, Offset(base.x - h * 0.65f, base.y - h * 0.8f), Size(h * 1.3f, h * 1.6f))
+        drawArc(light, 180f, 120f, true, Offset(base.x - h * 0.65f, base.y - h * 0.8f), Size(h * 1.3f, h * 1.6f))
     }
 
     private fun DrawScope.nugget(c: Offset, r: Float) {
-        drawPath(Path().apply { moveTo(c.x, c.y - r); lineTo(c.x + r, c.y); lineTo(c.x, c.y + r * 0.7f); lineTo(c.x - r, c.y); close() }, Gold)
-        drawPath(Path().apply { moveTo(c.x, c.y - r); lineTo(c.x + r, c.y); lineTo(c.x, c.y); close() }, Color(0xFFFFE08A))
+        drawPath(Path().apply { moveTo(c.x, c.y - r); lineTo(c.x + r, c.y); lineTo(c.x, c.y + r * 0.7f); lineTo(c.x - r, c.y); close() }, Color(0xFFE0A93A))
+        drawPath(Path().apply { moveTo(c.x, c.y - r); lineTo(c.x + r, c.y); lineTo(c.x, c.y); close() }, Color(0xFFFFE39A))
     }
 
-    // ------------------------------------------------------------------ buildings
+    // ------------------------------------------------------------------ buildings (isometric boxes with lit / shaded faces)
+    /** An isometric box seen from the front-left: left face lit, right face shaded, flat top. */
+    private fun DrawScope.box(base: Offset, w: Float, d: Float, h: Float, wall: Color, top: Color = lerp(wall, Color.White, 0.3f)) {
+        val l = Offset(base.x - w / 2, base.y - d * ISO * 0.5f); val r = Offset(base.x + w / 2, base.y - d * ISO * 0.5f)
+        val f = Offset(base.x, base.y); val b = Offset(base.x, base.y - d * ISO)
+        drawPath(Path().apply { moveTo(l.x, l.y); lineTo(f.x, f.y); lineTo(f.x, f.y - h); lineTo(l.x, l.y - h); close() }, lerp(wall, Color.White, 0.12f))
+        drawPath(Path().apply { moveTo(f.x, f.y); lineTo(r.x, r.y); lineTo(r.x, r.y - h); lineTo(f.x, f.y - h); close() }, lerp(wall, Ink, 0.2f))
+        drawPath(Path().apply { moveTo(l.x, l.y - h); lineTo(f.x, f.y - h); lineTo(r.x, r.y - h); lineTo(b.x, b.y - h); close() }, top)
+    }
+
+    /** A cone roof over a tower. */
+    private fun DrawScope.cone(c: Offset, r: Float, h: Float, color: Color) {
+        drawPath(Path().apply { moveTo(c.x - r, c.y); lineTo(c.x, c.y - h); lineTo(c.x, c.y + r * 0.3f); close() }, lerp(color, Color.White, 0.15f))
+        drawPath(Path().apply { moveTo(c.x, c.y - h); lineTo(c.x + r, c.y); lineTo(c.x, c.y + r * 0.3f); close() }, lerp(color, Ink, 0.25f))
+    }
+
     fun DrawScope.castle(c: Offset, s: Float, flag: Color) {
-        val w = s * 0.9f; val base = c + Offset(0f, s * 0.18f)
+        val w = s * 1.05f; val base = c + Offset(0f, s * 0.24f)
+        val stone = Color(0xFFE2DBEF)
+        shadow(base, w * 1.2f)
+        // curtain wall
+        box(base, w * 0.92f, w * 0.7f, w * 0.3f, stone)
+        for (k in 0..4) drawRect(lerp(stone, Ink, 0.08f), Offset(base.x - w * 0.44f + k * w * 0.2f, base.y - w * 0.3f - w * 0.32f * ISO + (if (k < 3) k else 4 - k) * w * 0.05f), Size(w * 0.08f, w * 0.07f))
         // keep
-        drawRect(Color(0xFFD9CDB4), base + Offset(-w * 0.3f, -w * 0.62f), Size(w * 0.6f, w * 0.62f))
-        drawRect(Color(0xFFB4A68A), base + Offset(w * 0.05f, -w * 0.62f), Size(w * 0.25f, w * 0.62f))
-        // towers
-        for (dx in listOf(-0.42f, 0.3f)) {
-            drawRect(Color(0xFFE6DCC6), base + Offset(w * dx, -w * 0.82f), Size(w * 0.14f, w * 0.82f))
-            drawPath(Path().apply {
-                val x = base.x + w * dx; val y = base.y - w * 0.82f
-                moveTo(x - w * 0.03f, y); lineTo(x + w * 0.07f, y - w * 0.22f); lineTo(x + w * 0.17f, y); close()
-            }, lerp(flag, Color.Black, 0.25f))
+        box(base + Offset(0f, -w * 0.12f), w * 0.46f, w * 0.38f, w * 0.62f, stone)
+        cone(base + Offset(0f, -w * 0.74f - w * 0.38f * ISO * 0.5f), w * 0.27f, w * 0.34f, flag)
+        // corner towers
+        for (dx in listOf(-0.44f, 0.44f)) {
+            val tb = base + Offset(w * dx, -w * 0.18f * ISO)
+            box(tb, w * 0.2f, w * 0.2f, w * 0.48f, stone)
+            cone(tb + Offset(0f, -w * 0.48f - w * 0.1f * ISO), w * 0.13f, w * 0.22f, flag)
         }
-        // crenellations
-        for (k in 0..3) drawRect(Color(0xFFD9CDB4), base + Offset(-w * 0.3f + k * w * 0.17f, -w * 0.7f), Size(w * 0.09f, w * 0.09f))
         // gate
-        drawRoundRect(Color(0xFF5A4030), base + Offset(-w * 0.08f, -w * 0.26f), Size(w * 0.16f, w * 0.26f), CornerRadius(w * 0.08f))
-        // flag
-        val pole = base + Offset(-w * 0.05f, -w * 0.62f)
-        drawLine(Ink, pole, pole + Offset(0f, -w * 0.45f), w * 0.03f)
-        drawPath(Path().apply { moveTo(pole.x, pole.y - w * 0.45f); lineTo(pole.x + w * 0.32f, pole.y - w * 0.37f); lineTo(pole.x, pole.y - w * 0.28f); close() }, flag)
+        drawRoundRect(Color(0xFF6B5A7A), base + Offset(-w * 0.16f, -w * 0.2f), Size(w * 0.13f, w * 0.2f), CornerRadius(w * 0.065f, w * 0.065f))
+        // banner on the keep
+        val pole = base + Offset(0f, -w * 1.08f - w * 0.38f * ISO * 0.5f)
+        drawLine(Ink, pole, pole + Offset(0f, -w * 0.3f), w * 0.025f)
+        drawPath(Path().apply { moveTo(pole.x, pole.y - w * 0.3f); lineTo(pole.x + w * 0.3f, pole.y - w * 0.24f); lineTo(pole.x, pole.y - w * 0.17f); close() }, flag)
     }
 
     fun DrawScope.barracks(c: Offset, s: Float, flag: Color) {
-        val w = s * 0.75f; val b = c + Offset(0f, s * 0.15f)
-        drawPath(Path().apply { moveTo(b.x - w * 0.5f, b.y); lineTo(b.x, b.y - w * 0.6f); lineTo(b.x + w * 0.5f, b.y); close() }, Color(0xFFB7A57D))
-        drawPath(Path().apply { moveTo(b.x, b.y - w * 0.6f); lineTo(b.x + w * 0.5f, b.y); lineTo(b.x + w * 0.1f, b.y); close() }, Color(0xFF8E7D58))
-        drawPath(Path().apply { moveTo(b.x - w * 0.1f, b.y); lineTo(b.x, b.y - w * 0.3f); lineTo(b.x + w * 0.1f, b.y); close() }, Color(0xFF4A3B2A))
-        drawLine(Ink, b + Offset(0f, -w * 0.6f), b + Offset(0f, -w * 0.95f), w * 0.04f)
-        drawRect(flag, b + Offset(0f, -w * 0.95f), Size(w * 0.26f, w * 0.16f))
+        val w = s * 0.78f; val b = c + Offset(0f, s * 0.18f)
+        shadow(b, w * 1.1f)
+        // canvas tent with a ridge
+        drawPath(Path().apply { moveTo(b.x - w * 0.5f, b.y); lineTo(b.x - w * 0.05f, b.y - w * 0.62f); lineTo(b.x + w * 0.12f, b.y); close() }, Color(0xFFF1E4CC))
+        drawPath(Path().apply { moveTo(b.x - w * 0.05f, b.y - w * 0.62f); lineTo(b.x + w * 0.5f, b.y - w * 0.12f); lineTo(b.x + w * 0.12f, b.y); close() }, Color(0xFFCDB894))
+        drawPath(Path().apply { moveTo(b.x - w * 0.18f, b.y); lineTo(b.x - w * 0.06f, b.y - w * 0.3f); lineTo(b.x + w * 0.04f, b.y); close() }, Color(0xFF6B5A7A))
+        // owner pennant
+        drawLine(Ink, b + Offset(-w * 0.05f, -w * 0.62f), b + Offset(-w * 0.05f, -w * 0.98f), w * 0.035f)
+        drawPath(Path().apply { val x = b.x - w * 0.05f; val y = b.y - w * 0.98f; moveTo(x, y); lineTo(x + w * 0.3f, y + w * 0.08f); lineTo(x, y + w * 0.17f); close() }, flag)
+        // weapon rack
+        for (k in 0..1) drawLine(Color(0xFF8A6446), b + Offset(w * (0.34f + k * 0.1f), -w * 0.02f), b + Offset(w * (0.3f + k * 0.1f), -w * 0.36f), w * 0.03f)
     }
 
     fun DrawScope.market(c: Offset, s: Float) {
-        val w = s * 0.75f; val b = c + Offset(0f, s * 0.15f)
-        drawRect(Color(0xFF8A5E3B), b + Offset(-w * 0.4f, -w * 0.35f), Size(w * 0.8f, w * 0.35f))
+        val w = s * 0.78f; val b = c + Offset(0f, s * 0.18f)
+        shadow(b, w * 1.1f)
+        box(b, w * 0.8f, w * 0.5f, w * 0.3f, Color(0xFFD9B48C))
+        // striped awning (peach / cream)
         for (k in 0..4) drawPath(Path().apply {
-            val x = b.x - w * 0.46f + k * w * 0.184f
-            moveTo(x, b.y - w * 0.35f); lineTo(x + w * 0.184f, b.y - w * 0.35f); lineTo(x + w * 0.15f, b.y - w * 0.55f); lineTo(x + w * 0.03f, b.y - w * 0.55f); close()
-        }, if (k % 2 == 0) Color(0xFFE05A47) else Color(0xFFF6EFE2))
-        drawCircle(Gold, w * 0.07f, b + Offset(-w * 0.15f, -w * 0.12f)); drawCircle(Color(0xFF8DBA5A), w * 0.07f, b + Offset(w * 0.12f, -w * 0.12f))
+            val x = b.x - w * 0.46f + k * w * 0.184f; val y = b.y - w * 0.3f
+            moveTo(x, y); lineTo(x + w * 0.184f, y); lineTo(x + w * 0.15f, y - w * 0.22f); lineTo(x + w * 0.03f, y - w * 0.22f); close()
+        }, if (k % 2 == 0) Color(0xFFF08A6C) else Color(0xFFFFF4E6))
+        drawCircle(Gold, w * 0.06f, b + Offset(-w * 0.17f, -w * 0.12f)); drawCircle(Color(0xFF9DDCC5), w * 0.06f, b + Offset(w * 0.02f, -w * 0.1f))
+        drawCircle(Color(0xFFB9A5E8), w * 0.06f, b + Offset(w * 0.2f, -w * 0.12f))
     }
 
     fun DrawScope.barn(c: Offset, s: Float) {
-        val w = s * 0.7f; val b = c + Offset(0f, s * 0.15f)
-        drawRect(Color(0xFFB9473A), b + Offset(-w * 0.35f, -w * 0.4f), Size(w * 0.7f, w * 0.4f))
-        drawPath(Path().apply { moveTo(b.x - w * 0.45f, b.y - w * 0.4f); lineTo(b.x, b.y - w * 0.72f); lineTo(b.x + w * 0.45f, b.y - w * 0.4f); close() }, Color(0xFF6E2A23))
-        drawRect(Color(0xFFF2E6D6), b + Offset(-w * 0.1f, -w * 0.28f), Size(w * 0.2f, w * 0.28f))
+        val w = s * 0.74f; val b = c + Offset(-s * 0.06f, s * 0.18f)
+        shadow(b, w * 1.2f)
+        box(b, w * 0.66f, w * 0.48f, w * 0.36f, Color(0xFFE58C78))
+        // pitched roof
+        val l = Offset(b.x - w * 0.36f, b.y - w * 0.36f - w * 0.24f * ISO * 0.5f); val r = Offset(b.x + w * 0.36f, l.y); val ridge = Offset(b.x - w * 0.02f, l.y - w * 0.3f)
+        drawPath(Path().apply { moveTo(l.x, l.y); lineTo(ridge.x, ridge.y); lineTo(b.x, b.y - w * 0.36f + w * 0.02f); close() }, Color(0xFF8E74D6))
+        drawPath(Path().apply { moveTo(ridge.x, ridge.y); lineTo(r.x, r.y); lineTo(b.x, b.y - w * 0.36f + w * 0.02f); close() }, Color(0xFF6E57B0))
+        drawRect(Color(0xFFFFF4E6), b + Offset(-w * 0.2f, -w * 0.24f), Size(w * 0.14f, w * 0.22f))
+        // silo
+        val so = b + Offset(w * 0.5f, -w * 0.05f)
+        drawRoundRect(Color(0xFFDCD6EA), Offset(so.x - w * 0.1f, so.y - w * 0.55f), Size(w * 0.2f, w * 0.55f), CornerRadius(w * 0.04f))
+        drawRect(Color(0xFFB4ADC8), Offset(so.x, so.y - w * 0.55f), Size(w * 0.1f, w * 0.55f))
+        drawArc(Color(0xFFA9D5F2), 180f, 180f, true, Offset(so.x - w * 0.1f, so.y - w * 0.66f), Size(w * 0.2f, w * 0.22f))
     }
 
-    /** A stylized soldier with a shield in the owner's colour and a count banner. */
+    /** A stylized soldier: owner-coloured tunic and shield, helmet with plume, spear; and a count banner. */
     fun DrawScope.troops(c: Offset, s: Float, color: Color, count: Int, selected: Boolean, bob: Float) {
-        val h = s * 0.86f
+        val h = s * 0.9f
         val base = c + Offset(s * 0.42f, s * 0.05f - bob * s * 0.06f)
-        drawOval(Color.Black.copy(alpha = 0.25f), Offset(base.x - h * 0.3f, base.y - h * 0.05f + bob * s * 0.06f), Size(h * 0.6f, h * 0.16f))
-        drawRoundRect(lerp(color, Color.Black, 0.3f), base + Offset(-h * 0.13f, -h * 0.62f), Size(h * 0.26f, h * 0.55f), CornerRadius(h * 0.08f))
-        drawCircle(Color(0xFFF0D2B0), h * 0.13f, base + Offset(0f, -h * 0.74f))
-        drawArc(Color(0xFF8A9098), 180f, 180f, true, base + Offset(-h * 0.15f, -h * 0.9f), Size(h * 0.3f, h * 0.26f))
-        drawLine(Color(0xFF6B4A2E), base + Offset(h * 0.2f, -h * 1.05f), base + Offset(h * 0.2f, 0f), h * 0.05f)
-        drawPath(Path().apply {
-            val x = base.x - h * 0.3f; val y = base.y - h * 0.55f
-            moveTo(x, y); lineTo(x + h * 0.26f, y); lineTo(x + h * 0.26f, y + h * 0.22f); lineTo(x + h * 0.13f, y + h * 0.34f); lineTo(x, y + h * 0.22f); close()
-        }, color)
+        drawOval(Ink.copy(alpha = 0.22f), Offset(base.x - h * 0.3f, base.y - h * 0.05f + bob * s * 0.06f), Size(h * 0.6f, h * 0.16f))
+        val outline = Stroke(h * 0.035f)
+        val edge = Ink.copy(alpha = 0.55f)
+        // legs
+        drawRoundRect(Color(0xFF5A5470), base + Offset(-h * 0.1f, -h * 0.2f), Size(h * 0.08f, h * 0.2f), CornerRadius(h * 0.03f))
+        drawRoundRect(Color(0xFF4A4560), base + Offset(h * 0.03f, -h * 0.2f), Size(h * 0.08f, h * 0.2f), CornerRadius(h * 0.03f))
+        // tunic
+        val body = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(base.x - h * 0.14f, base.y - h * 0.62f, base.x + h * 0.14f, base.y - h * 0.16f, CornerRadius(h * 0.09f))) }
+        drawPath(body, lerp(color, Color.White, 0.1f)); drawPath(body, edge, style = outline)
+        drawRect(lerp(color, Ink, 0.35f), base + Offset(-h * 0.14f, -h * 0.34f), Size(h * 0.28f, h * 0.05f))
+        // head and helmet with plume
+        drawCircle(Color(0xFFF6D7BE), h * 0.12f, base + Offset(0f, -h * 0.74f))
+        drawArc(Color(0xFFB9B4CC), 180f, 180f, true, base + Offset(-h * 0.14f, -h * 0.9f), Size(h * 0.28f, h * 0.26f))
+        drawLine(Color(0xFFB9B4CC), base + Offset(-h * 0.15f, -h * 0.77f), base + Offset(h * 0.15f, -h * 0.77f), h * 0.04f, StrokeCap.Round)
+        drawOval(color, base + Offset(-h * 0.05f, -h * 1.0f), Size(h * 0.1f, h * 0.14f))
+        // spear
+        drawLine(Color(0xFF8A6446), base + Offset(h * 0.22f, -h * 1.12f), base + Offset(h * 0.22f, 0f), h * 0.045f)
+        drawPath(Path().apply { val x = base.x + h * 0.22f; val y = base.y - h * 1.12f; moveTo(x, y - h * 0.12f); lineTo(x + h * 0.05f, y + h * 0.02f); lineTo(x - h * 0.05f, y + h * 0.02f); close() }, Color(0xFFDCD6EA))
+        // shield
+        val sh = Path().apply {
+            val x = base.x - h * 0.32f; val y = base.y - h * 0.56f
+            moveTo(x, y); lineTo(x + h * 0.27f, y); lineTo(x + h * 0.27f, y + h * 0.22f); lineTo(x + h * 0.135f, y + h * 0.35f); lineTo(x, y + h * 0.22f); close()
+        }
+        drawPath(sh, color); drawPath(sh, Color.White.copy(alpha = 0.8f), style = Stroke(h * 0.04f))
         if (count <= 0) return
         // count banner
         val label = if (count > 99) "99+" else count.toString()
-        val bw = h * (0.32f + 0.16f * label.length); val by = base.y - h * 1.36f
-        drawRoundRect(if (selected) Color.White else Ink.copy(alpha = 0.85f), Offset(base.x - bw / 2, by), Size(bw, h * 0.34f), CornerRadius(h * 0.17f))
+        val bw = h * (0.32f + 0.16f * label.length); val by = base.y - h * 1.42f
+        drawRoundRect(if (selected) Color.White else Ink.copy(alpha = 0.88f), Offset(base.x - bw / 2, by), Size(bw, h * 0.34f), CornerRadius(h * 0.17f))
         drawRoundRect(color, Offset(base.x - bw / 2, by), Size(bw, h * 0.34f), CornerRadius(h * 0.17f), style = Stroke(h * 0.05f))
         drawContext.canvas.nativeCanvas.drawText(label, base.x, by + h * 0.26f, android.graphics.Paint().apply {
             isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER; textSize = h * 0.28f; isFakeBoldText = true
-            this.color = if (selected) android.graphics.Color.rgb(38, 34, 46) else android.graphics.Color.WHITE
+            this.color = if (selected) android.graphics.Color.rgb(53, 51, 68) else android.graphics.Color.WHITE
         })
     }
 
-    /** A neutral garrison: a small grey shield with its size (quiet, so kingdoms stand out). */
+    /** A neutral garrison: a small muted shield with its size (quiet, so kingdoms stand out). */
     fun DrawScope.garrison(c: Offset, s: Float, count: Int) {
-        val w = s * 0.34f; val o = c + Offset(s * 0.28f, -s * 0.42f)
-        drawPath(Path().apply {
+        val w = s * 0.34f; val o = c + Offset(s * 0.28f, -s * 0.46f)
+        val p = Path().apply {
             moveTo(o.x, o.y); lineTo(o.x + w, o.y); lineTo(o.x + w, o.y + w * 0.7f); lineTo(o.x + w / 2, o.y + w * 1.1f); lineTo(o.x, o.y + w * 0.7f); close()
-        }, Color(0xFF6C7280))
+        }
+        drawPath(p, Color(0xFF8C86A0)); drawPath(p, Color.White.copy(alpha = 0.8f), style = Stroke(w * 0.08f))
         drawContext.canvas.nativeCanvas.drawText(count.toString(), o.x + w / 2, o.y + w * 0.66f, android.graphics.Paint().apply {
             isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER; textSize = w * 0.62f; isFakeBoldText = true; color = android.graphics.Color.WHITE
         })
     }
 
-    /** Soft fog puffs over an unexplored tile. */
-    fun DrawScope.fog(c: Offset, s: Float, seed: Int) {
-        drawOval(Color(0xFFB9BECB).copy(alpha = 0.07f), Offset(c.x - s * 0.55f + (rnd(seed, 1) - 0.5f) * s * 0.3f, c.y - s * 0.2f), Size(s * 1.1f, s * 0.4f))
+    /** Soft cloud puffs over an unexplored tile. */
+    fun DrawScope.fog(c: Offset, s: Float, seed: Int, puff: Color) {
+        val dx = (rnd(seed, 1) - 0.5f) * s * 0.3f
+        drawOval(puff, Offset(c.x - s * 0.5f + dx, c.y - s * 0.22f), Size(s * 0.7f, s * 0.3f))
+        drawOval(puff, Offset(c.x - s * 0.1f + dx, c.y - s * 0.3f), Size(s * 0.55f, s * 0.32f))
     }
 
     /** Crossed swords marking a battle of the last turn. */
     fun DrawScope.swords(c: Offset, s: Float, alpha: Float) {
         val r = s * 0.4f
-        drawCircle(Color(0xFFE05A47).copy(alpha = 0.85f * alpha), r * 0.9f, c)
-        drawLine(Color.White.copy(alpha = alpha), c + Offset(-r * 0.55f, -r * 0.55f), c + Offset(r * 0.55f, r * 0.55f), r * 0.16f, StrokeCap.Round)
-        drawLine(Color.White.copy(alpha = alpha), c + Offset(r * 0.55f, -r * 0.55f), c + Offset(-r * 0.55f, r * 0.55f), r * 0.16f, StrokeCap.Round)
+        drawCircle(Color.White.copy(alpha = 0.9f * alpha), r, c)
+        drawCircle(Color(0xFFE5675A).copy(alpha = alpha), r * 0.84f, c)
+        drawLine(Color.White.copy(alpha = alpha), c + Offset(-r * 0.5f, -r * 0.5f), c + Offset(r * 0.5f, r * 0.5f), r * 0.15f, StrokeCap.Round)
+        drawLine(Color.White.copy(alpha = alpha), c + Offset(r * 0.5f, -r * 0.5f), c + Offset(-r * 0.5f, r * 0.5f), r * 0.15f, StrokeCap.Round)
     }
 
     // ------------------------------------------------------------------ crests (one emblem per kingdom number)
@@ -256,8 +373,8 @@ internal object KrArt {
             moveTo(o.x, o.y); lineTo(o.x + w, o.y); lineTo(o.x + w, o.y + h * 0.55f)
             quadraticTo(o.x + w, o.y + h * 0.88f, o.x + w / 2, o.y + h); quadraticTo(o.x, o.y + h * 0.88f, o.x, o.y + h * 0.55f); close()
         }
-        drawPath(shield, Brush.verticalGradient(listOf(lerp(color, Color.White, 0.2f), lerp(color, Color.Black, 0.2f)), o.y, o.y + h))
-        drawPath(shield, Parchment, style = Stroke(w * 0.07f))
+        drawPath(shield, Brush.verticalGradient(listOf(lerp(color, Color.White, 0.25f), lerp(color, Ink, 0.12f)), o.y, o.y + h))
+        drawPath(shield, Color.White, style = Stroke(w * 0.08f))
         val c = Offset(o.x + w / 2, o.y + h * 0.45f); val e = w * 0.26f
         val ink = Parchment
         when (((k - 1) % 6 + 6) % 6) {
@@ -290,7 +407,7 @@ internal object KrArt {
             }
             4 -> { // leaf
                 drawPath(Path().apply { moveTo(c.x, c.y - e); quadraticTo(c.x + e, c.y, c.x, c.y + e); quadraticTo(c.x - e, c.y, c.x, c.y - e); close() }, ink)
-                drawLine(lerp(color, Color.Black, 0.2f), c + Offset(0f, -e * 0.8f), c + Offset(0f, e * 0.8f), e * 0.1f)
+                drawLine(lerp(color, Ink, 0.2f), c + Offset(0f, -e * 0.8f), c + Offset(0f, e * 0.8f), e * 0.1f)
             }
             else -> { // waves
                 for (j in 0..2) drawArc(ink, 200f, 140f, false, Offset(c.x - e, c.y - e * 0.8f + j * e * 0.55f), Size(e * 2f, e * 0.8f), style = Stroke(e * 0.18f))
@@ -304,19 +421,19 @@ internal object KrArt {
             "wood" -> { // two logs
                 for (j in 0..1) {
                     val y = o.y + s * (0.35f + j * 0.25f); val x = o.x + s * (0.12f + j * 0.12f)
-                    drawRoundRect(Color(0xFF9B6B3F), Offset(x, y), Size(s * 0.66f, s * 0.22f), CornerRadius(s * 0.11f))
-                    drawCircle(Color(0xFFE2BC8A), s * 0.1f, Offset(x + s * 0.1f, y + s * 0.11f))
+                    drawRoundRect(Color(0xFFB07E54), Offset(x, y), Size(s * 0.66f, s * 0.22f), CornerRadius(s * 0.11f))
+                    drawCircle(Color(0xFFF1D3A8), s * 0.1f, Offset(x + s * 0.1f, y + s * 0.11f))
                 }
             }
             "iron" -> { // ingot
                 drawPath(Path().apply {
                     moveTo(o.x + s * 0.12f, o.y + s * 0.7f); lineTo(o.x + s * 0.28f, o.y + s * 0.38f); lineTo(o.x + s * 0.84f, o.y + s * 0.38f); lineTo(o.x + s * 0.92f, o.y + s * 0.7f); close()
-                }, Color(0xFF9AA3AB))
-                drawRect(Color(0xFFC9D0D6), Offset(o.x + s * 0.3f, o.y + s * 0.4f), Size(s * 0.5f, s * 0.06f))
+                }, Color(0xFFA49DBC))
+                drawRect(Color(0xFFDCD6EA), Offset(o.x + s * 0.3f, o.y + s * 0.4f), Size(s * 0.5f, s * 0.06f))
             }
             "gold" -> {
                 drawCircle(Gold, s * 0.32f, Offset(o.x + s * 0.5f, o.y + s * 0.52f))
-                drawCircle(Color(0xFFFFE08A), s * 0.2f, Offset(o.x + s * 0.5f, o.y + s * 0.52f), style = Stroke(s * 0.06f))
+                drawCircle(Color(0xFFFFE39A), s * 0.2f, Offset(o.x + s * 0.5f, o.y + s * 0.52f), style = Stroke(s * 0.06f))
             }
             "food" -> { // wheat
                 drawLine(Color(0xFFB9952F), Offset(o.x + s * 0.5f, o.y + s * 0.9f), Offset(o.x + s * 0.5f, o.y + s * 0.15f), s * 0.07f)
@@ -326,7 +443,7 @@ internal object KrArt {
                     drawOval(Color(0xFFE9C25A), Offset(o.x + s * 0.52f, y), Size(s * 0.2f, s * 0.12f))
                 }
             }
-            "troops" -> troops(Offset(o.x + s * 0.1f, o.y + s * 0.85f), s * 1.05f, Color(0xFF8E74D6), 0, false, 0f)
+            "troops" -> troops(Offset(o.x + s * 0.1f, o.y + s * 0.85f), s * 1.0f, Color(0xFF8E74D6), 0, false, 0f)
         }
     }
 }
