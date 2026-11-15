@@ -121,7 +121,8 @@ fun ModeGameContent(
         }
         banner()
         FlashBanner(flash)
-        Box(Modifier.weight(1f).align(Alignment.CenterHorizontally).loopaContentWidth().fillMaxWidth()) {
+        // Amiral Battı uses the whole width on tablets (chart + command column); the others keep the content width
+        Box(Modifier.weight(1f).align(Alignment.CenterHorizontally).then(if (mode.mode == "amiral_batti") Modifier else Modifier.loopaContentWidth()).fillMaxWidth()) {
             when (mode.mode) {
                 "gizli_kelime" -> GizliKelimeScreen(ctx, mode, ui)
                 "sessiz_sinema" -> SessizSinemaScreen(ctx, mode, ui)

@@ -235,7 +235,7 @@ begin
     m := (select id from public.matches where room_id = room order by started_at desc limit 1);
     perform pg_temp.check((select final_rank from public.match_players where match_id = m and user_id = B) = 1, 'ab: whole fleet sunk = win');
 
-    -- =========================================================== Amiral Battı 2v2: two shots per team turn
+    -- =========================================================== Amiral Battı 2v2 (turn rules and jokers: amiral_batti_test.sql)
     perform pg_temp.act(A);
     perform pg_temp.expect_error(format('select pg_temp.start(''amiral_batti'', array[%L,%L,%L]::uuid[], ''{"format":"2v2"}'')', A, B, C), 'WRONG_PLAYER_COUNT');
     room := pg_temp.start('amiral_batti', array[A, B, C, D], '{"format":"2v2"}');
@@ -244,18 +244,7 @@ begin
     perform pg_temp.move(room, A, 'place', '{"random": true}');
     perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''place'', ''{"random": true}'')', room, C), 'ALREADY_SUBMITTED');   -- teammate
     perform pg_temp.move(room, B, 'place', '{"random": true}');
-    s := pg_temp.st(room);
-    s := s || jsonb_build_object('shooting', 0, 'turn', A, 'shots_left', 2, 'fired', '[]'::jsonb);
-    perform pg_temp.setst(room, s);
-    perform pg_temp.move(room, A, 'fire', '{"x":13,"y":13}');
-    perform pg_temp.check((pg_temp.st(room)->>'shooting')::int = 0 and (pg_temp.st(room)->>'shots_left')::int = 1, 'ab 2v2: second shot for the team');
-    perform pg_temp.expect_error(format('select pg_temp.move(%L, %L, ''fire'', ''{"x":12,"y":13}'')', room, A), 'NOT_YOUR_TURN');
-    perform pg_temp.move(room, C, 'fire', '{"x":12,"y":13}');
-    perform pg_temp.check((pg_temp.st(room)->>'shooting')::int = 1, 'ab 2v2: then the other team');
-    -- timeout: the server shoots for the absent player
-    update public.mode_rounds set deadline_at = now() - interval '1 second' where id = (pg_temp.rd(room)).id;
-    perform public._mode_advance(room);
-    perform pg_temp.check((pg_temp.st(room)->>'shots_left')::int = 1, 'ab 2v2: timeout fires automatically');
+    perform pg_temp.check(pg_temp.st(room)->>'phase' = 'battle', 'ab 2v2: battle starts');
 end $$;
 
 select 'TURN GAMES TESTS PASSED' as result;

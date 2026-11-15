@@ -322,6 +322,8 @@ enum class LoopaError(val message: String) {
     MUST_DRAW("Önce taş/kart çekmelisin."),
     ALREADY_SHOT("Bu kareye zaten atış yapıldı."),
     INVALID_FLEET("Gemi yerleşimi geçersiz."),
+    JOKER_LIMIT("Bu tur zaten bir joker kullandın."),
+    JOKER_NOT_AVAILABLE("Bu joker artık elinde değil."),
     CHOOSE_COLOR("Bir renk seç."),
     CANNOT_FINISH_WITH_WILD("Son kart Joker ya da Joker +4 olamaz."),
     TILE_NOT_IN_HAND("Bu taş elinde değil."),
