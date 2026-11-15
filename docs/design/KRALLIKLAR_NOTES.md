@@ -152,3 +152,78 @@ Yerleşim, bileşenler, test etiketleri ve gönderilen veriler aynı kaldı. Yal
   gösteriyor; krallık adı sıkışmıyor.
 - **Ölçüm:** 600 bölge, 20 krallık için yakınlaştırma adımı başına ortalama 2.0 ms
   (Robolectric/JVM; cihaz ölçümü değil).
+
+## Harita v2: doğal biyomlar, üç seviyeli sis, kaleler (0.9.0)
+
+### Sunucu (yerel; hosted'a uygulanmadı, onay bekliyor)
+
+- `supabase/migrations/20261122000001_kralliklar_explored.sql`
+  (geri alma: `supabase/rollback/20261122000001_kralliklar_explored_down.sql`).
+  Üç görüş seviyesi:
+  - **Görünür:** kendi ve müttefik bölgeleri artı bir halka. Tam bilgi gelir; bu kısım değişmedi.
+  - **Keşfedilmiş:** bu bölgelerden en çok `terrain_sight` adım uzaktaki bölgeler (balance
+    anahtarı, varsayılan 3). Krallık başına hafızada tutulur (state `seen`), oyun başında ve her
+    tur sonunda güncellenir.
+  - **Keşfedilmemiş:** hiçbir şey gönderilmez.
+
+  Keşfedilmiş ama şu an görünmeyen bölgeler `me.explored` içinde yalnızca
+  `{"i", "t", "seen": true}` olarak gelir. Sahip, asker, yapı, kaynak ömrü ve başkent bilgisi
+  gönderilmez; düşman konumları, sayıları ve hareketleri gizli kalır. Arazi oyun boyunca
+  değişmediği için bu bilgi eskimez.
+
+  Tur işleme ve oyun kurulumu olduğu gibi çalışır (`_kr_process_core`, `_kr_new_core` adıyla).
+  Hafıza bu işlemlerden sonra eklenir. Hareket, savaş ve üretim kuralları değişmedi.
+- `supabase/migrations/20261122000002_kralliklar_terrain_seeds.sql`
+  (geri alma: `supabase/rollback/20261122000002_kralliklar_terrain_seeds_down.sql`).
+  **Hata düzeltmesi.** Harita üreticisi tanımlı arazi oranlarını uygulamıyordu. Tohumlar
+  `select k, random() * total as pick ... order by random() limit n` ile seçiliyordu.
+  PostgreSQL iki `random()` çağrısını aynı değer olarak kullandığı için örnek hep en küçük
+  sayıları tuttu ve her tohum "farm" oldu.
+  - Ölçüm: 0.8.0 üreticisi 600/600 tarla üretiyor. Düzeltmeden sonra örnek bir haritada ova 225,
+    orman 116, tarla 113, maden 81, altın 65.
+  - Oranlar (ova 40, orman 22, tarla 16, maden 14, altın 8), kümeleme, harita şekli ve adil
+    başlangıç halkası aynı.
+  - Süren oyunların haritası değişmez; yalnızca yeni oyunlar doğru karışımı alır.
+- **Testler:** `kralliklar_test.sql` güncellendi.
+  - Hafıza, görünen alan artı 3 adımdan oluşuyor.
+  - Keşfedilmiş bölgelerde yalnızca arazi var.
+  - Hafıza herkese açık durumda yok.
+  - 20 krallıkta tur sonu hafızayı güncelliyor; süre 30 saniyenin altında.
+  - Beş arazi türü de çıkıyor ve ova tarladan fazla.
+- **Backend:** `run_local_tests.sh` ile tüm backend testleri geçti. Rollback ve yeniden uygulama
+  yerelde denendi.
+
+### İstemci
+
+- **Arazi:** yüzey doğal biyom renginde.
+  - Ova açık yeşil; çimen, çiçek, tek ağaç veya kaya.
+  - Orman yeşil; 10 ağaçlık sık koru.
+  - Tarla altın sarısı; üç parsel, ekin sıraları ve saman yığını.
+  - Maden lavanta-gri; karlı üç zirve, maden girişi, ray ve metalik cevher.
+  - Altın tepesi kayalık; altın damarları.
+  - Yan yüzler toprak veya kaya renginde ve üst kenarda çimen payı var.
+- **Sahiplik:** artık yüzeyi boyamıyor. Sahiplik şunlarla gösteriliyor:
+  - Sahibin değiştiği kenarlarda parlayan sınır çizgisi. Kendi krallığının sınırı daha kalın.
+  - Boş bölgelerde küçük bayrak.
+  - Asker kalkanları ile kale ve kışla bayrakları.
+- **Sis:**
+  - Keşfedilmemiş bölge koyu bulut kümesi.
+  - Keşfedilmiş bölgede arazi ve ağaçlar görünür, üstünde yarı saydam sis var. Birim veya yapı
+    çizilmez.
+  - Haritada "Görüş" göstergesi var. Küçük ekranda kapalı başlıyor; dokununca açılıyor.
+  - Keşfedilmiş bölge seçilince yalnızca arazi ve açıklama görünür; eylem gösterilmez.
+- **Başkent:** taş kaide ve avlu, dört köşe kulesi, mazgallı surlar, kapı, kapı yanında sancak
+  ve iki kuleli ana kale var. Bütün çatılar ve bayraklar krallık renginde. Üstünde her yakınlıkta
+  görünen bir taç rozeti var.
+- **Kışla:** kazıklı çit, çadır, gözetleme kulesi ve bayraktan oluşan küçük bir kale. Veride
+  başkent dışında kale türü yok; "normal kale" bu ileri karakol.
+- **Deniz:** canlı mavi; kıyıda köpük çizgisi var. Veride su bölgesi hâlâ yok. Deniz adanın
+  çevresini süsleyen bir arka plan; su bölgesi eklemek kural değişikliği olurdu.
+- **Çizim sırası:** önce kıyı, sonra zemin, sonra nesneler ve sis, sonra sınırlar ve işaretler.
+  Koordinatlar, dokunma, yakınlaştırma ve rota çizimi aynı.
+- **Ölçüm:** 600 bölge, 20 krallık için yakınlaştırma adımı başına ortalama 2.2 ms
+  (Robolectric/JVM; cihaz ölçümü değil).
+- **Fikstür:** yeni `kralliklar_4p_v2_*` fikstürü, düzeltilmiş üreticiyle yerel sunucuda 10 tur
+  oynanmış gerçek bir oyundan alındı; keşif hafızası gerçek tur işlemesiyle oluştu. 20 krallıklı
+  fikstür de yeni üreticiyle 1. turdan alındı. Eski 4 kişilik fikstür (0.8.0 üreticisi, hepsi
+  tarla) etkileşim testlerinde kaldı.

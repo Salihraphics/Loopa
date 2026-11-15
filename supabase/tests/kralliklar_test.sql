@@ -124,7 +124,25 @@ begin
     end loop;
     perform pg_temp.tick(room);
     perform pg_temp.check((pg_temp.st(room)->>'turn_no')::int = 2, 'kr20: a turn is processed');
+    perform pg_temp.check((select bool_and((select array_agg((xe.value)::int) from jsonb_array_elements_text(pg_temp.st(room)->'seen'->kk.key) xe(value))
+                                   @> public._kr_visible(pg_temp.st(room), array[kk.key::int]))
+                           from jsonb_each(pg_temp.st(room)->'k') kk where (kk.value->>'alive')::boolean), 'kr20: turn end remembers what every kingdom sees');
+    perform pg_temp.check(clock_timestamp() - t0 < interval '30 seconds', 'kr20: still fast with the memory');
     perform pg_temp.check(clock_timestamp() - t0 < interval '30 seconds', 'kr20: start and one turn are fast enough');
+
+    -- terrain mix follows the configured weights (0.9.0 fix: seeds used to be all "farm")
+    declare mixes jsonb := '{}'::jsonb; m jsonb; tt record;
+    begin
+        for i in 1..6 loop
+            m := public._kr_gen_map(600, public._kr_balance());
+            for tt in select t->>'t' as t, count(*) as n from jsonb_array_elements(m->'tiles') t group by 1 loop
+                mixes := mixes || jsonb_build_object(tt.t, coalesce((mixes->>tt.t)::int, 0) + tt.n);
+            end loop;
+        end loop;
+        perform pg_temp.check((select count(*) from jsonb_object_keys(mixes)) = 5, 'kr: all five terrains appear: ' || mixes::text);
+        perform pg_temp.check((mixes->>'plain')::int > (mixes->>'farm')::int and (mixes->>'farm')::int < 3600 * 0.4,
+                              'kr: plains outnumber farms, farms are not the bulk: ' || mixes::text);
+    end;
 
     -- ============================================================ 4 kingdoms
     room := pg_temp.start('kralliklar', us[1:4], '{"max_turns": 60}');
@@ -148,6 +166,29 @@ begin
     perform pg_temp.check(not exists (select 1 from jsonb_array_elements(v->'tiles') t where (t->>'i')::int = c2), 'kr: enemy capital hidden');
     perform pg_temp.check(not exists (select 1 from jsonb_array_elements(v->'tiles') t
                                        where public._kr_tdist(s, (t->>'i')::int, c1) > 2), 'kr: nothing beyond the ring');
+
+    -- explored memory (0.9.0): terrain only for remembered tiles, never units or owners
+    -- at the start: terrain known up to 3 steps from own land (capital + ring), units only in the visible ring
+    perform pg_temp.check((select array_agg((xe.value)::int order by (xe.value)::int) from jsonb_array_elements_text(s->'seen'->'1') xe(value))
+                          = (select array_agg(g order by g) from generate_series(0, jsonb_array_length(s->'tiles') - 1) g
+                              where exists (select 1 from jsonb_array_elements(s->'tiles') with ordinality e(t, ord)
+                                             where (e.t->>'o')::int = 1 and public._kr_tdist(s, g, (e.ord - 1)::int) <= 3)),
+                          'kr: memory = every tile within 3 steps of own land');
+    perform pg_temp.check(jsonb_array_length(v->'explored') + jsonb_array_length(v->'tiles') = jsonb_array_length(s->'seen'->'1'),
+                          'kr: explored = memory minus the visible tiles');
+    perform pg_temp.check(not exists (select 1 from jsonb_array_elements(v->'explored') t where t ?| array['o','x','b','l','cap']),
+                          'kr: explored tiles carry terrain only');
+    perform pg_temp.check(not ((pg_temp.rd(room)).public ? 'seen'), 'kr: memory is not public');
+    perform pg_temp.setst(room, jsonb_set(s, '{seen,1}', (s->'seen'->'1') || jsonb_build_array(c2)));
+    v := pg_temp.view(room, u1)->'me';
+    perform pg_temp.check(exists (select 1 from jsonb_array_elements(v->'explored') t where (t->>'i')::int = c2
+                          and t->>'t' = s->'tiles'->c2->>'t' and (t->>'seen')::boolean), 'kr: remembered tile shows its terrain');
+    perform pg_temp.check((select array_agg(k order by k) from jsonb_object_keys((select t from jsonb_array_elements(v->'explored') t where (t->>'i')::int = c2)) k)
+                          = array['i','seen','t'], 'kr: remembered enemy capital carries no owner, troops, building, life or capital');
+    perform pg_temp.check(not exists (select 1 from jsonb_array_elements(v->'tiles') t where (t->>'i')::int = c2), 'kr: remembered enemy capital stays out of the live tiles');
+    perform pg_temp.check(not exists (select 1 from jsonb_array_elements(pg_temp.view(room, u2)->'me'->'explored') t where (t->>'i')::int = c1)
+                          or (select (xe.value)::int = c1 from jsonb_array_elements_text(s->'seen'->'2') xe(value) where (xe.value)::int = c1 limit 1), 'kr: memory is per kingdom');
+    perform pg_temp.setst(room, s);
 
     -- orders validation
     perform pg_temp.act(u1);

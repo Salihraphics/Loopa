@@ -39,14 +39,18 @@ import com.loopa.feature.game.modes.KrArt.barracks
 import com.loopa.feature.game.modes.KrArt.market
 import com.loopa.feature.game.modes.KrArt.barn
 import com.loopa.feature.game.modes.KrArt.details
-import com.loopa.feature.game.modes.KrArt.fog
 import com.loopa.feature.game.modes.KrArt.prism
 import com.loopa.feature.game.modes.KrArt.swords
 import com.loopa.feature.game.modes.KrArt.troops
 import kotlin.math.hypot
 
-/** What the map draws for one visible tile (server data, already filtered by fog of war). */
-internal data class KrTile(val i: Int, val t: String?, val owner: Int, val troops: Int, val building: String?, val life: Int, val capital: Boolean)
+/**
+ * What the map draws for one tile the server told us about (already filtered by fog of war).
+ * [explored] = remembered terrain only: the server sends no owner, troops or building for it.
+ * Tiles missing from the map are unexplored.
+ */
+internal data class KrTile(val i: Int, val t: String?, val owner: Int, val troops: Int, val building: String?, val life: Int, val capital: Boolean,
+                           val explored: Boolean = false)
 
 /** A route on the map: a planned order (dashed) or an army already marching (solid). */
 internal data class KrRoute(val from: Int, val to: Int, val n: Int, val planned: Boolean, val label: String? = null)
@@ -80,6 +84,23 @@ internal class KrProjection(map: List<List<Int>>) {
     val centre = Offset((minX + maxX) / 2, (minY + maxY) / 2)
     /** back to front: painter's order */
     val order: List<Int> = iso.indices.sortedWith(compareBy({ iso[it].y }, { iso[it].x }))
+    /** nbr[i][k] = the tile across edge k of tile i (edge k joins vertices k and k + 1), or -1 at the coast. */
+    val nbr: Array<IntArray> = run {
+        val index = map.mapIndexed { i, c -> (c[0] to c[1]) to i }.toMap()
+        Array(map.size) { i ->
+            val out = IntArray(6) { -1 }
+            val (q, r) = map[i][0] to map[i][1]
+            val (x0, y0) = Hex.center(q, r, 1f)
+            for ((dq, dr) in listOf(1 to 0, 1 to -1, 0 to -1, -1 to 0, -1 to 1, 0 to 1)) {
+                val j = index[q + dq to r + dr] ?: continue
+                val (x1, y1) = Hex.center(q + dq, r + dr, 1f)
+                val deg = Math.toDegrees(kotlin.math.atan2((y1 - y0).toDouble(), (x1 - x0).toDouble()))
+                val k = ((Math.round(deg / 60.0).toInt() % 6) + 6) % 6
+                out[k] = j
+            }
+            out
+        }
+    }
     fun base(size: IntSize): Float = if (size.width == 0) 1f else minOf(size.width * 0.92f / (maxX - minX + 2f), size.height * 0.92f / (maxY - minY + 2f))
     fun screen(i: Int, size: IntSize, cam: KrCamera): Offset {
         val s = base(size) * cam.zoom
@@ -129,10 +150,9 @@ internal fun KrIsoMap(
             },
     ) {
         val size = IntSize(this.size.width.toInt(), this.size.height.toInt())
-        // sea around the island (scenery only: the map data has no water tiles)
+        // the sea around the island (scenery: the map data has no water tiles)
         drawRect(Brush.verticalGradient(listOf(scene.seaTop, scene.seaBottom)))
         val s = proj.base(size) * cam.zoom
-        // gentle wave marks that move with the camera
         val step = (s * 2.6f).coerceAtLeast(36f)
         val ox = ((cam.pan.x % step) + step) % step; val oy = ((cam.pan.y % step) + step) % step
         var row = 0
@@ -147,49 +167,85 @@ internal fun KrIsoMap(
         }
         val detail = s >= 9f
         val p = pulse?.value ?: 0.5f
-        for (i in proj.order) {
+        val onScreen = proj.order.filter { i ->
             val c0 = proj.screen(i, size, cam)
-            if (c0.x < -2 * s || c0.x > this.size.width + 2 * s || c0.y < -2 * s || c0.y > this.size.height + 3 * s) continue
+            !(c0.x < -2 * s || c0.x > this.size.width + 2 * s || c0.y < -2 * s || c0.y > this.size.height + 3 * s)
+        }
+        fun height(t: KrTile?) = if (t == null) KrArt.FOG_H else KrArt.terrain(t.t).height
+        fun top(i: Int) = proj.screen(i, size, cam) - Offset(0f, height(tiles[i]) * s * 0.5f)
+        val live = { t: KrTile? -> t != null && !t.explored }
+
+        // 0) surf along the coast
+        if (detail) for (i in onScreen) if (proj.nbr[i].any { it < 0 }) {
+            val c = proj.screen(i, size, cam) + Offset(0f, height(tiles[i]) * s * 0.5f)
+            drawPath(KrArt.topPath(c, s * 1.12f), scene.foam, style = Stroke(s * 0.08f))
+        }
+        // 1) ground: terrain prisms (no owner colour on the land) or cloud banks
+        for (i in onScreen) {
             val tile = tiles[i]
-            if (tile == null) {
-                val c = c0 - Offset(0f, 0.12f * s * 0.5f)
-                prism(c, s * 0.97f, 0.12f, scene.fogTop, scene.fogSide)
-                if (detail) fog(c, s, i, scene.fogPuff)
+            val c = top(i)
+            if (tile == null) { with(KrArt) { cloudTile(c, s * 0.97f, i, scene, detail) }; continue }
+            val tr = KrArt.terrain(tile.t)
+            prism(c, s * 0.97f, tr.height, tr.top, tr.side)
+        }
+        // 2) what stands on the land, back to front; explored tiles get terrain only and a veil
+        for (i in onScreen) {
+            val tile = tiles[i] ?: continue
+            val c = top(i)
+            if (tile.explored) {
+                if (detail) details(tile.t, c, s, i, depleted = false)
+                with(KrArt) { veil(c, s * 0.97f, i, scene, if (detail) KrArt.tallness(tile.t) else 0f) }
                 continue
             }
-            val tr = KrArt.terrain(tile.t)
-            val c = c0 - Offset(0f, tr.height * s * 0.5f)
             val owner = tile.owner
-            val oc = if (owner > 0) colorOf(owner) else null
-            prism(c, s * 0.97f, tr.height, tr.top, tr.side, oc?.copy(alpha = 0.08f), band = oc)
-            if (oc != null) {
-                drawPath(KrArt.topPath(c, s * 0.88f), oc, style = Stroke(s * (if (owner == me) 0.1f else 0.075f)))
-                if (owner == me) drawPath(KrArt.topPath(c, s * 0.76f), Color.White.copy(alpha = 0.75f), style = Stroke(s * 0.03f))
-            }
+            val oc = if (owner > 0) colorOf(owner) else Color(0xFF8C86A0)
             if (detail) {
                 when {
-                    tile.capital -> castle(c, s, if (owner > 0) colorOf(owner) else Color.Gray)
-                    tile.building == "barracks" -> barracks(c, s, if (owner > 0) colorOf(owner) else Color.Gray)
+                    tile.capital -> castle(c, s, oc, grand = true)
+                    tile.building == "barracks" -> barracks(c, s, oc)
                     tile.building == "market" -> market(c, s)
                     tile.building == "farm" -> barn(c, s)
                     else -> details(tile.t, c, s, i, depleted = tile.t != "plain" && tile.life <= 0)
                 }
+                if (owner > 0 && !tile.capital && tile.building == null && tile.troops <= 0 && s >= 18f) with(KrArt) { territoryFlag(c, s, oc) }
             }
             if (tile.troops > 0) {
-                if (owner > 0) troops(c, s, colorOf(owner), tile.troops, i == selected, if (i == selected) p else 0f)
+                if (owner > 0) troops(c, s, oc, tile.troops, i == selected, if (i == selected) p else 0f)
                 else if (detail) with(KrArt) { garrison(c, s, tile.troops) }
             }
             if (i in battles) swords(c + Offset(-s * 0.45f, -s * 0.35f), s * 0.8f, if (reduced) 1f else 0.6f + 0.4f * p)
-            if (i == selected) {
-                val sp = KrArt.topPath(c, s * (1.02f + 0.05f * p))
-                drawPath(sp, Color.White, style = Stroke(s * 0.15f))
-                drawPath(sp, Color(0xFF8E74D6), style = Stroke(s * 0.08f))
+        }
+        // 3) borders: an edge is drawn where the owner changes (neighbour of another kingdom, neutral, unknown or coast)
+        for (i in onScreen) {
+            val tile = tiles[i]
+            if (!live(tile) || tile!!.owner <= 0) continue
+            val c = top(i); val oc = colorOf(tile.owner); val mine = tile.owner == me
+            for (k in 0 until 6) {
+                val j = proj.nbr[i][k]
+                val other = if (j >= 0) tiles[j] else null
+                if (live(other) && other!!.owner == tile.owner) continue
+                val a = KrArt.vertex(c, s * 0.95f, k); val b = KrArt.vertex(c, s * 0.95f, (k + 1) % 6)
+                drawLine(oc.copy(alpha = 0.28f), a, b, s * (if (mine) 0.3f else 0.24f), StrokeCap.Round)        // glow
+                drawLine(Color.White.copy(alpha = 0.9f), a, b, s * (if (mine) 0.15f else 0.12f), StrokeCap.Round)
+                drawLine(oc, a, b, s * (if (mine) 0.09f else 0.07f), StrokeCap.Round)
             }
-            if (i == target) {
-                val tp = KrArt.topPath(c, s * 1.02f)
-                drawPath(tp, Color.White, style = Stroke(s * 0.14f))
-                drawPath(tp, Color(0xFFF08A6C), style = Stroke(s * 0.09f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(s * 0.3f, s * 0.2f))))
-            }
+        }
+        // 4) markers: capitals (crown, visible at any zoom), selection, move target
+        for (i in onScreen) {
+            val tile = tiles[i]
+            if (!live(tile) || !tile!!.capital || tile.owner <= 0) continue
+            val c = top(i)
+            with(KrArt) { crownBadge(c - Offset(0f, s * (if (detail) 2.25f else 0.4f)), maxOf(s * 0.22f, 7f), colorOf(tile.owner)) }
+        }
+        selected?.takeIf { it in proj.iso.indices }?.let { i ->
+            val sp = KrArt.topPath(top(i), s * (1.02f + 0.05f * p))
+            drawPath(sp, Color.White, style = Stroke(s * 0.15f))
+            drawPath(sp, Color(0xFF8E74D6), style = Stroke(s * 0.08f))
+        }
+        target?.takeIf { it in proj.iso.indices }?.let { i ->
+            val tp = KrArt.topPath(top(i), s * 1.02f)
+            drawPath(tp, Color.White, style = Stroke(s * 0.14f))
+            drawPath(tp, Color(0xFFF08A6C), style = Stroke(s * 0.09f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(s * 0.3f, s * 0.2f))))
         }
         // routes on top of the tiles
         routes.forEach { r -> route(proj, size, cam, tiles, r, s, dash?.value ?: 0f) }
@@ -197,7 +253,7 @@ internal fun KrIsoMap(
 }
 
 private fun topCentre(proj: KrProjection, size: IntSize, cam: KrCamera, tiles: Map<Int, KrTile>, i: Int, s: Float): Offset {
-    val h = tiles[i]?.let { KrArt.terrain(it.t).height } ?: 0.12f
+    val h = tiles[i]?.let { KrArt.terrain(it.t).height } ?: KrArt.FOG_H
     return proj.screen(i, size, cam) - Offset(0f, h * s * 0.5f)
 }
 

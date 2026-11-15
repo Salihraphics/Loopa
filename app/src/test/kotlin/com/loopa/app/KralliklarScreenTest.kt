@@ -56,12 +56,12 @@ class KralliklarScreenTest {
     @get:Rule val compose = createAndroidComposeRule<androidx.activity.ComponentActivity>()
     private val out = File("build/screenshots").apply { mkdirs() }
     private fun res(name: String) = javaClass.getResource("/$name")!!.readText()
-    private fun mode(n: Int) = ModeJson.decodeFromString(ModeState.serializer(), res("kralliklar_${n}p_state.json"))
-    private fun room(n: Int) = ModeJson.decodeFromString(RoomState.serializer(), res("kralliklar_${n}p_room.json"))
+    private fun mode(n: Int, v: String = "") = ModeJson.decodeFromString(ModeState.serializer(), res("kralliklar_${n}p${v}_state.json"))
+    private fun room(n: Int, v: String = "") = ModeJson.decodeFromString(RoomState.serializer(), res("kralliklar_${n}p${v}_room.json"))
     private val sent = mutableListOf<Pair<String, JsonObject>>()
 
-    private fun show(n: Int = 4, dark: Boolean = false) {
-        val r = room(n); val m = mode(n)
+    private fun show(n: Int = 4, dark: Boolean = false, v: String = "") {
+        val r = room(n, v); val m = mode(n, v)
         compose.setContent {
             LoopaTheme(darkTheme = dark) {
                 Box(Modifier.fillMaxSize().background(Loopa.colors.background)) {
@@ -98,15 +98,49 @@ class KralliklarScreenTest {
         shot("92_kralliklar_4p_reports")
     }
 
+    /**
+     * A game on the fixed map generator (real server snapshot, turn 10): natural biomes and the three
+     * fog levels. Remembered tiles arrive with terrain only; tapping one shows no units and no actions.
+     */
+    @Test fun naturalMapAndFogLevels() {
+        val raw = kotlinx.serialization.json.Json.parseToJsonElement(res("kralliklar_4p_v2_state.json")) as JsonObject
+        val explored = (raw["me"] as JsonObject)["explored"] as kotlinx.serialization.json.JsonArray
+        assertTrue("the server remembered terrain beyond the visible ring", explored.size > 10)
+        explored.forEach { assertEquals("explored tiles carry terrain only", setOf("i", "t", "seen"), (it as JsonObject).keys) }
+        show(v = "_v2")
+        compose.onNodeWithTag("kr_fog_legend").assertIsDisplayed()
+        compose.onNodeWithText("Keşfedilmiş (sisli)").assertExists()
+        compose.onNodeWithTag("kr_zoom_out").performClick()
+        shot("90b_kralliklar_natural_map")
+        // tap around the map until a remembered tile is selected
+        val b = compose.onNodeWithTag("kr_map").fetchSemanticsNode().boundsInRoot
+        var found = false
+        loop@ for (gy in 1..9) for (gx in 1..7) {
+            compose.onNodeWithTag("kr_map").performTouchInput { click(Offset(b.width * gx / 8f, b.height * gy / 10f)) }
+            compose.waitForIdle()
+            if (compose.onAllNodesWithTag("kr_explored_info").fetchSemanticsNodes().isNotEmpty()) { found = true; break@loop }
+        }
+        assertTrue("a remembered tile can be selected", found)
+        compose.onNodeWithTag("kr_send").assertDoesNotExist()
+        compose.onNodeWithText("asker", substring = true).assertDoesNotExist()
+        shot("90c_kralliklar_explored_tile")
+        compose.onNodeWithTag("kr_to_capital").performClick()
+        compose.onNodeWithText("Başkent", substring = true).assertExists()
+        shot("90d_kralliklar_capital_castle")
+    }
+
     /** The same screen in LOOPA's dark theme (plum night, same pastel accents). */
     @Test fun darkThemeScreens() {
-        show(dark = true)
+        show(dark = true, v = "_v2")
         compose.onNodeWithTag("kr_to_capital").performClick()
         compose.onNodeWithTag("kr_tile_info").assertIsDisplayed()
         shot("99_kralliklar_dark_map")
         compose.onNodeWithTag("kr_tab_1").performClick()
         compose.onNodeWithText("Ege Beyliği").assertExists()
         shot("99b_kralliklar_dark_diplomacy")
+        compose.onNodeWithTag("kr_tab_0").performClick()
+        compose.onNodeWithTag("kr_zoom_out").performClick(); compose.onNodeWithTag("kr_zoom_out").performClick()
+        shot("99c_kralliklar_dark_overview")
     }
 
     @Test fun zoomPanAndTapSelection() {

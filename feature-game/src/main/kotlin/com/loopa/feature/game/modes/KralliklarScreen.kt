@@ -146,7 +146,13 @@ fun KralliklarScreen(ctx: ModeContext, mode: ModeState, ui: ModeUi) {
     val tiles: Map<Int, KrTile> = remember(mode.round?.public, me) {
         val src = if (over) (p / "tiles").a().mapIndexed { i, t -> i to t } else (me / "tiles").a().map { ((it / "i").i() ?: 0) to it }
         // capitals are flagged per visible tile by the server ("cap")
-        src.associate { (i, t) -> i to KrTile(i, (t / "t").s(), (t / "o").i() ?: 0, (t / "x").i() ?: 0, (t / "b").s(), (t / "l").i() ?: 0, (t / "cap").b()) }
+        val live = src.associate { (i, t) -> i to KrTile(i, (t / "t").s(), (t / "o").i() ?: 0, (t / "x").i() ?: 0, (t / "b").s(), (t / "l").i() ?: 0, (t / "cap").b()) }
+        // remembered tiles: the server sends their terrain only (no owner, troops or buildings)
+        val remembered = if (over) emptyMap() else (me / "explored").a().mapNotNull { t ->
+            val i = (t / "i").i() ?: return@mapNotNull null
+            if (i in live) null else i to KrTile(i, (t / "t").s(), 0, 0, null, 1, false, explored = true)
+        }.toMap()
+        remembered + live
     }
     val kColor: (Int?) -> Color = { k -> kingdoms.firstOrNull { (it / "k").i() == k }?.let { parseColor((it / "color").s()) } ?: Color(0xFF8A8F99) }
     val kName: (Int?) -> String = { k -> kingdoms.firstOrNull { (it / "k").i() == k }?.let { (it / "name").s() } ?: "Tarafsız" }
@@ -186,6 +192,7 @@ fun KralliklarScreen(ctx: ModeContext, mode: ModeState, ui: ModeUi) {
                         MapControls(cam, onCapital = { (me / "capital").i()?.let { c -> proj.focus(c, cam.size, cam); select(c) } }, Modifier.align(Alignment.CenterEnd))
                         if (sending && target == null) Hint("Hedef bölgeye dokun", Modifier.align(Alignment.TopCenter))
                         TurnBanner(turnNo, Modifier.align(Alignment.Center))
+                        if (!over) FogLegend(compact, Modifier.align(Alignment.BottomStart))
                         if (over) Hint((p / "winner").i()?.let { if (it == myK) "Krallığın ayakta kalan son krallık!" else "${kName(it)} kazandı" } ?: "Oyun bitti",
                             Modifier.align(Alignment.TopCenter))
                         else if (!alive && myK != null) Hint("Krallığın düştü — izlemeye devam edebilirsin", Modifier.align(Alignment.TopCenter))
@@ -316,6 +323,33 @@ private fun Hint(text: String, modifier: Modifier) {
         modifier = modifier.padding(top = 10.dp).krCard(RoundedCornerShape(50), LoopaPalette.Butter, LoopaPalette.ButterDeep.copy(alpha = 0.6f)).padding(horizontal = 16.dp, vertical = 7.dp).testTag("kr_hint"))
 }
 
+/** The three fog levels, explained on the map; folds to a chip on short screens. */
+@Composable
+private fun FogLegend(compact: Boolean, modifier: Modifier) {
+    var open by remember(compact) { mutableStateOf(!compact) }
+    val dark = LocalKr.current.dark
+    val sc = if (dark) KrArt.DarkScenery else KrArt.LightScenery
+    Column(modifier.padding(8.dp).krCard(RoundedCornerShape(16.dp), PanelHigh.copy(alpha = 0.92f)).clickable { open = !open }
+        .padding(horizontal = 10.dp, vertical = 6.dp).testTag("kr_fog_legend"), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(if (open) "Görüş ▾" else "Görüş ▸", color = Cream, fontWeight = FontWeight.Black, fontSize = 12.sp)
+        if (open) {
+            val plain = KrArt.terrain("forest")
+            LegendRow("Görünüyor") { c, s -> prism(c, s, 0.3f, plain.top, plain.side) }
+            LegendRow("Keşfedilmiş (sisli)") { c, s -> prism(c, s, 0.3f, plain.top, plain.side); with(KrArt) { veil(c, s, 1, sc, 0f) } }
+            LegendRow("Keşfedilmemiş") { c, s -> with(KrArt) { cloudTile(c, s, 2, sc, detail = true) } }
+        }
+    }
+}
+
+@Composable
+private fun LegendRow(label: String, draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Offset, Float) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Canvas(Modifier.size(20.dp, 15.dp)) { draw(Offset(size.width / 2, size.height * 0.36f), size.width * 0.45f) }
+        Spacer(Modifier.width(6.dp))
+        Text(label, color = Cream, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
 /** "TUR 8" for a moment when a new turn starts (not with reduced motion). */
 @Composable
 private fun TurnBanner(turnNo: Int, modifier: Modifier) {
@@ -352,21 +386,26 @@ private fun Dock(selected: Int?, tiles: Map<Int, KrTile>, map: List<List<Int>>, 
             Canvas(Modifier.size(52.dp, 44.dp)) {
                 val s = size.width * 0.42f; val c = Offset(size.width / 2, size.height * 0.42f)
                 if (t == null) prism(c, s, 0.12f, KrArt.FogTop, KrArt.FogSide)
-                else { val tr = KrArt.terrain(t.t); prism(c, s, tr.height, tr.top, tr.side, if (t.owner > 0) kColor(t.owner).copy(alpha = 0.08f) else null, band = if (t.owner > 0) kColor(t.owner) else null) }
+                else { val tr = KrArt.terrain(t.t); prism(c, s, tr.height, tr.top, tr.side, band = if (t.owner > 0 && !t.explored) kColor(t.owner) else null) }
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(if (t == null) "Sis" else (if (t.capital) "Başkent · " else "") + terrainName(t.t), color = Cream, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Text(if (t == null) "Keşfedilmemiş" else (if (t.capital) "Başkent · " else "") + terrainName(t.t), color = Cream, fontWeight = FontWeight.Black, fontSize = 16.sp)
                 Text("Bölge #$selected · (${qr?.getOrNull(0)}, ${qr?.getOrNull(1)})", color = Soft, fontSize = 11.sp)
             }
-            if (t != null) Row(verticalAlignment = Alignment.CenterVertically) {
+            if (t != null && !t.explored) Row(verticalAlignment = Alignment.CenterVertically) {
                 if (t.owner > 0) Canvas(Modifier.size(16.dp, 19.dp)) { crest(Offset.Zero, size.width, kColor(t.owner), t.owner) }
                 Spacer(Modifier.width(4.dp))
                 Text(if (t.owner == myK) "Senin" else kName(t.owner.takeIf { it > 0 }), color = if (t.owner > 0) kColor(t.owner) else Soft, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
             TextButton(onClose, modifier = Modifier.testTag("kr_dock_close")) { Text("✕", color = Soft) }
         }
-        if (t == null) { Text("Bu bölge görüş alanının dışında. Krallığına komşu olan bölgeler görünür.", color = Soft, fontSize = 12.sp); return@Column }
+        if (t == null) { Text("Keşfedilmemiş bölge. Krallığın ya da müttefiklerin yaklaştıkça arazisi ortaya çıkar.", color = Soft, fontSize = 12.sp); return@Column }
+        if (t.explored) {
+            Text("Keşfedildi · şu an görüş dışında. Arazi biliniyor; sahibi ve birlikleri, bölge görüş alanına girince görünür.", color = Soft, fontSize = 12.sp,
+                modifier = Modifier.testTag("kr_explored_info"))
+            return@Column
+        }
         // facts
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Fact("troops", "${t.troops} asker")

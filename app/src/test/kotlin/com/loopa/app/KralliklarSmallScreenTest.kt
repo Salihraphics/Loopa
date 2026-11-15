@@ -33,8 +33,8 @@ class KralliklarSmallScreenTest {
     @get:Rule val compose = createAndroidComposeRule<androidx.activity.ComponentActivity>()
 
     @Test fun noOverflowOnASmallPhone() {
-        val m = ModeJson.decodeFromString(ModeState.serializer(), javaClass.getResource("/kralliklar_4p_state.json")!!.readText())
-        val r = ModeJson.decodeFromString(RoomState.serializer(), javaClass.getResource("/kralliklar_4p_room.json")!!.readText())
+        val m = ModeJson.decodeFromString(ModeState.serializer(), javaClass.getResource("/kralliklar_4p_v2_state.json")!!.readText())
+        val r = ModeJson.decodeFromString(RoomState.serializer(), javaClass.getResource("/kralliklar_4p_v2_room.json")!!.readText())
         compose.setContent {
             LoopaTheme(darkTheme = false) { Box(Modifier.fillMaxSize().background(Loopa.colors.background)) { ModeGameContent(r, m, System.currentTimeMillis(), ModeUi()) } }
         }
